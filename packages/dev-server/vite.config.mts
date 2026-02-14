@@ -3,6 +3,10 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import { defineConfig } from 'vite';
 
+const parsedApiPort = Number(process.env.VENDURE_API_PORT);
+const dashboardApiHost = process.env.VENDURE_API_HOST ?? 'auto';
+const dashboardApiPort = Number.isFinite(parsedApiPort) && parsedApiPort > 0 ? parsedApiPort : 'auto';
+
 export default defineConfig({
     base: '/dashboard/',
     plugins: [
@@ -94,8 +98,8 @@ export default defineConfig({
                 },
             },
             api: {
-                host: 'http://localhost',
-                port: 3000,
+                host: dashboardApiHost,
+                port: dashboardApiPort,
             },
             gqlOutputPath: path.resolve(__dirname, './graphql/'),
         }),
