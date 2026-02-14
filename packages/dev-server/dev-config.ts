@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-import { AdminUiPlugin } from '@vendure/admin-ui-plugin';
 import { AssetServerPlugin } from '@vendure/asset-server-plugin';
 import { ADMIN_API_PATH, API_PORT, SHOP_API_PATH } from '@vendure/common/lib/shared-constants';
 import {
@@ -20,6 +19,7 @@ import { TelemetryPlugin } from '@vendure/telemetry-plugin';
 import 'dotenv/config';
 import path from 'path';
 import { DataSourceOptions } from 'typeorm';
+import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
 import { ReviewsPlugin } from './test-plugins/reviews/reviews-plugin';
 
 const IS_INSTRUMENTED = process.env.IS_INSTRUMENTED === 'true';
@@ -84,6 +84,7 @@ export const devConfig: VendureConfig = {
         //     platformFeePercent: 10,
         //     platformFeeSKU: 'FEE',
         // }),
+        MenataBrandingPlugin,
         ReviewsPlugin,
         GraphiqlPlugin.init(),
         AssetServerPlugin.init({
@@ -121,54 +122,6 @@ export const devConfig: VendureConfig = {
                   }),
               ]
             : []),
-        // AdminUiPlugin.init({
-        //     route: 'admin',
-        //     port: 5001,
-        //     adminUiConfig: {},
-        //     // Un-comment to compile a custom admin ui
-        //     // app: compileUiExtensions({
-        //     //     outputPath: path.join(__dirname, './custom-admin-ui'),
-        //     //     extensions: [
-        //     //         {
-        //     //             id: 'ui-extensions-library',
-        //     //             extensionPath: path.join(__dirname, 'example-plugins/ui-extensions-library/ui'),
-        //     //             routes: [{ route: 'ui-library', filePath: 'routes.ts' }],
-        //     //             providers: ['providers.ts'],
-        //     //         },
-        //     //         {
-        //     //             globalStyles: path.join(
-        //     //                 __dirname,
-        //     //                 'test-plugins/with-ui-extension/ui/custom-theme.scss',
-        //     //             ),
-        //     //         },
-        //     //     ],
-        //     //     devMode: true,
-        //     // }),
-        // }),
-        AdminUiPlugin.init({
-            route: 'admin',
-            port: 5001,
-            adminUiConfig: {},
-            // Un-comment to compile a custom admin ui
-            // app: compileUiExtensions({
-            //     outputPath: path.join(__dirname, './custom-admin-ui'),
-            //     extensions: [
-            //         {
-            //             id: 'ui-extensions-library',
-            //             extensionPath: path.join(__dirname, 'example-plugins/ui-extensions-library/ui'),
-            //             routes: [{ route: 'ui-library', filePath: 'routes.ts' }],
-            //             providers: ['providers.ts'],
-            //         },
-            //         {
-            //             globalStyles: path.join(
-            //                 __dirname,
-            //                 'test-plugins/with-ui-extension/ui/custom-theme.scss',
-            //             ),
-            //         },
-            //     ],
-            //     devMode: true,
-            // }),
-        }),
         DashboardPlugin.init({
             route: 'dashboard',
             appDir: path.join(__dirname, './dist'),
@@ -213,11 +166,11 @@ function getDbConfig(): DataSourceOptions {
             return {
                 synchronize: true,
                 type: 'mariadb',
-                host: '127.0.0.1',
-                port: 3306,
-                username: 'vendure',
-                password: 'password',
-                database: 'vendure-dev',
+                host: process.env.DB_HOST || '127.0.0.1',
+                port: Number(process.env.DB_PORT) || 3306,
+                username: process.env.DB_USERNAME || 'vendure',
+                password: process.env.DB_PASSWORD || 'password',
+                database: process.env.DB_NAME || 'vendure-dev',
             };
     }
 }
