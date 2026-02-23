@@ -25,5 +25,6 @@ import { ContentBlockService } from './services/content-block.service';
         return config;
     },
     compatibility: '^3.0.0',
+    dashboard: './dashboard/index.tsx',
 })
 export class CmsPlugin {}
