@@ -3,6 +3,7 @@ import { DeletionResponse, DeletionResult } from '@vendure/common/lib/generated-
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import {
     ChannelService,
+    LanguageCode,
     ListQueryBuilder,
     ListQueryOptions,
     RequestContext,
@@ -70,10 +71,10 @@ export class ContentBlockService {
         featuredAssetId?: ID | null;
         metadata?: Record<string, unknown> | null;
         translations: Array<{
-            languageCode: string;
+            languageCode: LanguageCode;
             name: string;
-            textContent?: string | null;
-            altText?: string | null;
+            textContent?: string;
+            altText?: string;
         }>;
     }): Promise<ContentBlock> {
         const block = await this.translatableSaver.create({
@@ -96,10 +97,10 @@ export class ContentBlockService {
         metadata?: Record<string, unknown> | null;
         translations?: Array<{
             id?: ID;
-            languageCode: string;
+            languageCode: LanguageCode;
             name: string;
-            textContent?: string | null;
-            altText?: string | null;
+            textContent?: string;
+            altText?: string;
         }>;
     }): Promise<ContentBlock> {
         await this.translatableSaver.update({

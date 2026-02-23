@@ -21,11 +21,11 @@ export class ContentBlockTranslation
     @Column()
     name: string;
 
-    @Column('text', { nullable: true })
-    textContent: string | null;
+    @Column('text', { default: '' })
+    textContent: string;
 
-    @Column('varchar', { nullable: true })
-    altText: string | null;
+    @Column('varchar', { default: '' })
+    altText: string;
 
     @Index()
     @ManyToOne(() => ContentBlock, base => base.translations, { onDelete: 'CASCADE' })
