@@ -19,6 +19,7 @@ import { TelemetryPlugin } from '@vendure/telemetry-plugin';
 import 'dotenv/config';
 import path from 'path';
 import { DataSourceOptions } from 'typeorm';
+import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
 import { ReviewsPlugin } from './test-plugins/reviews/reviews-plugin';
 
@@ -85,6 +86,7 @@ export const devConfig: VendureConfig = {
         //     platformFeeSKU: 'FEE',
         // }),
         MenataBrandingPlugin,
+        CmsPlugin,
         ReviewsPlugin,
         GraphiqlPlugin.init(),
         AssetServerPlugin.init({
