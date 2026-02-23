@@ -1,5 +1,7 @@
 import { graphql } from '@/graphql/graphql';
-import { DashboardRouteDefinition, DetailPageButton, ListPage } from '@vendure/dashboard';
+import { Link } from '@tanstack/react-router';
+import { PlusIcon } from 'lucide-react';
+import { Button, DashboardRouteDefinition, DetailPageButton, ListPage, PageActionBarRight } from '@vendure/dashboard';
 
 const getContentBlockList = graphql(`
     query GetContentBlocks($options: ContentBlockListOptions) {
@@ -71,6 +73,15 @@ export const contentBlockList: DashboardRouteDefinition = {
                     ),
                 },
             }}
-        />
+        >
+            <PageActionBarRight>
+                <Button asChild>
+                    <Link to="./new">
+                        <PlusIcon className="mr-2 h-4 w-4" />
+                        New Content Block
+                    </Link>
+                </Button>
+            </PageActionBarRight>
+        </ListPage>
     ),
 };
