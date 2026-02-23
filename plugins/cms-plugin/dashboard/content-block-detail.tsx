@@ -60,13 +60,19 @@ export const contentBlockDetail: DashboardRouteDefinition = {
             updateDocument={updateContentBlockDocument}
             createDocument={createContentBlockDocument}
             route={route}
-            title={block => block.name}
+            title={block => block?.name ?? 'New Content Block'}
             setValuesForUpdate={block => ({
                 id: block.id,
                 key: block.key,
                 enabled: block.enabled,
                 featuredAssetId: block.featuredAsset?.id,
                 translations: block.translations,
+            })}
+            setValuesForCreate={() => ({
+                key: '',
+                type: 'TEXT' as const,
+                enabled: true,
+                translations: [],
             })}
         />
     ),
