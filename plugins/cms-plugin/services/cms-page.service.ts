@@ -106,13 +106,14 @@ export class CmsPageService {
         }>;
         contentBlocks?: ContentBlockInput[];
     }): Promise<CmsPage> {
+        const pageInput = {
+            key: input.key,
+            enabled: input.enabled ?? true,
+            translations: input.translations,
+        };
         const page = await this.translatableSaver.create({
             ctx,
-            input: {
-                key: input.key,
-                enabled: input.enabled ?? true,
-                translations: input.translations,
-            },
+            input: pageInput,
             entityType: CmsPage,
             translationType: CmsPageTranslation,
             beforeSave: async p => {
@@ -139,14 +140,15 @@ export class CmsPageService {
         }>;
         contentBlocks?: ContentBlockInput[];
     }): Promise<CmsPage> {
+        const updateInput = {
+            id: input.id,
+            ...(input.key !== undefined && { key: input.key }),
+            ...(input.enabled !== undefined && { enabled: input.enabled }),
+            ...(input.translations && { translations: input.translations }),
+        };
         await this.translatableSaver.update({
             ctx,
-            input: {
-                id: input.id,
-                ...(input.key !== undefined && { key: input.key }),
-                ...(input.enabled !== undefined && { enabled: input.enabled }),
-                ...(input.translations && { translations: input.translations }),
-            },
+            input: updateInput,
             entityType: CmsPage,
             translationType: CmsPageTranslation,
         });
@@ -172,19 +174,20 @@ export class CmsPageService {
         blocks: ContentBlockInput[],
     ): Promise<void> {
         for (const blockInput of blocks) {
+            const createInput = {
+                key: blockInput.key,
+                type: blockInput.type,
+                enabled: blockInput.enabled ?? true,
+                position: blockInput.position,
+                pageId,
+                featuredAssetId: blockInput.featuredAssetId ?? null,
+                dateValue: blockInput.dateValue ?? null,
+                numberValue: blockInput.numberValue ?? null,
+                translations: blockInput.translations ?? [],
+            };
             await this.translatableSaver.create({
                 ctx,
-                input: {
-                    key: blockInput.key,
-                    type: blockInput.type,
-                    enabled: blockInput.enabled ?? true,
-                    position: blockInput.position,
-                    pageId,
-                    featuredAssetId: blockInput.featuredAssetId ?? null,
-                    dateValue: blockInput.dateValue ?? null,
-                    numberValue: blockInput.numberValue ?? null,
-                    translations: blockInput.translations ?? [],
-                },
+                input: createInput,
                 entityType: ContentBlock,
                 translationType: ContentBlockTranslation,
                 beforeSave: async b => {
@@ -214,36 +217,38 @@ export class CmsPageService {
 
         for (const blockInput of incomingBlocks) {
             if (blockInput.id && existingIds.has(blockInput.id.toString())) {
+                const updateInput = {
+                    id: blockInput.id,
+                    key: blockInput.key,
+                    type: blockInput.type,
+                    enabled: blockInput.enabled ?? true,
+                    position: blockInput.position,
+                    featuredAssetId: blockInput.featuredAssetId ?? null,
+                    dateValue: blockInput.dateValue ?? null,
+                    numberValue: blockInput.numberValue ?? null,
+                    translations: blockInput.translations,
+                };
                 await this.translatableSaver.update({
                     ctx,
-                    input: {
-                        id: blockInput.id,
-                        key: blockInput.key,
-                        type: blockInput.type,
-                        enabled: blockInput.enabled ?? true,
-                        position: blockInput.position,
-                        featuredAssetId: blockInput.featuredAssetId ?? null,
-                        dateValue: blockInput.dateValue ?? null,
-                        numberValue: blockInput.numberValue ?? null,
-                        translations: blockInput.translations,
-                    },
+                    input: updateInput,
                     entityType: ContentBlock,
                     translationType: ContentBlockTranslation,
                 });
             } else {
+                const createInput = {
+                    key: blockInput.key,
+                    type: blockInput.type,
+                    enabled: blockInput.enabled ?? true,
+                    position: blockInput.position,
+                    pageId,
+                    featuredAssetId: blockInput.featuredAssetId ?? null,
+                    dateValue: blockInput.dateValue ?? null,
+                    numberValue: blockInput.numberValue ?? null,
+                    translations: blockInput.translations ?? [],
+                };
                 await this.translatableSaver.create({
                     ctx,
-                    input: {
-                        key: blockInput.key,
-                        type: blockInput.type,
-                        enabled: blockInput.enabled ?? true,
-                        position: blockInput.position,
-                        pageId,
-                        featuredAssetId: blockInput.featuredAssetId ?? null,
-                        dateValue: blockInput.dateValue ?? null,
-                        numberValue: blockInput.numberValue ?? null,
-                        translations: blockInput.translations ?? [],
-                    },
+                    input: createInput,
                     entityType: ContentBlock,
                     translationType: ContentBlockTranslation,
                     beforeSave: async b => {
