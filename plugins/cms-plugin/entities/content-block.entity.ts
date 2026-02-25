@@ -50,7 +50,7 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
     @Column({ default: 0 })
     position: number;
 
-    @Column({ nullable: true })
+    @Column('datetime', { nullable: true })
     dateValue: Date | null;
 
     @Column('float', { nullable: true })
