@@ -143,6 +143,30 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 })) ?? [],
             })),
         }),
+        transformCreateInput: (input: any) => {
+            return {
+                ...input,
+                contentBlocks: (input.contentBlocks || [])
+                    .filter((b: any) => b.type)
+                    .map((b: any, i: number) => ({
+                        ...b,
+                        position: i,
+                        numberValue: b.numberValue != null ? Number(b.numberValue) : null,
+                    })),
+            };
+        },
+        transformUpdateInput: (input: any) => {
+            return {
+                ...input,
+                contentBlocks: (input.contentBlocks || [])
+                    .filter((b: any) => b.type)
+                    .map((b: any, i: number) => ({
+                        ...b,
+                        position: i,
+                        numberValue: b.numberValue != null ? Number(b.numberValue) : null,
+                    })),
+            };
+        },
         onSuccess: async (data: any) => {
             toast.success(isNew ? 'Page created' : 'Page updated');
             resetForm();
