@@ -9,8 +9,8 @@ import {
 } from '@vendure/core';
 import { Column, Entity, Index, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
-import { ContentBlock } from './content-block.entity';
 import { CmsPageTranslation } from './cms-page-translation.entity';
+import { ContentBlock } from './content-block.entity';
 
 export class CustomCmsPageFields {}
 
