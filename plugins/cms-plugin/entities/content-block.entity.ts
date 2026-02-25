@@ -11,6 +11,7 @@ import {
 import { Column, Entity, Index, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 
 import { ContentBlockType } from '../constants';
+import { CmsPage } from './cms-page.entity';
 import { ContentBlockTranslation } from './content-block-translation.entity';
 
 export class CustomContentBlockFields {}
@@ -39,6 +40,21 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
 
     @Column('simple-json', { nullable: true })
     metadata: Record<string, unknown> | null;
+
+    @ManyToOne(() => CmsPage, page => page.contentBlocks, { nullable: true, onDelete: 'CASCADE' })
+    page: CmsPage | null;
+
+    @Column({ nullable: true })
+    pageId: ID | null;
+
+    @Column({ default: 0 })
+    position: number;
+
+    @Column('datetime', { nullable: true })
+    dateValue: Date | null;
+
+    @Column('float', { nullable: true })
+    numberValue: number | null;
 
     // Translatable fields (resolved from translations)
     name: LocaleString;
