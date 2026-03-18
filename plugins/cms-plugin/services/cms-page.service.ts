@@ -24,6 +24,7 @@ interface ContentBlockInput {
     position: number;
     enabled?: boolean;
     featuredAssetId?: ID | null;
+    metadata?: Record<string, unknown> | null;
     dateValue?: Date | string | null;
     numberValue?: number | null;
     translations?: Array<{
@@ -181,6 +182,7 @@ export class CmsPageService {
                 position: blockInput.position,
                 pageId,
                 featuredAssetId: blockInput.featuredAssetId ?? null,
+                metadata: blockInput.metadata ?? null,
                 dateValue: blockInput.dateValue ?? null,
                 numberValue: blockInput.numberValue ?? null,
                 translations: blockInput.translations ?? [],
@@ -224,6 +226,7 @@ export class CmsPageService {
                     enabled: blockInput.enabled ?? true,
                     position: blockInput.position,
                     featuredAssetId: blockInput.featuredAssetId ?? null,
+                    metadata: blockInput.metadata ?? null,
                     dateValue: blockInput.dateValue ?? null,
                     numberValue: blockInput.numberValue ?? null,
                     translations: blockInput.translations,
@@ -242,6 +245,7 @@ export class CmsPageService {
                     position: blockInput.position,
                     pageId,
                     featuredAssetId: blockInput.featuredAssetId ?? null,
+                    metadata: blockInput.metadata ?? null,
                     dateValue: blockInput.dateValue ?? null,
                     numberValue: blockInput.numberValue ?? null,
                     translations: blockInput.translations ?? [],

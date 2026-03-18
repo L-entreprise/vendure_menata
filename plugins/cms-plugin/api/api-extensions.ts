@@ -2,9 +2,13 @@ import { gql } from 'graphql-tag';
 
 const commonApiExtensions = gql`
     enum ContentBlockType {
-        IMAGE
-        TEXT
+        TEXT_SHORT
+        TEXT_LONG
         RICH_TEXT
+        BOOLEAN
+        ENUM
+        IMAGE
+        IMAGE_GALLERY
         DATE
         NUMBER
     }
@@ -128,6 +132,7 @@ export const adminApiExtensions = gql`
         position: Int!
         enabled: Boolean
         featuredAssetId: ID
+        metadata: JSON
         dateValue: DateTime
         numberValue: Float
         translations: [ContentBlockTranslationInput!]

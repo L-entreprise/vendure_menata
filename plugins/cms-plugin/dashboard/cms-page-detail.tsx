@@ -1,18 +1,26 @@
 import { graphql } from '@/graphql/graphql';
 import { useNavigate } from '@tanstack/react-router';
 import {
+    AlignLeftIcon,
     ArrowDownIcon,
     ArrowUpIcon,
     CalendarIcon,
+    ChevronDownIcon,
+    ChevronRightIcon,
     HashIcon,
     ImageIcon,
+    ImagesIcon,
+    ListIcon,
     PlusIcon,
     TextIcon,
+    ToggleLeftIcon,
     TrashIcon,
     TypeIcon,
+    XIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 import {
+    AssetPickerDialog,
     Badge,
     Button,
     Card,
@@ -28,13 +36,10 @@ import {
     PageBlock,
     PageLayout,
     PageTitle,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+    RichTextEditor,
     Switch,
     Textarea,
+    TranslatableFormFieldWrapper,
     detailPageRouteLoader,
     useDetailPage,
 } from '@vendure/dashboard';
@@ -62,12 +67,14 @@ const cmsPageDetailDocument = graphql(`
                 type
                 enabled
                 position
+                metadata
                 textContent
                 dateValue
                 numberValue
                 featuredAsset {
                     id
                     preview
+                    source
                 }
                 translations {
                     id
@@ -97,16 +104,116 @@ const createCmsPageDocument = graphql(`
     }
 `);
 
-const BLOCK_TYPES = [
-    { value: 'TEXT', label: 'Text', icon: TextIcon },
-    { value: 'RICH_TEXT', label: 'Rich Text', icon: TypeIcon },
-    { value: 'IMAGE', label: 'Image', icon: ImageIcon },
-    { value: 'DATE', label: 'Date', icon: CalendarIcon },
-    { value: 'NUMBER', label: 'Number', icon: HashIcon },
-] as const;
+interface BlockTypeDefinition {
+    value: string;
+    label: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+    group: 'text' | 'media' | 'data';
+}
+
+const BLOCK_TYPES: BlockTypeDefinition[] = [
+    { value: 'TEXT_SHORT', label: 'Short Text', description: 'Single-line text with character limit', icon: TextIcon, group: 'text' },
+    { value: 'TEXT_LONG', label: 'Long Text', description: 'Multi-line text for paragraphs', icon: AlignLeftIcon, group: 'text' },
+    { value: 'RICH_TEXT', label: 'Rich Text', description: 'WYSIWYG editor with formatting', icon: TypeIcon, group: 'text' },
+    { value: 'BOOLEAN', label: 'Boolean', description: 'Toggle with custom labels', icon: ToggleLeftIcon, group: 'data' },
+    { value: 'ENUM', label: 'Options List', description: 'List of values, one per line', icon: ListIcon, group: 'data' },
+    { value: 'IMAGE', label: 'Image', description: 'Single image with alt text', icon: ImageIcon, group: 'media' },
+    { value: 'IMAGE_GALLERY', label: 'Image Gallery', description: 'Multiple images', icon: ImagesIcon, group: 'media' },
+    { value: 'DATE', label: 'Date', description: 'Date and time picker', icon: CalendarIcon, group: 'data' },
+    { value: 'NUMBER', label: 'Number', description: 'Numeric value', icon: HashIcon, group: 'data' },
+];
+
+const BLOCK_TYPE_GROUPS = [
+    { key: 'text' as const, label: 'Text' },
+    { key: 'media' as const, label: 'Media' },
+    { key: 'data' as const, label: 'Data' },
+];
+
+function getBlockTypeInfo(type: string) {
+    return BLOCK_TYPES.find(bt => bt.value === type);
+}
 
 function getBlockTypeIcon(type: string) {
-    return BLOCK_TYPES.find(bt => bt.value === type)?.icon ?? TextIcon;
+    return getBlockTypeInfo(type)?.icon ?? TextIcon;
+}
+
+function sanitizeBlocks(blocks: any[]): any[] {
+    return (blocks || [])
+        .filter((b: any) => b.type)
+        .map((b: any, i: number) => ({
+            ...(b.id ? { id: b.id } : {}),
+            type: b.type,
+            key: b.key,
+            position: i,
+            enabled: b.enabled,
+            featuredAssetId: b.featuredAssetId ?? null,
+            metadata: b.metadata ?? null,
+            dateValue: b.dateValue ?? null,
+            numberValue: b.numberValue != null ? Number(b.numberValue) : null,
+            translations: (b.translations || []).map((t: any) => ({
+                ...(t.id ? { id: t.id } : {}),
+                languageCode: t.languageCode,
+                name: t.name,
+                textContent: t.textContent ?? '',
+                altText: t.altText ?? '',
+            })),
+        }));
+}
+
+function getBlockSummary(block: any): string {
+    const typeInfo = getBlockTypeInfo(block.type);
+    const label = typeInfo?.label ?? block.type;
+    switch (block.type) {
+        case 'TEXT_SHORT':
+        case 'TEXT_LONG': {
+            const text = block.translations?.[0]?.textContent ?? '';
+            return text ? `${text.slice(0, 80)}${text.length > 80 ? '...' : ''}` : 'Empty';
+        }
+        case 'RICH_TEXT': {
+            const html = block.translations?.[0]?.textContent ?? '';
+            const stripped = html.replace(/<[^>]*>/g, '').trim();
+            return stripped ? `${stripped.slice(0, 80)}${stripped.length > 80 ? '...' : ''}` : 'Empty';
+        }
+        case 'BOOLEAN': {
+            const isTrue = block.numberValue === 1;
+            const trueLabel = block.metadata?.trueLabel ?? 'Yes';
+            const falseLabel = block.metadata?.falseLabel ?? 'No';
+            return isTrue ? trueLabel : falseLabel;
+        }
+        case 'ENUM': {
+            const text = block.translations?.[0]?.textContent ?? '';
+            const count = text.split('\n').filter((l: string) => l.trim()).length;
+            return count > 0 ? `${count} option${count !== 1 ? 's' : ''}` : 'Empty';
+        }
+        case 'IMAGE':
+            return block.featuredAssetId ? 'Image selected' : 'No image';
+        case 'IMAGE_GALLERY': {
+            const count = block.metadata?.assetIds?.length ?? 0;
+            return count > 0 ? `${count} image${count !== 1 ? 's' : ''}` : 'No images';
+        }
+        case 'DATE':
+            return block.dateValue ? new Date(block.dateValue).toLocaleDateString() : 'Not set';
+        case 'NUMBER':
+            return block.numberValue != null ? String(block.numberValue) : 'Not set';
+        default:
+            return label;
+    }
+}
+
+function getDefaultMetadata(type: string): Record<string, unknown> | null {
+    switch (type) {
+        case 'TEXT_SHORT':
+            return { maxLength: 255 };
+        case 'TEXT_LONG':
+            return { maxLength: 2000 };
+        case 'BOOLEAN':
+            return { trueLabel: 'Yes', falseLabel: 'No' };
+        case 'IMAGE_GALLERY':
+            return { assetIds: [], assetPreviews: [] };
+        default:
+            return null;
+    }
 }
 
 function CmsPageDetailPage({ route }: { route: any }) {
@@ -124,6 +231,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
             id: page.id,
             key: page.key,
             enabled: page.enabled,
+            name: page.name,
+            slug: page.slug,
             translations: page.translations,
             contentBlocks: (page.contentBlocks || []).map((block: any) => ({
                 id: block.id,
@@ -131,9 +240,11 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 key: block.key,
                 position: block.position,
                 enabled: block.enabled ?? true,
-                featuredAssetId: block.featuredAsset?.id,
+                featuredAssetId: block.featuredAsset?.id ?? null,
+                metadata: block.metadata ?? getDefaultMetadata(block.type),
                 dateValue: block.dateValue,
                 numberValue: block.numberValue != null ? Number(block.numberValue) : null,
+                _assetPreview: block.featuredAsset?.preview ?? null,
                 translations: block.translations?.map((t: any) => ({
                     id: t.id,
                     languageCode: t.languageCode,
@@ -145,26 +256,19 @@ function CmsPageDetailPage({ route }: { route: any }) {
         }),
         transformCreateInput: (input: any) => {
             return {
-                ...input,
-                contentBlocks: (input.contentBlocks || [])
-                    .filter((b: any) => b.type)
-                    .map((b: any, i: number) => ({
-                        ...b,
-                        position: i,
-                        numberValue: b.numberValue != null ? Number(b.numberValue) : null,
-                    })),
+                key: input.key,
+                enabled: input.enabled,
+                translations: input.translations,
+                contentBlocks: sanitizeBlocks(input.contentBlocks),
             };
         },
         transformUpdateInput: (input: any) => {
             return {
-                ...input,
-                contentBlocks: (input.contentBlocks || [])
-                    .filter((b: any) => b.type)
-                    .map((b: any, i: number) => ({
-                        ...b,
-                        position: i,
-                        numberValue: b.numberValue != null ? Number(b.numberValue) : null,
-                    })),
+                id: input.id,
+                key: input.key,
+                enabled: input.enabled,
+                translations: input.translations,
+                contentBlocks: sanitizeBlocks(input.contentBlocks),
             };
         },
         onSuccess: async (data: any) => {
@@ -190,8 +294,10 @@ function CmsPageDetailPage({ route }: { route: any }) {
             position: contentBlocks.length,
             enabled: true,
             featuredAssetId: null,
+            metadata: getDefaultMetadata(type),
             dateValue: null,
-            numberValue: null,
+            numberValue: type === 'BOOLEAN' ? 0 : null,
+            _assetPreview: null,
             translations: [
                 { languageCode: 'en', name: '', textContent: '', altText: '' },
             ],
@@ -223,6 +329,20 @@ function CmsPageDetailPage({ route }: { route: any }) {
         form.setValue('contentBlocks', updated, { shouldDirty: true });
     };
 
+    const updateBlockFields = (index: number, fields: Record<string, any>) => {
+        const updated = [...contentBlocks];
+        updated[index] = { ...updated[index], ...fields };
+        form.setValue('contentBlocks', updated, { shouldDirty: true });
+    };
+
+    const updateBlockMetadata = (index: number, key: string, value: any) => {
+        const updated = [...contentBlocks];
+        const block = { ...updated[index] };
+        block.metadata = { ...(block.metadata || {}), [key]: value };
+        updated[index] = block;
+        form.setValue('contentBlocks', updated, { shouldDirty: true });
+    };
+
     const updateBlockTranslation = (index: number, field: string, value: string) => {
         const updated = [...contentBlocks];
         const block = { ...updated[index] };
@@ -237,8 +357,21 @@ function CmsPageDetailPage({ route }: { route: any }) {
     };
 
     const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
 
-    const title = entity?.name ?? 'New Page';
+    const toggleBlockExpanded = (index: number) => {
+        setExpandedBlocks(prev => {
+            const next = new Set(prev);
+            if (next.has(index)) {
+                next.delete(index);
+            } else {
+                next.add(index);
+            }
+            return next;
+        });
+    };
+
+    const title = entity?.name || entity?.key || 'New Page';
 
     return (
         <Page pageId="cms-page-detail" form={form} submitHandler={submitHandler} entity={entity}>
@@ -251,6 +384,22 @@ function CmsPageDetailPage({ route }: { route: any }) {
             <PageLayout>
                 <PageBlock column="main" blockId="main-form" title="Page Details">
                     <DetailFormGrid>
+                        <TranslatableFormFieldWrapper
+                            control={form.control}
+                            name="name"
+                            label="Name"
+                            render={({ field }) => (
+                                <Input {...field} placeholder="Page name" />
+                            )}
+                        />
+                        <TranslatableFormFieldWrapper
+                            control={form.control}
+                            name="slug"
+                            label="Slug"
+                            render={({ field }) => (
+                                <Input {...field} placeholder="page-slug" />
+                            )}
+                        />
                         <FormFieldWrapper
                             control={form.control}
                             name="key"
@@ -272,28 +421,47 @@ function CmsPageDetailPage({ route }: { route: any }) {
                         />
                     </DetailFormGrid>
                 </PageBlock>
+            </PageLayout>
 
-                <PageBlock column="main" blockId="content-blocks" title="Content Sections">
-                    <div className="space-y-3">
-                        {contentBlocks.map((block, index) => {
-                            const Icon = getBlockTypeIcon(block.type);
-                            return (
-                                <Card key={block.id ?? `new-${index}`}>
-                                    <CardHeader className="py-3 px-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                                <Badge variant="secondary">{block.type}</Badge>
-                                                <span className="text-sm text-muted-foreground">
-                                                    #{index + 1}
-                                                </span>
+            <div className="w-full mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="text-lg font-semibold">Content Sections</div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {contentBlocks.map((block, index) => {
+                                const Icon = getBlockTypeIcon(block.type);
+                                const typeInfo = getBlockTypeInfo(block.type);
+                                const isExpanded = expandedBlocks.has(index);
+                                const summary = getBlockSummary(block);
+                                return (
+                                    <Card key={block.id ?? `new-${index}`} className="border-border/60">
+                                        <div
+                                            className="flex items-center justify-between py-3 px-5 cursor-pointer hover:bg-muted/30 transition-colors"
+                                            onClick={() => toggleBlockExpanded(index)}
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {isExpanded
+                                                    ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                }
+                                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <Badge variant="secondary" className="shrink-0">
+                                                    {typeInfo?.label ?? block.type}
+                                                </Badge>
                                                 {block.key && (
-                                                    <span className="text-sm font-medium">
+                                                    <span className="text-sm font-medium shrink-0">
                                                         {block.key}
                                                     </span>
                                                 )}
+                                                {!isExpanded && (
+                                                    <span className="text-sm text-muted-foreground truncate">
+                                                        {summary}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -302,7 +470,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     disabled={index === 0}
                                                     onClick={() => moveBlock(index, 'up')}
                                                 >
-                                                    <ArrowUpIcon className="h-3 w-3" />
+                                                    <ArrowUpIcon className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
@@ -312,7 +480,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     disabled={index === contentBlocks.length - 1}
                                                     onClick={() => moveBlock(index, 'down')}
                                                 >
-                                                    <ArrowDownIcon className="h-3 w-3" />
+                                                    <ArrowDownIcon className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
@@ -321,90 +489,109 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     className="h-7 w-7 text-destructive"
                                                     onClick={() => removeBlock(index)}
                                                 >
-                                                    <TrashIcon className="h-3 w-3" />
+                                                    <TrashIcon className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </div>
-                                    </CardHeader>
-                                    <CardContent className="py-3 px-4 pt-0">
-                                        <div className="grid gap-3 @md:grid-cols-2">
-                                            <div>
-                                                <label className="text-sm font-medium">Key</label>
-                                                <Input
-                                                    value={block.key}
-                                                    onChange={e =>
-                                                        updateBlockField(index, 'key', e.target.value)
-                                                    }
-                                                    placeholder="e.g. hero-title"
-                                                    className="mt-1"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium">Name</label>
-                                                <Input
-                                                    value={block.translations?.[0]?.name ?? ''}
-                                                    onChange={e =>
-                                                        updateBlockTranslation(index, 'name', e.target.value)
-                                                    }
-                                                    placeholder="Section name"
-                                                    className="mt-1"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="mt-3">
-                                            <BlockValueEditor
-                                                block={block}
-                                                index={index}
-                                                onFieldChange={updateBlockField}
-                                                onTranslationChange={updateBlockTranslation}
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
+                                        {isExpanded && (
+                                            <CardContent className="px-5 pb-5 pt-0 border-t">
+                                                <div className="grid gap-4 @md:grid-cols-2 pt-4">
+                                                    <div>
+                                                        <label className="text-sm font-medium">Key</label>
+                                                        <Input
+                                                            value={block.key}
+                                                            onChange={e =>
+                                                                updateBlockField(index, 'key', e.target.value)
+                                                            }
+                                                            placeholder="e.g. hero-title"
+                                                            className="mt-1"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-medium">Name</label>
+                                                        <Input
+                                                            value={block.translations?.[0]?.name ?? ''}
+                                                            onChange={e =>
+                                                                updateBlockTranslation(index, 'name', e.target.value)
+                                                            }
+                                                            placeholder="Section name"
+                                                            className="mt-1"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <BlockValueEditor
+                                                        block={block}
+                                                        index={index}
+                                                        onFieldChange={updateBlockField}
+                                                        onFieldsChange={updateBlockFields}
+                                                        onMetadataChange={updateBlockMetadata}
+                                                        onTranslationChange={updateBlockTranslation}
+                                                    />
+                                                </div>
+                                            </CardContent>
+                                        )}
+                                    </Card>
+                                );
+                            })}
 
-                        {contentBlocks.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
-                                No sections yet. Add one below.
-                            </div>
-                        )}
-
-                        <div className="relative">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => setAddMenuOpen(!addMenuOpen)}
-                            >
-                                <PlusIcon className="mr-2 h-4 w-4" />
-                                Add Section
-                            </Button>
-                            {addMenuOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-popover border rounded-md shadow-md p-1">
-                                    {BLOCK_TYPES.map(bt => {
-                                        const Icon = bt.icon;
-                                        return (
-                                            <button
-                                                key={bt.value}
-                                                type="button"
-                                                className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded hover:bg-accent hover:text-accent-foreground"
-                                                onClick={() => {
-                                                    addBlock(bt.value);
-                                                    setAddMenuOpen(false);
-                                                }}
-                                            >
-                                                <Icon className="h-4 w-4" />
-                                                {bt.label}
-                                            </button>
-                                        );
-                                    })}
+                            {contentBlocks.length === 0 && (
+                                <div className="text-center py-16 text-muted-foreground border border-dashed rounded-lg">
+                                    No sections yet. Add one below.
                                 </div>
                             )}
+
+                            <div className="relative">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full py-6 text-base"
+                                    onClick={() => setAddMenuOpen(!addMenuOpen)}
+                                >
+                                    <PlusIcon className="mr-2 h-5 w-5" />
+                                    Add Section
+                                </Button>
+                                {addMenuOpen && (
+                                    <div className="absolute z-10 mt-2 w-full bg-popover border rounded-lg shadow-lg p-5">
+                                        {BLOCK_TYPE_GROUPS.map(group => {
+                                            const groupTypes = BLOCK_TYPES.filter(bt => bt.group === group.key);
+                                            return (
+                                                <div key={group.key} className="mb-5 last:mb-0">
+                                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                                        {group.label}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 @lg:grid-cols-3 gap-2">
+                                                        {groupTypes.map(bt => {
+                                                            const BtIcon = bt.icon;
+                                                            return (
+                                                                <button
+                                                                    key={bt.value}
+                                                                    type="button"
+                                                                    className="flex items-start gap-3 w-full p-3 text-left rounded-md border border-transparent hover:border-border hover:bg-accent/50 transition-colors"
+                                                                    onClick={() => {
+                                                                        addBlock(bt.value);
+                                                                        setAddMenuOpen(false);
+                                                                    }}
+                                                                >
+                                                                    <BtIcon className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-medium">{bt.label}</div>
+                                                                        <div className="text-xs text-muted-foreground">{bt.description}</div>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </PageBlock>
-            </PageLayout>
+                    </CardContent>
+                </Card>
+            </div>
         </Page>
     );
 }
@@ -413,64 +600,32 @@ function BlockValueEditor({
     block,
     index,
     onFieldChange,
+    onFieldsChange,
+    onMetadataChange,
     onTranslationChange,
 }: {
     block: any;
     index: number;
     onFieldChange: (index: number, field: string, value: any) => void;
+    onFieldsChange: (index: number, fields: Record<string, any>) => void;
+    onMetadataChange: (index: number, key: string, value: any) => void;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
     switch (block.type) {
-        case 'TEXT':
-            return (
-                <div>
-                    <label className="text-sm font-medium">Text Content</label>
-                    <Input
-                        value={block.translations?.[0]?.textContent ?? ''}
-                        onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                        placeholder="Enter text"
-                        className="mt-1"
-                    />
-                </div>
-            );
+        case 'TEXT_SHORT':
+            return <TextShortEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
+        case 'TEXT_LONG':
+            return <TextLongEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
         case 'RICH_TEXT':
-            return (
-                <div>
-                    <label className="text-sm font-medium">Markdown Content</label>
-                    <Textarea
-                        value={block.translations?.[0]?.textContent ?? ''}
-                        onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                        placeholder="Enter markdown content..."
-                        rows={4}
-                        className="mt-1 font-mono text-sm"
-                    />
-                </div>
-            );
+            return <RichTextBlockEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
+        case 'BOOLEAN':
+            return <BooleanEditor block={block} index={index} onFieldChange={onFieldChange} onMetadataChange={onMetadataChange} />;
+        case 'ENUM':
+            return <EnumEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
         case 'IMAGE':
-            return (
-                <div className="grid gap-3 @md:grid-cols-2">
-                    <div>
-                        <label className="text-sm font-medium">Asset ID</label>
-                        <Input
-                            value={block.featuredAssetId ?? ''}
-                            onChange={e =>
-                                onFieldChange(index, 'featuredAssetId', e.target.value || null)
-                            }
-                            placeholder="Asset ID"
-                            className="mt-1"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium">Alt Text</label>
-                        <Input
-                            value={block.translations?.[0]?.altText ?? ''}
-                            onChange={e => onTranslationChange(index, 'altText', e.target.value)}
-                            placeholder="Image description"
-                            className="mt-1"
-                        />
-                    </div>
-                </div>
-            );
+            return <ImageEditor block={block} index={index} onFieldsChange={onFieldsChange} onTranslationChange={onTranslationChange} />;
+        case 'IMAGE_GALLERY':
+            return <ImageGalleryEditor block={block} index={index} onMetadataChange={onMetadataChange} />;
         case 'DATE':
             return (
                 <div>
@@ -511,6 +666,286 @@ function BlockValueEditor({
         default:
             return null;
     }
+}
+
+// --- Individual block type editors ---
+
+function TextShortEditor({ block, index, onTranslationChange }: {
+    block: any;
+    index: number;
+    onTranslationChange: (index: number, field: string, value: string) => void;
+}) {
+    const maxLength = block.metadata?.maxLength ?? 255;
+    const currentValue = block.translations?.[0]?.textContent ?? '';
+    return (
+        <div>
+            <label className="text-sm font-medium">Short Text</label>
+            <Input
+                value={currentValue}
+                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
+                placeholder="Enter text"
+                maxLength={maxLength}
+                className="mt-1"
+            />
+            <div className="text-xs text-muted-foreground text-right mt-1">
+                {currentValue.length} / {maxLength}
+            </div>
+        </div>
+    );
+}
+
+function TextLongEditor({ block, index, onTranslationChange }: {
+    block: any;
+    index: number;
+    onTranslationChange: (index: number, field: string, value: string) => void;
+}) {
+    const maxLength = block.metadata?.maxLength ?? 2000;
+    const currentValue = block.translations?.[0]?.textContent ?? '';
+    return (
+        <div>
+            <label className="text-sm font-medium">Long Text</label>
+            <Textarea
+                value={currentValue}
+                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
+                placeholder="Enter text content..."
+                maxLength={maxLength}
+                rows={4}
+                className="mt-1"
+            />
+            <div className="text-xs text-muted-foreground text-right mt-1">
+                {currentValue.length} / {maxLength}
+            </div>
+        </div>
+    );
+}
+
+function RichTextBlockEditor({ block, index, onTranslationChange }: {
+    block: any;
+    index: number;
+    onTranslationChange: (index: number, field: string, value: string) => void;
+}) {
+    const currentValue = block.translations?.[0]?.textContent ?? '';
+    return (
+        <div>
+            <label className="text-sm font-medium">Rich Text Content</label>
+            <div className="mt-1">
+                <RichTextEditor
+                    value={currentValue}
+                    onChange={(val: string) => onTranslationChange(index, 'textContent', val)}
+                />
+            </div>
+        </div>
+    );
+}
+
+function BooleanEditor({ block, index, onFieldChange, onMetadataChange }: {
+    block: any;
+    index: number;
+    onFieldChange: (index: number, field: string, value: any) => void;
+    onMetadataChange: (index: number, key: string, value: any) => void;
+}) {
+    const trueLabel = block.metadata?.trueLabel ?? 'Yes';
+    const falseLabel = block.metadata?.falseLabel ?? 'No';
+    const isTrue = block.numberValue === 1;
+    const activeLabel = isTrue ? trueLabel : falseLabel;
+
+    return (
+        <div className="space-y-3">
+            <div className="grid gap-3 @md:grid-cols-2">
+                <div>
+                    <label className="text-sm font-medium">True Label</label>
+                    <Input
+                        value={trueLabel}
+                        onChange={e => onMetadataChange(index, 'trueLabel', e.target.value)}
+                        placeholder="e.g. Show Banner"
+                        className="mt-1"
+                    />
+                </div>
+                <div>
+                    <label className="text-sm font-medium">False Label</label>
+                    <Input
+                        value={falseLabel}
+                        onChange={e => onMetadataChange(index, 'falseLabel', e.target.value)}
+                        placeholder="e.g. Hide Banner"
+                        className="mt-1"
+                    />
+                </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
+                <Switch
+                    checked={isTrue}
+                    onCheckedChange={checked => onFieldChange(index, 'numberValue', checked ? 1 : 0)}
+                />
+                <span className="text-sm font-medium">{activeLabel}</span>
+            </div>
+        </div>
+    );
+}
+
+function EnumEditor({ block, index, onTranslationChange }: {
+    block: any;
+    index: number;
+    onTranslationChange: (index: number, field: string, value: string) => void;
+}) {
+    const currentValue = block.translations?.[0]?.textContent ?? '';
+    const options = currentValue.split('\n').filter((line: string) => line.trim());
+
+    return (
+        <div>
+            <label className="text-sm font-medium">Options</label>
+            <p className="text-xs text-muted-foreground mb-1">Enter one option per line</p>
+            <Textarea
+                value={currentValue}
+                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
+                placeholder={"Small\nMedium\nLarge\nExtra Large"}
+                rows={4}
+                className="mt-1 font-mono text-sm"
+            />
+            {options.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mt-2">
+                    {options.map((opt: string, i: number) => (
+                        <Badge key={i} variant="secondary">{opt.trim()}</Badge>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
+    block: any;
+    index: number;
+    onFieldsChange: (index: number, fields: Record<string, any>) => void;
+    onTranslationChange: (index: number, field: string, value: string) => void;
+}) {
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const assetPreview = block._assetPreview ?? block.featuredAsset?.preview;
+    const hasAsset = !!block.featuredAssetId;
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-start gap-4">
+                {hasAsset && assetPreview ? (
+                    <div className="relative group">
+                        <img
+                            src={`${assetPreview}?preset=thumb`}
+                            alt=""
+                            className="w-24 h-24 object-cover rounded-md border"
+                        />
+                        <button
+                            type="button"
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => onFieldsChange(index, { featuredAssetId: null, _assetPreview: null })}
+                        >
+                            <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="w-24 h-24 border border-dashed rounded-md flex items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-8 w-8" />
+                    </div>
+                )}
+                <div className="flex-1 space-y-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPickerOpen(true)}
+                    >
+                        {hasAsset ? 'Change Image' : 'Select Image'}
+                    </Button>
+                    <div>
+                        <label className="text-sm font-medium">Alt Text</label>
+                        <Input
+                            value={block.translations?.[0]?.altText ?? ''}
+                            onChange={e => onTranslationChange(index, 'altText', e.target.value)}
+                            placeholder="Image description"
+                            className="mt-1"
+                        />
+                    </div>
+                </div>
+            </div>
+            {pickerOpen && (
+                <AssetPickerDialog
+                    open={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                    multiSelect={false}
+                    onSelect={assets => {
+                        if (assets.length > 0) {
+                            const asset = assets[0];
+                            onFieldsChange(index, { featuredAssetId: asset.id, _assetPreview: asset.preview });
+                        }
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function ImageGalleryEditor({ block, index, onMetadataChange }: {
+    block: any;
+    index: number;
+    onMetadataChange: (index: number, key: string, value: any) => void;
+}) {
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const assetIds: string[] = block.metadata?.assetIds ?? [];
+    const assetPreviews: string[] = block.metadata?.assetPreviews ?? [];
+
+    const removeAsset = (assetIndex: number) => {
+        const newIds = assetIds.filter((_, i) => i !== assetIndex);
+        const newPreviews = assetPreviews.filter((_, i) => i !== assetIndex);
+        onMetadataChange(index, 'assetIds', newIds);
+        onMetadataChange(index, 'assetPreviews', newPreviews);
+    };
+
+    return (
+        <div>
+            <label className="text-sm font-medium">Images</label>
+            <div className="flex gap-2 flex-wrap mt-2">
+                {assetPreviews.map((preview, i) => (
+                    <div key={assetIds[i] ?? i} className="relative group">
+                        <img
+                            src={`${preview}?preset=thumb`}
+                            alt=""
+                            className="w-20 h-20 object-cover rounded-md border"
+                        />
+                        <button
+                            type="button"
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeAsset(i)}
+                        >
+                            <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                ))}
+                <button
+                    type="button"
+                    className="w-20 h-20 border border-dashed rounded-md flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    onClick={() => setPickerOpen(true)}
+                >
+                    <PlusIcon className="h-6 w-6" />
+                </button>
+            </div>
+            {assetIds.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Click + to add images</p>
+            )}
+            {pickerOpen && (
+                <AssetPickerDialog
+                    open={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                    multiSelect={true}
+                    onSelect={assets => {
+                        if (assets.length > 0) {
+                            const newIds = [...assetIds, ...assets.map(a => a.id)];
+                            const newPreviews = [...assetPreviews, ...assets.map(a => a.preview)];
+                            onMetadataChange(index, 'assetIds', newIds);
+                            onMetadataChange(index, 'assetPreviews', newPreviews);
+                        }
+                    }}
+                />
+            )}
+        </div>
+    );
 }
 
 export const cmsPageDetail: DashboardRouteDefinition = {

@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 const parsedApiPort = Number(process.env.VENDURE_API_PORT);
 const dashboardApiHost = process.env.VENDURE_API_HOST ?? 'auto';
-const dashboardApiPort = Number.isFinite(parsedApiPort) && parsedApiPort > 0 ? parsedApiPort : 'auto';
+const dashboardApiPort = Number.isFinite(parsedApiPort) && parsedApiPort > 0 ? parsedApiPort : 3000;
 
 export default defineConfig({
     base: '/dashboard/',

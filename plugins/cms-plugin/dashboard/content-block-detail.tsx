@@ -70,7 +70,7 @@ export const contentBlockDetail: DashboardRouteDefinition = {
             })}
             setValuesForCreate={() => ({
                 key: '',
-                type: 'TEXT' as const,
+                type: 'TEXT_SHORT' as const,
                 enabled: true,
                 translations: [],
             })}

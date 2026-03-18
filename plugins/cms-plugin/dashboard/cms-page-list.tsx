@@ -55,16 +55,13 @@ export const cmsPageList: DashboardRouteDefinition = {
             deleteMutation={deleteCmsPageDocument}
             route={route}
             customizeColumns={{
-                id: {
-                    header: 'ID',
-                    cell: ({ row }) => (
-                        <DetailPageButton id={row.original.id} label={row.original.id} />
-                    ),
-                },
                 name: {
                     header: 'Name',
                     cell: ({ row }) => (
-                        <DetailPageButton id={row.original.id} label={row.original.name} />
+                        <DetailPageButton
+                            id={row.original.id}
+                            label={row.original.name || row.original.key || row.original.id}
+                        />
                     ),
                 },
             }}
