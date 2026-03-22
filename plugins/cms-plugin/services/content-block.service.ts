@@ -3,17 +3,22 @@ import { DeletionResponse, DeletionResult } from '@vendure/common/lib/generated-
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import {
     ChannelService,
+    InternalServerError,
     LanguageCode,
     ListQueryBuilder,
     ListQueryOptions,
     RequestContext,
     TransactionalConnection,
     TranslatableSaver,
+    UserInputError,
     translateDeep,
 } from '@vendure/core';
 
 import { ContentBlockTranslation } from '../entities/content-block-translation.entity';
 import { ContentBlock } from '../entities/content-block.entity';
+import { sanitizeBlockTranslations } from './sanitize-rich-text';
+
+const MAX_KEY_LENGTH = 255;
 
 @Injectable()
 export class ContentBlockService {
@@ -27,13 +32,18 @@ export class ContentBlockService {
     async findAll(
         ctx: RequestContext,
         options?: ListQueryOptions<ContentBlock>,
+        onlyEnabled = false,
     ): Promise<PaginatedList<ContentBlock>> {
-        return this.listQueryBuilder
+        const qb = this.listQueryBuilder
             .build(ContentBlock, options, {
                 relations: ['featuredAsset', 'channels'],
                 ctx,
                 channelId: ctx.channelId,
-            })
+            });
+        if (onlyEnabled) {
+            qb.andWhere('contentblock.enabled = :enabled', { enabled: true });
+        }
+        return qb
             .getManyAndCount()
             .then(([items, totalItems]) => ({
                 items: items.map(item => translateDeep(item, ctx.languageCode)),
@@ -41,7 +51,11 @@ export class ContentBlockService {
             }));
     }
 
-    async findOne(ctx: RequestContext, id: ID): Promise<ContentBlock | undefined> {
+    async findOne(
+        ctx: RequestContext,
+        id: ID,
+        onlyEnabled = false,
+    ): Promise<ContentBlock | undefined> {
         const block = await this.connection.findOneInChannel(
             ctx,
             ContentBlock,
@@ -49,18 +63,27 @@ export class ContentBlockService {
             ctx.channelId,
             { relations: ['featuredAsset', 'channels'] },
         );
-        return block ? translateDeep(block, ctx.languageCode) : undefined;
+        if (!block) return undefined;
+        if (onlyEnabled && !block.enabled) return undefined;
+        return translateDeep(block, ctx.languageCode);
     }
 
-    async findByKey(ctx: RequestContext, key: string): Promise<ContentBlock | undefined> {
-        const block = await this.listQueryBuilder
+    async findByKey(
+        ctx: RequestContext,
+        key: string,
+        onlyEnabled = false,
+    ): Promise<ContentBlock | undefined> {
+        const qb = this.listQueryBuilder
             .build(ContentBlock, {}, {
                 ctx,
                 channelId: ctx.channelId,
                 relations: ['featuredAsset', 'channels'],
             })
-            .andWhere('content_block.key = :key', { key })
-            .getOne();
+            .andWhere('contentblock.key = :key', { key });
+        if (onlyEnabled) {
+            qb.andWhere('contentblock.enabled = :enabled', { enabled: true });
+        }
+        const block = await qb.getOne();
         return block ? translateDeep(block, ctx.languageCode) : undefined;
     }
 
@@ -77,6 +100,10 @@ export class ContentBlockService {
             altText?: string;
         }>;
     }): Promise<ContentBlock> {
+        if (input.key && input.key.length > MAX_KEY_LENGTH) {
+            throw new UserInputError(`Key must not exceed ${MAX_KEY_LENGTH} characters`);
+        }
+        sanitizeBlockTranslations(input.type, input.translations);
         const block = await this.translatableSaver.create({
             ctx,
             input,
@@ -86,7 +113,11 @@ export class ContentBlockService {
                 await this.channelService.assignToCurrentChannel(b, ctx);
             },
         });
-        return this.findOne(ctx, block.id) as Promise<ContentBlock>;
+        const result = await this.findOne(ctx, block.id);
+        if (!result) {
+            throw new InternalServerError('Failed to retrieve created ContentBlock');
+        }
+        return result;
     }
 
     async update(ctx: RequestContext, input: {
@@ -103,13 +134,24 @@ export class ContentBlockService {
             altText?: string;
         }>;
     }): Promise<ContentBlock> {
+        if (input.key && input.key.length > MAX_KEY_LENGTH) {
+            throw new UserInputError(`Key must not exceed ${MAX_KEY_LENGTH} characters`);
+        }
+        if (input.translations?.length) {
+            const existing = await this.connection.getEntityOrThrow(ctx, ContentBlock, input.id);
+            sanitizeBlockTranslations(existing.type, input.translations);
+        }
         await this.translatableSaver.update({
             ctx,
             input,
             entityType: ContentBlock,
             translationType: ContentBlockTranslation,
         });
-        return this.findOne(ctx, input.id) as Promise<ContentBlock>;
+        const result = await this.findOne(ctx, input.id);
+        if (!result) {
+            throw new InternalServerError('Failed to retrieve updated ContentBlock');
+        }
+        return result;
     }
 
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {

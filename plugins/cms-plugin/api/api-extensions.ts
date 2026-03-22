@@ -61,6 +61,7 @@ const commonApiExtensions = gql`
         updatedAt: DateTime!
         key: String!
         enabled: Boolean!
+        acceptsSubmissions: Boolean!
         name: String!
         slug: String!
         translations: [CmsPageTranslation!]!
@@ -79,6 +80,15 @@ const commonApiExtensions = gql`
 export const shopApiExtensions = gql`
     ${commonApiExtensions}
 
+    input SubmitFormInput {
+        pageKey: String!
+        fields: JSON!
+    }
+
+    type SubmitFormResult {
+        success: Boolean!
+    }
+
     extend type Query {
         contentBlock(id: ID!): ContentBlock
         contentBlockByKey(key: String!): ContentBlock
@@ -86,6 +96,10 @@ export const shopApiExtensions = gql`
         cmsPage(id: ID!): CmsPage
         cmsPageByKey(key: String!): CmsPage
         cmsPages(options: CmsPageListOptions): CmsPageList!
+    }
+
+    extend type Mutation {
+        submitForm(input: SubmitFormInput!): SubmitFormResult!
     }
 `;
 
@@ -141,6 +155,7 @@ export const adminApiExtensions = gql`
     input CreateCmsPageInput {
         key: String!
         enabled: Boolean
+        acceptsSubmissions: Boolean
         translations: [CmsPageTranslationInput!]!
         contentBlocks: [UpdatePageContentBlockInput!]
     }
@@ -149,15 +164,32 @@ export const adminApiExtensions = gql`
         id: ID!
         key: String
         enabled: Boolean
+        acceptsSubmissions: Boolean
         translations: [CmsPageTranslationInput!]
         contentBlocks: [UpdatePageContentBlockInput!]
     }
+
+    type FormSubmission implements Node {
+        id: ID!
+        createdAt: DateTime!
+        updatedAt: DateTime!
+        data: JSON!
+    }
+
+    type FormSubmissionList implements PaginatedList {
+        items: [FormSubmission!]!
+        totalItems: Int!
+    }
+
+    # Auto-generated at runtime by ListQueryBuilder
+    input FormSubmissionListOptions
 
     extend type Query {
         contentBlock(id: ID!): ContentBlock
         contentBlocks(options: ContentBlockListOptions): ContentBlockList!
         cmsPage(id: ID!): CmsPage
         cmsPages(options: CmsPageListOptions): CmsPageList!
+        formSubmissions(pageId: ID!, options: FormSubmissionListOptions): FormSubmissionList!
     }
 
     extend type Mutation {
@@ -167,5 +199,6 @@ export const adminApiExtensions = gql`
         createCmsPage(input: CreateCmsPageInput!): CmsPage!
         updateCmsPage(input: UpdateCmsPageInput!): CmsPage!
         deleteCmsPage(id: ID!): DeletionResponse!
+        deleteFormSubmission(id: ID!): DeletionResponse!
     }
 `;

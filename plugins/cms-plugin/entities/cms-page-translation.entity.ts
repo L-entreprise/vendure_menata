@@ -18,10 +18,10 @@ export class CmsPageTranslation
     @Column('varchar')
     languageCode: LanguageCode;
 
-    @Column()
+    @Column({ length: 255 })
     name: string;
 
-    @Column({ default: '' })
+    @Column({ length: 255, default: '' })
     slug: string;
 
     @Index()

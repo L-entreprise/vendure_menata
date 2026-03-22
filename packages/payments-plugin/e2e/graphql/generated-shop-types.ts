@@ -1727,6 +1727,7 @@ export type MolliePaymentIntentInput = {
      * Set this to false when you expect that order fulfillment takes longer than 24 hours.
      * If set to false, you will need to settle the "Authorized" payment in Vendure manually!
      * If you fail to do so, the Authorized payment will expire after 28 days.
+     * This setting can be overridden on the plugin level via the plugin options.
      */
     immediateCapture?: InputMaybe<Scalars['Boolean']['input']>;
     /**

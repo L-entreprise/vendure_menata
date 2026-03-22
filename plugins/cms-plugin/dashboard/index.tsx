@@ -15,15 +15,6 @@ defineDashboardExtension({
         },
     ],
     routes: [
-        {
-            navMenuItem: {
-                sectionId: 'cms',
-                id: 'cms-create',
-                url: '/cms-pages/new',
-                title: 'Créer',
-                requiresPermission: ['CreateCmsPage'],
-            },
-        },
         cmsPageList,
         cmsPageDetail,
         contentBlockList,

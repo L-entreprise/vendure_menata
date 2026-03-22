@@ -10,18 +10,18 @@ export class CmsPageShopResolver {
     @Query()
     @Allow(Permission.Public)
     async cmsPage(@Ctx() ctx: RequestContext, @Args() args: { id: string }) {
-        return this.cmsPageService.findOne(ctx, args.id);
+        return this.cmsPageService.findOne(ctx, args.id, true);
     }
 
     @Query()
     @Allow(Permission.Public)
     async cmsPageByKey(@Ctx() ctx: RequestContext, @Args() args: { key: string }) {
-        return this.cmsPageService.findByKey(ctx, args.key);
+        return this.cmsPageService.findByKey(ctx, args.key, true);
     }
 
     @Query()
     @Allow(Permission.Public)
     async cmsPages(@Ctx() ctx: RequestContext, @Args() args: { options: any }) {
-        return this.cmsPageService.findAll(ctx, args.options);
+        return this.cmsPageService.findAll(ctx, args.options, true);
     }
 }

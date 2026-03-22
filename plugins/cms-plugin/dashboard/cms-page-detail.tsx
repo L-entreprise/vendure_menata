@@ -11,6 +11,7 @@ import {
     ImageIcon,
     ImagesIcon,
     ListIcon,
+    MailIcon,
     PlusIcon,
     TextIcon,
     ToggleLeftIcon,
@@ -18,8 +19,9 @@ import {
     TypeIcon,
     XIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    api,
     AssetPickerDialog,
     Badge,
     Button,
@@ -42,6 +44,7 @@ import {
     TranslatableFormFieldWrapper,
     detailPageRouteLoader,
     useDetailPage,
+    usePermissions,
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
@@ -53,6 +56,7 @@ const cmsPageDetailDocument = graphql(`
             updatedAt
             key
             enabled
+            acceptsSubmissions
             name
             slug
             translations {
@@ -104,6 +108,28 @@ const createCmsPageDocument = graphql(`
     }
 `);
 
+const formSubmissionsDocument = graphql(`
+    query GetFormSubmissions($pageId: ID!, $options: FormSubmissionListOptions) {
+        formSubmissions(pageId: $pageId, options: $options) {
+            items {
+                id
+                createdAt
+                data
+            }
+            totalItems
+        }
+    }
+`);
+
+const deleteFormSubmissionDocument = graphql(`
+    mutation DeleteFormSubmission($id: ID!) {
+        deleteFormSubmission(id: $id) {
+            result
+            message
+        }
+    }
+`);
+
 interface BlockTypeDefinition {
     value: string;
     label: string;
@@ -138,7 +164,7 @@ function getBlockTypeIcon(type: string) {
     return getBlockTypeInfo(type)?.icon ?? TextIcon;
 }
 
-function sanitizeBlocks(blocks: any[]): any[] {
+function prepareBlocksForMutation(blocks: any[]): any[] {
     return (blocks || [])
         .filter((b: any) => b.type)
         .map((b: any, i: number) => ({
@@ -177,8 +203,8 @@ function getBlockSummary(block: any): string {
         }
         case 'BOOLEAN': {
             const isTrue = block.numberValue === 1;
-            const trueLabel = block.metadata?.trueLabel ?? 'Yes';
-            const falseLabel = block.metadata?.falseLabel ?? 'No';
+            const trueLabel = String(block.metadata?.trueLabel ?? 'Yes');
+            const falseLabel = String(block.metadata?.falseLabel ?? 'No');
             return isTrue ? trueLabel : falseLabel;
         }
         case 'ENUM': {
@@ -220,6 +246,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const params = route.useParams();
     const isNew = params.id === 'new';
     const navigate = useNavigate();
+    const { hasPermissions } = usePermissions();
+    const isSuperAdmin = hasPermissions(['SuperAdmin']);
 
     const { form, submitHandler, entity, resetForm } = useDetailPage({
         pageId: 'cms-page-detail',
@@ -231,6 +259,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             id: page.id,
             key: page.key,
             enabled: page.enabled,
+            acceptsSubmissions: page.acceptsSubmissions ?? false,
             name: page.name,
             slug: page.slug,
             translations: page.translations,
@@ -258,8 +287,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
             return {
                 key: input.key,
                 enabled: input.enabled,
+                acceptsSubmissions: input.acceptsSubmissions ?? false,
                 translations: input.translations,
-                contentBlocks: sanitizeBlocks(input.contentBlocks),
+                contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
         },
         transformUpdateInput: (input: any) => {
@@ -267,8 +297,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 id: input.id,
                 key: input.key,
                 enabled: input.enabled,
+                acceptsSubmissions: input.acceptsSubmissions,
                 translations: input.translations,
-                contentBlocks: sanitizeBlocks(input.contentBlocks),
+                contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
         },
         onSuccess: async (data: any) => {
@@ -285,7 +316,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
         },
     });
 
-    const contentBlocks: any[] = form.watch('contentBlocks') ?? [];
+    const rawContentBlocks: any[] = form.watch('contentBlocks') ?? [];
+    const contentBlocks = rawContentBlocks.filter((b: any) => b.type);
 
     const addBlock = (type: string) => {
         const newBlock = {
@@ -378,7 +410,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             <PageTitle>{title}</PageTitle>
             <PageActionBar>
                 <PageActionBarRight>
-                    <Button type="submit">{isNew ? 'Create' : 'Save'}</Button>
+                    <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? 'Create' : 'Save'}</Button>
                 </PageActionBarRight>
             </PageActionBar>
             <PageLayout>
@@ -389,7 +421,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                             name="name"
                             label="Name"
                             render={({ field }) => (
-                                <Input {...field} placeholder="Page name" />
+                                <Input {...field} placeholder="Page name" disabled={!isSuperAdmin} />
                             )}
                         />
                         <TranslatableFormFieldWrapper
@@ -397,7 +429,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                             name="slug"
                             label="Slug"
                             render={({ field }) => (
-                                <Input {...field} placeholder="page-slug" />
+                                <Input {...field} placeholder="page-slug" disabled={!isSuperAdmin} />
                             )}
                         />
                         <FormFieldWrapper
@@ -405,7 +437,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                             name="key"
                             label="Key"
                             render={({ field }) => (
-                                <Input {...field} placeholder="e.g. homepage" />
+                                <Input {...field} placeholder="e.g. homepage" disabled={!isSuperAdmin} />
                             )}
                         />
                         <FormFieldWrapper
@@ -416,6 +448,19 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 <Switch
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
+                                    disabled={!isSuperAdmin}
+                                />
+                            )}
+                        />
+                        <FormFieldWrapper
+                            control={form.control}
+                            name="acceptsSubmissions"
+                            label="Accepts Submissions"
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={!isSuperAdmin}
                                 />
                             )}
                         />
@@ -461,6 +506,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     </span>
                                                 )}
                                             </div>
+                                            {isSuperAdmin && (
                                             <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                 <Button
                                                     type="button"
@@ -492,6 +538,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     <TrashIcon className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
+                                            )}
                                         </div>
                                         {isExpanded && (
                                             <CardContent className="px-5 pb-5 pt-0 border-t">
@@ -505,6 +552,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                             }
                                                             placeholder="e.g. hero-title"
                                                             className="mt-1"
+                                                            disabled={!isSuperAdmin}
                                                         />
                                                     </div>
                                                     <div>
@@ -537,10 +585,11 @@ function CmsPageDetailPage({ route }: { route: any }) {
 
                             {contentBlocks.length === 0 && (
                                 <div className="text-center py-16 text-muted-foreground border border-dashed rounded-lg">
-                                    No sections yet. Add one below.
+                                    {isSuperAdmin ? 'No sections yet. Add one below.' : 'No sections yet.'}
                                 </div>
                             )}
 
+                            {isSuperAdmin && (
                             <div className="relative">
                                 <Button
                                     type="button"
@@ -588,11 +637,151 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                     </div>
                                 )}
                             </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {!isNew && entity?.acceptsSubmissions && (
+                <SubmissionsPanel pageId={params.id} />
+            )}
         </Page>
+    );
+}
+
+function SubmissionsPanel({ pageId }: { pageId: string }) {
+    const [submissions, setSubmissions] = useState<any[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const pageSize = 10;
+
+    const loadSubmissions = useCallback(async () => {
+        const result = await api.query(formSubmissionsDocument, {
+            pageId,
+            options: { take: pageSize, skip: currentPage * pageSize, sort: { createdAt: 'DESC' as any } },
+        });
+        setSubmissions(result.formSubmissions.items);
+        setTotalItems(result.formSubmissions.totalItems);
+    }, [pageId, currentPage]);
+
+    useEffect(() => {
+        loadSubmissions();
+    }, [loadSubmissions]);
+
+    const handleDelete = async (id: string) => {
+        await api.mutate(deleteFormSubmissionDocument, { id });
+        toast.success('Submission deleted');
+        loadSubmissions();
+    };
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return (
+        <div className="w-full mt-4">
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <MailIcon className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-lg font-semibold">Submissions</span>
+                            <Badge variant="secondary">{totalItems}</Badge>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {submissions.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
+                            No submissions yet.
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {submissions.map((sub: any) => {
+                                const isExpanded = expandedId === sub.id;
+                                const data = sub.data as Record<string, unknown>;
+                                const keys = Object.keys(data);
+                                const preview = keys.slice(0, 3).map(k => `${k}: ${String(data[k]).slice(0, 40)}`).join(' · ');
+                                return (
+                                    <Card key={sub.id} className="border-border/60">
+                                        <div
+                                            className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                                            onClick={() => setExpandedId(isExpanded ? null : sub.id)}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                {isExpanded
+                                                    ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                }
+                                                <span className="text-xs text-muted-foreground shrink-0">
+                                                    {new Date(sub.createdAt).toLocaleString()}
+                                                </span>
+                                                {!isExpanded && (
+                                                    <span className="text-sm text-muted-foreground truncate">
+                                                        {preview}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div onClick={e => e.stopPropagation()}>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-destructive"
+                                                    onClick={() => handleDelete(sub.id)}
+                                                >
+                                                    <TrashIcon className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        {isExpanded && (
+                                            <CardContent className="px-4 pb-4 pt-0 border-t">
+                                                <div className="grid gap-2 pt-3">
+                                                    {keys.map(key => (
+                                                        <div key={key} className="flex gap-2">
+                                                            <span className="text-sm font-medium min-w-[120px] text-muted-foreground">{key}</span>
+                                                            <span className="text-sm break-all">{String(data[key])}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between pt-3">
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {currentPage + 1} of {totalPages}
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={currentPage === 0}
+                                            onClick={() => setCurrentPage(p => p - 1)}
+                                        >
+                                            Previous
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={currentPage >= totalPages - 1}
+                                            onClick={() => setCurrentPage(p => p + 1)}
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
@@ -625,7 +814,7 @@ function BlockValueEditor({
         case 'IMAGE':
             return <ImageEditor block={block} index={index} onFieldsChange={onFieldsChange} onTranslationChange={onTranslationChange} />;
         case 'IMAGE_GALLERY':
-            return <ImageGalleryEditor block={block} index={index} onMetadataChange={onMetadataChange} />;
+            return <ImageGalleryEditor block={block} index={index} onFieldChange={onFieldChange} />;
         case 'DATE':
             return (
                 <div>
@@ -882,20 +1071,24 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
     );
 }
 
-function ImageGalleryEditor({ block, index, onMetadataChange }: {
+function ImageGalleryEditor({ block, index, onFieldChange }: {
     block: any;
     index: number;
-    onMetadataChange: (index: number, key: string, value: any) => void;
+    onFieldChange: (index: number, field: string, value: any) => void;
 }) {
     const [pickerOpen, setPickerOpen] = useState(false);
     const assetIds: string[] = block.metadata?.assetIds ?? [];
     const assetPreviews: string[] = block.metadata?.assetPreviews ?? [];
 
+    const updateGalleryMetadata = (newIds: string[], newPreviews: string[]) => {
+        const newMetadata = { ...(block.metadata || {}), assetIds: newIds, assetPreviews: newPreviews };
+        onFieldChange(index, 'metadata', newMetadata);
+    };
+
     const removeAsset = (assetIndex: number) => {
         const newIds = assetIds.filter((_, i) => i !== assetIndex);
         const newPreviews = assetPreviews.filter((_, i) => i !== assetIndex);
-        onMetadataChange(index, 'assetIds', newIds);
-        onMetadataChange(index, 'assetPreviews', newPreviews);
+        updateGalleryMetadata(newIds, newPreviews);
     };
 
     return (
@@ -938,8 +1131,7 @@ function ImageGalleryEditor({ block, index, onMetadataChange }: {
                         if (assets.length > 0) {
                             const newIds = [...assetIds, ...assets.map(a => a.id)];
                             const newPreviews = [...assetPreviews, ...assets.map(a => a.preview)];
-                            onMetadataChange(index, 'assetIds', newIds);
-                            onMetadataChange(index, 'assetPreviews', newPreviews);
+                            updateGalleryMetadata(newIds, newPreviews);
                         }
                     }}
                 />

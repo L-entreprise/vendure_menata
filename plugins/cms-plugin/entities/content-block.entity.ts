@@ -2,6 +2,7 @@ import { DeepPartial, ID } from '@vendure/common/lib/shared-types';
 import {
     Asset,
     Channel,
+    EntityId,
     HasCustomFields,
     LocaleString,
     Translatable,
@@ -22,8 +23,8 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
         super(input);
     }
 
-    @Column()
-    @Index({ unique: false })
+    @Column({ length: 255 })
+    @Index('IDX_content_block_page_key', ['pageId', 'key'])
     key: string;
 
     @Column('varchar')
@@ -35,7 +36,7 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
     @ManyToOne(() => Asset, { nullable: true, onDelete: 'SET NULL' })
     featuredAsset: Asset | null;
 
-    @Column({ nullable: true })
+    @EntityId({ nullable: true })
     featuredAssetId: ID | null;
 
     @Column('simple-json', { nullable: true })
@@ -44,7 +45,7 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
     @ManyToOne(() => CmsPage, page => page.contentBlocks, { nullable: true, onDelete: 'CASCADE' })
     page: CmsPage | null;
 
-    @Column({ nullable: true })
+    @EntityId({ nullable: true })
     pageId: ID | null;
 
     @Column({ default: 0 })
