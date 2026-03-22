@@ -8,6 +8,7 @@ import {
 
 import { contentBlockPermission } from '../constants';
 import { ContentBlockService } from '../services/content-block.service';
+import { CreateContentBlockInput, ListQueryArgs, UpdateContentBlockInput } from './types';
 
 @Resolver()
 export class ContentBlockAdminResolver {
@@ -21,21 +22,21 @@ export class ContentBlockAdminResolver {
 
     @Query()
     @Allow(contentBlockPermission.Read)
-    async contentBlocks(@Ctx() ctx: RequestContext, @Args() args: { options: any }) {
+    async contentBlocks(@Ctx() ctx: RequestContext, @Args() args: ListQueryArgs) {
         return this.contentBlockService.findAll(ctx, args.options);
     }
 
     @Transaction()
     @Mutation()
     @Allow(contentBlockPermission.Create)
-    async createContentBlock(@Ctx() ctx: RequestContext, @Args() args: { input: any }) {
+    async createContentBlock(@Ctx() ctx: RequestContext, @Args() args: { input: CreateContentBlockInput }) {
         return this.contentBlockService.create(ctx, args.input);
     }
 
     @Transaction()
     @Mutation()
     @Allow(contentBlockPermission.Update)
-    async updateContentBlock(@Ctx() ctx: RequestContext, @Args() args: { input: any }) {
+    async updateContentBlock(@Ctx() ctx: RequestContext, @Args() args: { input: UpdateContentBlockInput }) {
         return this.contentBlockService.update(ctx, args.input);
     }
 

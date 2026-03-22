@@ -10,18 +10,18 @@ export class ContentBlockShopResolver {
     @Query()
     @Allow(Permission.Public)
     async contentBlock(@Ctx() ctx: RequestContext, @Args() args: { id: string }) {
-        return this.contentBlockService.findOne(ctx, args.id);
+        return this.contentBlockService.findOne(ctx, args.id, true);
     }
 
     @Query()
     @Allow(Permission.Public)
     async contentBlockByKey(@Ctx() ctx: RequestContext, @Args() args: { key: string }) {
-        return this.contentBlockService.findByKey(ctx, args.key);
+        return this.contentBlockService.findByKey(ctx, args.key, true);
     }
 
     @Query()
     @Allow(Permission.Public)
     async contentBlocks(@Ctx() ctx: RequestContext, @Args() args: { options: any }) {
-        return this.contentBlockService.findAll(ctx, args.options);
+        return this.contentBlockService.findAll(ctx, args.options, true);
     }
 }

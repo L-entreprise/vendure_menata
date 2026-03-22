@@ -20,12 +20,15 @@ export class CmsPage extends VendureEntity implements Translatable, HasCustomFie
         super(input);
     }
 
-    @Column()
-    @Index({ unique: true })
+    @Column({ length: 255 })
+    @Index()
     key: string;
 
     @Column({ default: true })
     enabled: boolean;
+
+    @Column({ default: false })
+    acceptsSubmissions: boolean;
 
     name: LocaleString;
     slug: LocaleString;

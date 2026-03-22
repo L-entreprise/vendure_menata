@@ -8,6 +8,7 @@ import {
 
 import { cmsPagePermission } from '../constants';
 import { CmsPageService } from '../services/cms-page.service';
+import { CreateCmsPageInput, ListQueryArgs, UpdateCmsPageInput } from './types';
 
 @Resolver()
 export class CmsPageAdminResolver {
@@ -21,21 +22,21 @@ export class CmsPageAdminResolver {
 
     @Query()
     @Allow(cmsPagePermission.Read)
-    async cmsPages(@Ctx() ctx: RequestContext, @Args() args: { options: any }) {
+    async cmsPages(@Ctx() ctx: RequestContext, @Args() args: ListQueryArgs) {
         return this.cmsPageService.findAll(ctx, args.options);
     }
 
     @Transaction()
     @Mutation()
     @Allow(cmsPagePermission.Create)
-    async createCmsPage(@Ctx() ctx: RequestContext, @Args() args: { input: any }) {
+    async createCmsPage(@Ctx() ctx: RequestContext, @Args() args: { input: CreateCmsPageInput }) {
         return this.cmsPageService.create(ctx, args.input);
     }
 
     @Transaction()
     @Mutation()
     @Allow(cmsPagePermission.Update)
-    async updateCmsPage(@Ctx() ctx: RequestContext, @Args() args: { input: any }) {
+    async updateCmsPage(@Ctx() ctx: RequestContext, @Args() args: { input: UpdateCmsPageInput }) {
         return this.cmsPageService.update(ctx, args.input);
     }
 

@@ -18,13 +18,13 @@ export class ContentBlockTranslation
     @Column('varchar')
     languageCode: LanguageCode;
 
-    @Column()
+    @Column({ length: 255 })
     name: string;
 
     @Column('text', { default: '' })
     textContent: string;
 
-    @Column('varchar', { default: '' })
+    @Column('varchar', { length: 255, default: '' })
     altText: string;
 
     @Index()
