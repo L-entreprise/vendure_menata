@@ -1,0 +1,332 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-03-30 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+msgid "CMS Pages"
+msgstr "CMS Pages"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "New Page"
+msgstr "New Page"
+
+msgid "Content Blocks"
+msgstr "Content Blocks"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "New Content Block"
+msgstr "New Content Block"
+
+msgid "New content block"
+msgstr "New content block"
+
+msgid "Short Text"
+msgstr "Short Text"
+
+msgid "Long Text"
+msgstr "Long Text"
+
+msgid "Rich Text"
+msgstr "Rich Text"
+
+msgid "Boolean"
+msgstr "Boolean"
+
+msgid "Options List"
+msgstr "Options List"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Image Gallery"
+msgstr "Image Gallery"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Number"
+msgstr "Number"
+
+msgid "Single-line text with character limit"
+msgstr "Single-line text with character limit"
+
+msgid "Multi-line text for paragraphs"
+msgstr "Multi-line text for paragraphs"
+
+msgid "WYSIWYG editor with formatting"
+msgstr "WYSIWYG editor with formatting"
+
+msgid "Toggle with custom labels"
+msgstr "Toggle with custom labels"
+
+msgid "List of values, one per line"
+msgstr "List of values, one per line"
+
+msgid "Single image with alt text"
+msgstr "Single image with alt text"
+
+msgid "Multiple images"
+msgstr "Multiple images"
+
+msgid "Date and time picker"
+msgstr "Date and time picker"
+
+msgid "Numeric value"
+msgstr "Numeric value"
+
+msgid "Text"
+msgstr "Text"
+
+msgid "Media"
+msgstr "Media"
+
+msgid "Data"
+msgstr "Data"
+
+msgid "Empty"
+msgstr "Empty"
+
+msgid "Yes"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+msgid "{0} options"
+msgstr "{0} options"
+
+msgid "Image selected"
+msgstr "Image selected"
+
+msgid "No image"
+msgstr "No image"
+
+msgid "{0} images"
+msgstr "{0} images"
+
+msgid "No images"
+msgstr "No images"
+
+msgid "Not set"
+msgstr "Not set"
+
+msgid "Page created"
+msgstr "Page created"
+
+msgid "Page updated"
+msgstr "Page updated"
+
+msgid "Failed to save page"
+msgstr "Failed to save page"
+
+msgid "Unknown error"
+msgstr "Unknown error"
+
+msgid "Content Sections"
+msgstr "Content Sections"
+
+msgid "No sections yet. Add one below."
+msgstr "No sections yet. Add one below."
+
+msgid "No sections yet."
+msgstr "No sections yet."
+
+msgid "Add Section"
+msgstr "Add Section"
+
+msgid "Key"
+msgstr "Key"
+
+msgid "e.g. hero-title"
+msgstr "e.g. hero-title"
+
+msgid "Section name"
+msgstr "Section name"
+
+msgid "Page Details"
+msgstr "Page Details"
+
+msgid "Page name"
+msgstr "Page name"
+
+msgid "Slug"
+msgstr "Slug"
+
+msgid "page-slug"
+msgstr "page-slug"
+
+msgid "e.g. homepage"
+msgstr "e.g. homepage"
+
+msgid "Enabled"
+msgstr "Enabled"
+
+msgid "Accepts Submissions"
+msgstr "Accepts Submissions"
+
+msgid "Collection"
+msgstr "Collection"
+
+msgid "Pin to Sidebar"
+msgstr "Pin to Sidebar"
+
+msgid "Allow Customer Creation"
+msgstr "Allow Customer Creation"
+
+msgid "When enabled, submissions can be converted to customers. Use these block keys:"
+msgstr "When enabled, submissions can be converted to customers. Use these block keys:"
+
+msgid "required"
+msgstr "required"
+
+msgid "Create"
+msgstr "Create"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Submissions"
+msgstr "Submissions"
+
+msgid "Submission"
+msgstr "Submission"
+
+msgid "No submissions yet."
+msgstr "No submissions yet."
+
+msgid "Submission deleted"
+msgstr "Submission deleted"
+
+msgid "Customer created"
+msgstr "Customer created"
+
+msgid "Customer already exists"
+msgstr "Customer already exists"
+
+msgid "Failed to create customer"
+msgstr "Failed to create customer"
+
+msgid "Create Customer"
+msgstr "Create Customer"
+
+msgid "View Customer"
+msgstr "View Customer"
+
+msgid "Page {0} of {1}"
+msgstr "Page {0} of {1}"
+
+msgid "Previous"
+msgstr "Previous"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "Collection Entries"
+msgstr "Collection Entries"
+
+msgid "Add Entry"
+msgstr "Add Entry"
+
+msgid "Edit Entry"
+msgstr "Edit Entry"
+
+msgid "New Entry"
+msgstr "New Entry"
+
+msgid "Update"
+msgstr "Update"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "No entries yet. Add one above."
+msgstr "No entries yet. Add one above."
+
+msgid "Entry deleted"
+msgstr "Entry deleted"
+
+msgid "Entry updated"
+msgstr "Entry updated"
+
+msgid "Entry created"
+msgstr "Entry created"
+
+msgid "Failed to save entry"
+msgstr "Failed to save entry"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Select..."
+msgstr "Select..."
+
+msgid "Enter text"
+msgstr "Enter text"
+
+msgid "Enter text content..."
+msgstr "Enter text content..."
+
+msgid "Rich Text Content"
+msgstr "Rich Text Content"
+
+msgid "True Label"
+msgstr "True Label"
+
+msgid "False Label"
+msgstr "False Label"
+
+msgid "e.g. Show Banner"
+msgstr "e.g. Show Banner"
+
+msgid "e.g. Hide Banner"
+msgstr "e.g. Hide Banner"
+
+msgid "Options"
+msgstr "Options"
+
+msgid "Enter one option per line"
+msgstr "Enter one option per line"
+
+msgid "Small\nMedium\nLarge\nExtra Large"
+msgstr "Small\nMedium\nLarge\nExtra Large"
+
+msgid "Change Image"
+msgstr "Change Image"
+
+msgid "Select Image"
+msgstr "Select Image"
+
+msgid "Alt Text"
+msgstr "Alt Text"
+
+msgid "Image description"
+msgstr "Image description"
+
+msgid "Images"
+msgstr "Images"
+
+msgid "Click + to add images"
+msgstr "Click + to add images"
+
+msgid "Schema Fields"
+msgstr "Schema Fields"
+
+msgid "These fields define the columns for collection entries."
+msgstr "These fields define the columns for collection entries."
+
+msgid "These fields define the form structure for submissions."
+msgstr "These fields define the form structure for submissions."
+
+msgid "Unnamed"
+msgstr "Unnamed"
+
+msgid "Loading..."
+msgstr "Loading..."

@@ -62,6 +62,9 @@ const commonApiExtensions = gql`
         key: String!
         enabled: Boolean!
         acceptsSubmissions: Boolean!
+        isCollection: Boolean!
+        pinnedInSidebar: Boolean!
+        allowCustomerCreation: Boolean!
         name: String!
         slug: String!
         translations: [CmsPageTranslation!]!
@@ -156,6 +159,9 @@ export const adminApiExtensions = gql`
         key: String!
         enabled: Boolean
         acceptsSubmissions: Boolean
+        isCollection: Boolean
+        pinnedInSidebar: Boolean
+        allowCustomerCreation: Boolean
         translations: [CmsPageTranslationInput!]!
         contentBlocks: [UpdatePageContentBlockInput!]
     }
@@ -165,8 +171,21 @@ export const adminApiExtensions = gql`
         key: String
         enabled: Boolean
         acceptsSubmissions: Boolean
+        isCollection: Boolean
+        pinnedInSidebar: Boolean
+        allowCustomerCreation: Boolean
         translations: [CmsPageTranslationInput!]
         contentBlocks: [UpdatePageContentBlockInput!]
+    }
+
+    input CreateCollectionEntryInput {
+        pageId: ID!
+        data: JSON!
+    }
+
+    input UpdateCollectionEntryInput {
+        id: ID!
+        data: JSON!
     }
 
     type FormSubmission implements Node {
@@ -174,6 +193,12 @@ export const adminApiExtensions = gql`
         createdAt: DateTime!
         updatedAt: DateTime!
         data: JSON!
+    }
+
+    type CreateCustomerFromSubmissionResult {
+        submission: FormSubmission!
+        customerId: ID!
+        existing: Boolean!
     }
 
     type FormSubmissionList implements PaginatedList {
@@ -190,6 +215,7 @@ export const adminApiExtensions = gql`
         cmsPage(id: ID!): CmsPage
         cmsPages(options: CmsPageListOptions): CmsPageList!
         formSubmissions(pageId: ID!, options: FormSubmissionListOptions): FormSubmissionList!
+        pinnedCmsPages: [CmsPage!]!
     }
 
     extend type Mutation {
@@ -200,5 +226,8 @@ export const adminApiExtensions = gql`
         updateCmsPage(input: UpdateCmsPageInput!): CmsPage!
         deleteCmsPage(id: ID!): DeletionResponse!
         deleteFormSubmission(id: ID!): DeletionResponse!
+        createCollectionEntry(input: CreateCollectionEntryInput!): FormSubmission!
+        updateCollectionEntry(input: UpdateCollectionEntryInput!): FormSubmission!
+        createCustomerFromSubmission(submissionId: ID!): CreateCustomerFromSubmissionResult!
     }
 `;

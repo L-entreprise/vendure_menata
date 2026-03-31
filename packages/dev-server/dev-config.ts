@@ -19,9 +19,9 @@ import { TelemetryPlugin } from '@vendure/telemetry-plugin';
 import 'dotenv/config';
 import path from 'path';
 import { DataSourceOptions } from 'typeorm';
+import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
-import { ReviewsPlugin } from './test-plugins/reviews/reviews-plugin';
 
 const IS_INSTRUMENTED = process.env.IS_INSTRUMENTED === 'true';
 
@@ -87,7 +87,7 @@ export const devConfig: VendureConfig = {
         // }),
         MenataBrandingPlugin,
         CmsPlugin,
-        ReviewsPlugin,
+        AuditLogPlugin.init({ retentionDays: 90 }),
         GraphiqlPlugin.init(),
         AssetServerPlugin.init({
             route: 'assets',

@@ -129,6 +129,9 @@ export class CmsPageService {
         key: string;
         enabled?: boolean;
         acceptsSubmissions?: boolean;
+        isCollection?: boolean;
+        pinnedInSidebar?: boolean;
+        allowCustomerCreation?: boolean;
         translations: Array<{
             languageCode: LanguageCode;
             name: string;
@@ -139,11 +142,15 @@ export class CmsPageService {
         this.validateKey(input.key);
         await this.assertUniqueKey(ctx, input.key);
         this.validateContentBlocks(input.contentBlocks);
+        this.validateMutualExclusivity(input.acceptsSubmissions, input.isCollection);
 
         const pageInput = {
             key: input.key,
             enabled: input.enabled ?? true,
             acceptsSubmissions: input.acceptsSubmissions ?? false,
+            isCollection: input.isCollection ?? false,
+            pinnedInSidebar: input.pinnedInSidebar ?? false,
+            allowCustomerCreation: input.allowCustomerCreation ?? false,
             translations: input.translations,
         };
         const page = await this.translatableSaver.create({
@@ -172,6 +179,9 @@ export class CmsPageService {
         key?: string;
         enabled?: boolean;
         acceptsSubmissions?: boolean;
+        isCollection?: boolean;
+        pinnedInSidebar?: boolean;
+        allowCustomerCreation?: boolean;
         translations?: Array<{
             id?: ID;
             languageCode: LanguageCode;
@@ -188,12 +198,16 @@ export class CmsPageService {
                 await this.assertUniqueKey(ctx, input.key, input.id);
             }
             this.validateContentBlocks(input.contentBlocks);
+            this.validateMutualExclusivity(input.acceptsSubmissions, input.isCollection);
 
             const updateInput = {
                 id: input.id,
                 ...(input.key !== undefined && { key: input.key }),
                 ...(input.enabled !== undefined && { enabled: input.enabled }),
                 ...(input.acceptsSubmissions !== undefined && { acceptsSubmissions: input.acceptsSubmissions }),
+                ...(input.isCollection !== undefined && { isCollection: input.isCollection }),
+                ...(input.pinnedInSidebar !== undefined && { pinnedInSidebar: input.pinnedInSidebar }),
+                ...(input.allowCustomerCreation !== undefined && { allowCustomerCreation: input.allowCustomerCreation }),
                 ...(input.translations && { translations: input.translations }),
             };
             await this.translatableSaver.update({
@@ -221,12 +235,31 @@ export class CmsPageService {
         return result;
     }
 
+    async findPinned(ctx: RequestContext): Promise<CmsPage[]> {
+        const pages = await this.connection.getRepository(ctx, CmsPage)
+            .createQueryBuilder('page')
+            .leftJoinAndSelect('page.translations', 'translation')
+            .innerJoin('page.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('page.pinnedInSidebar = :pinned', { pinned: true })
+            .andWhere('page.enabled = :enabled', { enabled: true })
+            .getMany();
+        return pages.map(page => translateDeep(page, ctx.languageCode));
+    }
+
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
         const page = await this.connection.getEntityOrThrow(ctx, CmsPage, id, {
             channelId: ctx.channelId,
         });
         await this.connection.getRepository(ctx, CmsPage).remove(page);
         return { result: DeletionResult.DELETED };
+    }
+
+    private validateMutualExclusivity(acceptsSubmissions?: boolean, isCollection?: boolean): void {
+        if (acceptsSubmissions && isCollection) {
+            throw new UserInputError('A page cannot be both a collection and accept submissions');
+        }
     }
 
     private validateKey(key: string): void {
@@ -405,12 +438,13 @@ export class CmsPageService {
             }
 
             // Preserve structural fields from the existing block, only update content values
+            // Allow position changes so non-admins can reorder blocks
             const updateInput = {
                 id: blockInput.id,
                 key: existing.key,
                 type: existing.type,
                 enabled: existing.enabled,
-                position: existing.position,
+                position: blockInput.position ?? existing.position,
                 featuredAssetId: blockInput.featuredAssetId ?? null,
                 metadata: this.stripInternalMetadata(blockInput.metadata),
                 dateValue: blockInput.dateValue ?? null,

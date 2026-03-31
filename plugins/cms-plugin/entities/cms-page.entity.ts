@@ -30,6 +30,15 @@ export class CmsPage extends VendureEntity implements Translatable, HasCustomFie
     @Column({ default: false })
     acceptsSubmissions: boolean;
 
+    @Column({ default: false })
+    isCollection: boolean;
+
+    @Column({ default: false })
+    pinnedInSidebar: boolean;
+
+    @Column({ default: false })
+    allowCustomerCreation: boolean;
+
     name: LocaleString;
     slug: LocaleString;
 

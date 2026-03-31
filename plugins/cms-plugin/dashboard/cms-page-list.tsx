@@ -1,4 +1,5 @@
 import { graphql } from '@/graphql/graphql';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
 import {
@@ -35,28 +36,18 @@ const deleteCmsPageDocument = graphql(`
     }
 `);
 
-export const cmsPageList: DashboardRouteDefinition = {
-    navMenuItem: {
-        sectionId: 'cms',
-        id: 'cms-pages',
-        url: '/cms-pages',
-        title: 'Pages',
-        requiresPermission: ['ReadCmsPage'],
-    },
-    path: '/cms-pages',
-    loader: () => ({
-        breadcrumb: 'Pages',
-    }),
-    component: route => (
+function CmsPageListContent({ route }: { route: any }) {
+    const { t } = useLingui();
+    return (
         <ListPage
             pageId="cms-page-list"
-            title="CMS Pages"
+            title={t`CMS Pages`}
             listQuery={getCmsPageList}
             deleteMutation={deleteCmsPageDocument}
             route={route}
             customizeColumns={{
                 name: {
-                    header: 'Name',
+                    header: t`Name`,
                     cell: ({ row }) => (
                         <DetailPageButton
                             id={row.original.id}
@@ -70,10 +61,25 @@ export const cmsPageList: DashboardRouteDefinition = {
                 <Button asChild>
                     <Link to="./new">
                         <PlusIcon className="mr-2 h-4 w-4" />
-                        New Page
+                        <Trans>New Page</Trans>
                     </Link>
                 </Button>
             </PageActionBarRight>
         </ListPage>
-    ),
+    );
+}
+
+export const cmsPageList: DashboardRouteDefinition = {
+    navMenuItem: {
+        sectionId: 'cms',
+        id: 'cms-pages',
+        url: '/cms-pages',
+        title: 'Pages',
+        requiresPermission: ['ReadCmsPage'],
+    },
+    path: '/cms-pages',
+    loader: () => ({
+        breadcrumb: 'Pages',
+    }),
+    component: route => <CmsPageListContent route={route} />,
 };

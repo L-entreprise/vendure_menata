@@ -1,5 +1,7 @@
 import { graphql } from '@/graphql/graphql';
-import { useNavigate } from '@tanstack/react-router';
+import { msg } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
     AlignLeftIcon,
     ArrowDownIcon,
@@ -12,6 +14,7 @@ import {
     ImagesIcon,
     ListIcon,
     MailIcon,
+    EyeIcon,
     PlusIcon,
     TextIcon,
     ToggleLeftIcon,
@@ -29,14 +32,14 @@ import {
     CardContent,
     CardHeader,
     DashboardRouteDefinition,
+    DataTable,
     DetailFormGrid,
     FormFieldWrapper,
     Input,
     Page,
     PageActionBar,
     PageActionBarRight,
-    PageBlock,
-    PageLayout,
+    PageBlockContext,
     PageTitle,
     RichTextEditor,
     Switch,
@@ -57,6 +60,9 @@ const cmsPageDetailDocument = graphql(`
             key
             enabled
             acceptsSubmissions
+            isCollection
+            pinnedInSidebar
+            allowCustomerCreation
             name
             slug
             translations {
@@ -130,30 +136,54 @@ const deleteFormSubmissionDocument = graphql(`
     }
 `);
 
+const getAssetsByIdsDocument = graphql(`
+    query GetAssetsByIds($options: AssetListOptions) {
+        assets(options: $options) {
+            items {
+                id
+                preview
+            }
+        }
+    }
+`);
+
+
+const createCustomerFromSubmissionDocument = graphql(`
+    mutation CreateCustomerFromSubmission($submissionId: ID!) {
+        createCustomerFromSubmission(submissionId: $submissionId) {
+            submission {
+                id
+            }
+            customerId
+            existing
+        }
+    }
+`);
+
 interface BlockTypeDefinition {
     value: string;
-    label: string;
-    description: string;
+    label: any;
+    description: any;
     icon: React.ComponentType<{ className?: string }>;
     group: 'text' | 'media' | 'data';
 }
 
 const BLOCK_TYPES: BlockTypeDefinition[] = [
-    { value: 'TEXT_SHORT', label: 'Short Text', description: 'Single-line text with character limit', icon: TextIcon, group: 'text' },
-    { value: 'TEXT_LONG', label: 'Long Text', description: 'Multi-line text for paragraphs', icon: AlignLeftIcon, group: 'text' },
-    { value: 'RICH_TEXT', label: 'Rich Text', description: 'WYSIWYG editor with formatting', icon: TypeIcon, group: 'text' },
-    { value: 'BOOLEAN', label: 'Boolean', description: 'Toggle with custom labels', icon: ToggleLeftIcon, group: 'data' },
-    { value: 'ENUM', label: 'Options List', description: 'List of values, one per line', icon: ListIcon, group: 'data' },
-    { value: 'IMAGE', label: 'Image', description: 'Single image with alt text', icon: ImageIcon, group: 'media' },
-    { value: 'IMAGE_GALLERY', label: 'Image Gallery', description: 'Multiple images', icon: ImagesIcon, group: 'media' },
-    { value: 'DATE', label: 'Date', description: 'Date and time picker', icon: CalendarIcon, group: 'data' },
-    { value: 'NUMBER', label: 'Number', description: 'Numeric value', icon: HashIcon, group: 'data' },
+    { value: 'TEXT_SHORT', label: msg`Short Text`, description: msg`Single-line text with character limit`, icon: TextIcon, group: 'text' },
+    { value: 'TEXT_LONG', label: msg`Long Text`, description: msg`Multi-line text for paragraphs`, icon: AlignLeftIcon, group: 'text' },
+    { value: 'RICH_TEXT', label: msg`Rich Text`, description: msg`WYSIWYG editor with formatting`, icon: TypeIcon, group: 'text' },
+    { value: 'BOOLEAN', label: msg`Boolean`, description: msg`Toggle with custom labels`, icon: ToggleLeftIcon, group: 'data' },
+    { value: 'ENUM', label: msg`Options List`, description: msg`List of values, one per line`, icon: ListIcon, group: 'data' },
+    { value: 'IMAGE', label: msg`Image`, description: msg`Single image with alt text`, icon: ImageIcon, group: 'media' },
+    { value: 'IMAGE_GALLERY', label: msg`Image Gallery`, description: msg`Multiple images`, icon: ImagesIcon, group: 'media' },
+    { value: 'DATE', label: msg`Date`, description: msg`Date and time picker`, icon: CalendarIcon, group: 'data' },
+    { value: 'NUMBER', label: msg`Number`, description: msg`Numeric value`, icon: HashIcon, group: 'data' },
 ];
 
 const BLOCK_TYPE_GROUPS = [
-    { key: 'text' as const, label: 'Text' },
-    { key: 'media' as const, label: 'Media' },
-    { key: 'data' as const, label: 'Data' },
+    { key: 'text' as const, label: msg`Text` },
+    { key: 'media' as const, label: msg`Media` },
+    { key: 'data' as const, label: msg`Data` },
 ];
 
 function getBlockTypeInfo(type: string) {
@@ -187,41 +217,41 @@ function prepareBlocksForMutation(blocks: any[]): any[] {
         }));
 }
 
-function getBlockSummary(block: any): string {
+function getBlockSummary(block: any, t: any): string {
     const typeInfo = getBlockTypeInfo(block.type);
-    const label = typeInfo?.label ?? block.type;
+    const label = typeInfo ? t(typeInfo.label) : block.type;
     switch (block.type) {
         case 'TEXT_SHORT':
         case 'TEXT_LONG': {
             const text = block.translations?.[0]?.textContent ?? '';
-            return text ? `${text.slice(0, 80)}${text.length > 80 ? '...' : ''}` : 'Empty';
+            return text ? `${text.slice(0, 80)}${text.length > 80 ? '...' : ''}` : t`Empty`;
         }
         case 'RICH_TEXT': {
             const html = block.translations?.[0]?.textContent ?? '';
             const stripped = html.replace(/<[^>]*>/g, '').trim();
-            return stripped ? `${stripped.slice(0, 80)}${stripped.length > 80 ? '...' : ''}` : 'Empty';
+            return stripped ? `${stripped.slice(0, 80)}${stripped.length > 80 ? '...' : ''}` : t`Empty`;
         }
         case 'BOOLEAN': {
             const isTrue = block.numberValue === 1;
-            const trueLabel = String(block.metadata?.trueLabel ?? 'Yes');
-            const falseLabel = String(block.metadata?.falseLabel ?? 'No');
+            const trueLabel = String(block.metadata?.trueLabel ?? t`Yes`);
+            const falseLabel = String(block.metadata?.falseLabel ?? t`No`);
             return isTrue ? trueLabel : falseLabel;
         }
         case 'ENUM': {
             const text = block.translations?.[0]?.textContent ?? '';
             const count = text.split('\n').filter((l: string) => l.trim()).length;
-            return count > 0 ? `${count} option${count !== 1 ? 's' : ''}` : 'Empty';
+            return count > 0 ? t`${count} options` : t`Empty`;
         }
         case 'IMAGE':
-            return block.featuredAssetId ? 'Image selected' : 'No image';
+            return block.featuredAssetId ? t`Image selected` : t`No image`;
         case 'IMAGE_GALLERY': {
             const count = block.metadata?.assetIds?.length ?? 0;
-            return count > 0 ? `${count} image${count !== 1 ? 's' : ''}` : 'No images';
+            return count > 0 ? t`${count} images` : t`No images`;
         }
         case 'DATE':
-            return block.dateValue ? new Date(block.dateValue).toLocaleDateString() : 'Not set';
+            return block.dateValue ? new Date(block.dateValue).toLocaleDateString() : t`Not set`;
         case 'NUMBER':
-            return block.numberValue != null ? String(block.numberValue) : 'Not set';
+            return block.numberValue != null ? String(block.numberValue) : t`Not set`;
         default:
             return label;
     }
@@ -248,6 +278,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const navigate = useNavigate();
     const { hasPermissions } = usePermissions();
     const isSuperAdmin = hasPermissions(['SuperAdmin']);
+    const { t } = useLingui();
 
     const { form, submitHandler, entity, resetForm } = useDetailPage({
         pageId: 'cms-page-detail',
@@ -260,6 +291,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
             key: page.key,
             enabled: page.enabled,
             acceptsSubmissions: page.acceptsSubmissions ?? false,
+            isCollection: page.isCollection ?? false,
+            pinnedInSidebar: page.pinnedInSidebar ?? false,
+            allowCustomerCreation: page.allowCustomerCreation ?? false,
             name: page.name,
             slug: page.slug,
             translations: page.translations,
@@ -288,6 +322,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 key: input.key,
                 enabled: input.enabled,
                 acceptsSubmissions: input.acceptsSubmissions ?? false,
+                isCollection: input.isCollection ?? false,
+                pinnedInSidebar: input.pinnedInSidebar ?? false,
+                allowCustomerCreation: input.allowCustomerCreation ?? false,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -298,26 +335,32 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 key: input.key,
                 enabled: input.enabled,
                 acceptsSubmissions: input.acceptsSubmissions,
+                isCollection: input.isCollection,
+                pinnedInSidebar: input.pinnedInSidebar,
+                allowCustomerCreation: input.allowCustomerCreation,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
         },
         onSuccess: async (data: any) => {
-            toast.success(isNew ? 'Page created' : 'Page updated');
+            toast.success(isNew ? t`Page created` : t`Page updated`);
             resetForm();
             if (isNew && data?.id) {
                 await navigate({ to: `../$id`, params: { id: data.id } });
             }
         },
         onError: (error: unknown) => {
-            toast.error('Failed to save page', {
-                description: error instanceof Error ? error.message : 'Unknown error',
+            toast.error(t`Failed to save page`, {
+                description: error instanceof Error ? error.message : t`Unknown error`,
             });
         },
     });
 
     const rawContentBlocks: any[] = form.watch('contentBlocks') ?? [];
     const contentBlocks = rawContentBlocks.filter((b: any) => b.type);
+    const isCollectionPage = form.watch('isCollection') ?? false;
+    const isSubmissionPage = form.watch('acceptsSubmissions') ?? false;
+    const isSchemaOnly = isCollectionPage || isSubmissionPage;
 
     const addBlock = (type: string) => {
         const newBlock = {
@@ -391,6 +434,50 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
 
+    // Fix: resolve gallery asset preview URLs from saved asset IDs
+    useEffect(() => {
+        if (!entity?.contentBlocks) return;
+        const galleryBlocks = (entity.contentBlocks as any[])
+            .map((b: any, i: number) => ({ block: b, index: i }))
+            .filter(({ block }: any) =>
+                block.type === 'IMAGE_GALLERY' &&
+                block.metadata?.assetIds?.length > 0,
+            );
+        if (galleryBlocks.length === 0) return;
+
+        const allAssetIds: string[] = [
+            ...new Set(galleryBlocks.flatMap(({ block }: any) => block.metadata.assetIds as string[])),
+        ];
+
+        api.query(getAssetsByIdsDocument, {
+            options: { filter: { id: { in: allAssetIds } } },
+        }).then((result: any) => {
+            const assetMap = new Map<string, string>(
+                result.assets.items.map((a: any) => [a.id, a.preview]),
+            );
+            const currentBlocks = form.getValues('contentBlocks') ?? [];
+            const updated = [...currentBlocks];
+            let changed = false;
+            for (const { block, index: idx } of galleryBlocks) {
+                const previews = (block.metadata.assetIds as string[])
+                    .map((id: string) => assetMap.get(id))
+                    .filter(Boolean) as string[];
+                if (previews.length > 0) {
+                    updated[idx] = {
+                        ...updated[idx],
+                        metadata: { ...updated[idx].metadata, assetPreviews: previews },
+                    };
+                    changed = true;
+                }
+            }
+            if (changed) {
+                form.setValue('contentBlocks', updated);
+            }
+        }).catch(e => {
+            if (import.meta.env.DEV) console.warn('Failed to fetch gallery previews', e);
+        });
+    }, [entity?.id]);
+
     const toggleBlockExpanded = (index: number) => {
         setExpandedBlocks(prev => {
             const next = new Set(prev);
@@ -403,83 +490,119 @@ function CmsPageDetailPage({ route }: { route: any }) {
         });
     };
 
-    const title = entity?.name || entity?.key || 'New Page';
+    const title = entity?.name || entity?.key || t`New Page`;
 
     return (
         <Page pageId="cms-page-detail" form={form} submitHandler={submitHandler} entity={entity}>
             <PageTitle>{title}</PageTitle>
             <PageActionBar>
                 <PageActionBarRight>
-                    <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? 'Create' : 'Save'}</Button>
+                    <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}</Button>
                 </PageActionBarRight>
             </PageActionBar>
-            <PageLayout>
-                <PageBlock column="main" blockId="main-form" title="Page Details">
-                    <DetailFormGrid>
-                        <TranslatableFormFieldWrapper
-                            control={form.control}
-                            name="name"
-                            label="Name"
-                            render={({ field }) => (
-                                <Input {...field} placeholder="Page name" disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        <TranslatableFormFieldWrapper
-                            control={form.control}
-                            name="slug"
-                            label="Slug"
-                            render={({ field }) => (
-                                <Input {...field} placeholder="page-slug" disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="key"
-                            label="Key"
-                            render={({ field }) => (
-                                <Input {...field} placeholder="e.g. homepage" disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="enabled"
-                            label="Enabled"
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="acceptsSubmissions"
-                            label="Accepts Submissions"
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                    </DetailFormGrid>
-                </PageBlock>
-            </PageLayout>
+            {!isNew && entity?.acceptsSubmissions && (
+                <SubmissionsPanel
+                    pageId={params.id}
+                    schema={contentBlocks}
+                    allowCustomerCreation={entity?.allowCustomerCreation ?? false}
+                />
+            )}
+            {!isNew && entity?.isCollection && (
+                <CollectionEntriesPanel pageId={params.id} schema={contentBlocks} />
+            )}
 
             <div className="w-full mt-4">
                 <Card>
                     <CardHeader>
-                        <div className="text-lg font-semibold">Content Sections</div>
+                        <div className="text-lg font-semibold">
+                            {isSchemaOnly ? <Trans>Schema Fields</Trans> : <Trans>Content Sections</Trans>}
+                        </div>
+                        {isSchemaOnly && (
+                            <p className="text-sm text-muted-foreground">
+                                {isCollectionPage
+                                    ? <Trans>These fields define the columns for collection entries.</Trans>
+                                    : <Trans>These fields define the form structure for submissions.</Trans>}
+                            </p>
+                        )}
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
+                            {isSchemaOnly ? (
+                                <>
+                                    {contentBlocks.map((block, index) => {
+                                        const Icon = getBlockTypeIcon(block.type);
+                                        const typeInfo = getBlockTypeInfo(block.type);
+                                        const isExpanded = expandedBlocks.has(index);
+                                        return (
+                                            <div key={block.id ?? `new-${index}`} className="border rounded-md">
+                                                <div
+                                                    className="flex items-center justify-between py-2 px-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                                                    onClick={() => toggleBlockExpanded(index)}
+                                                >
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        {isExpanded
+                                                            ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                            : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                        }
+                                                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                        <span className="font-medium">
+                                                            {block.translations?.[0]?.name || block.key || t`Unnamed`}
+                                                        </span>
+                                                        <Badge variant="outline" className="shrink-0">{typeInfo ? t(typeInfo.label) : block.type}</Badge>
+                                                        {block.key && (
+                                                            <code className="text-xs text-muted-foreground">{block.key}</code>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={index === 0} onClick={() => moveBlock(index, 'up')}>
+                                                            <ArrowUpIcon className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={index === contentBlocks.length - 1} onClick={() => moveBlock(index, 'down')}>
+                                                            <ArrowDownIcon className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        {isSuperAdmin && (
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeBlock(index)}>
+                                                            <TrashIcon className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {isExpanded && (
+                                                    <div className="px-4 pb-4 pt-2 border-t space-y-3">
+                                                        <div className="grid gap-3 @md:grid-cols-2">
+                                                            <div>
+                                                                <label className="text-sm font-medium"><Trans>Name</Trans></label>
+                                                                <Input
+                                                                    value={block.translations?.[0]?.name ?? ''}
+                                                                    onChange={e => updateBlockTranslation(index, 'name', e.target.value)}
+                                                                    placeholder={t`Section name`}
+                                                                    className="mt-1"
+                                                                />
+                                                            </div>
+                                                            {isSuperAdmin && (
+                                                            <div>
+                                                                <label className="text-sm font-medium"><Trans>Key</Trans></label>
+                                                                <Input
+                                                                    value={block.key}
+                                                                    onChange={e => updateBlockField(index, 'key', e.target.value)}
+                                                                    placeholder={t`e.g. hero-title`}
+                                                                    className="mt-1"
+                                                                />
+                                                            </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            ) : (
+                                <>
                             {contentBlocks.map((block, index) => {
                                 const Icon = getBlockTypeIcon(block.type);
                                 const typeInfo = getBlockTypeInfo(block.type);
                                 const isExpanded = expandedBlocks.has(index);
-                                const summary = getBlockSummary(block);
                                 return (
                                     <Card key={block.id ?? `new-${index}`} className="border-border/60">
                                         <div
@@ -492,21 +615,10 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                                                 }
                                                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                <Badge variant="secondary" className="shrink-0">
-                                                    {typeInfo?.label ?? block.type}
-                                                </Badge>
-                                                {block.key && (
-                                                    <span className="text-sm font-medium shrink-0">
-                                                        {block.key}
-                                                    </span>
-                                                )}
-                                                {!isExpanded && (
-                                                    <span className="text-sm text-muted-foreground truncate">
-                                                        {summary}
-                                                    </span>
-                                                )}
+                                                <span className="text-base font-semibold shrink-0">
+                                                    {block.translations?.[0]?.name || block.key || (typeInfo ? t(typeInfo.label) : block.type)}
+                                                </span>
                                             </div>
-                                            {isSuperAdmin && (
                                             <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                 <Button
                                                     type="button"
@@ -528,6 +640,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                 >
                                                     <ArrowDownIcon className="h-3.5 w-3.5" />
                                                 </Button>
+                                                {isSuperAdmin && (
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -537,32 +650,33 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                 >
                                                     <TrashIcon className="h-3.5 w-3.5" />
                                                 </Button>
+                                                )}
                                             </div>
-                                            )}
                                         </div>
                                         {isExpanded && (
                                             <CardContent className="px-5 pb-5 pt-0 border-t">
-                                                <div className="grid gap-4 @md:grid-cols-2 pt-4">
+                                                <div className={`grid gap-4 pt-4 ${isSuperAdmin ? '@md:grid-cols-2' : ''}`}>
+                                                    {isSuperAdmin && (
                                                     <div>
-                                                        <label className="text-sm font-medium">Key</label>
+                                                        <label className="text-sm font-medium"><Trans>Key</Trans></label>
                                                         <Input
                                                             value={block.key}
                                                             onChange={e =>
                                                                 updateBlockField(index, 'key', e.target.value)
                                                             }
-                                                            placeholder="e.g. hero-title"
+                                                            placeholder={t`e.g. hero-title`}
                                                             className="mt-1"
-                                                            disabled={!isSuperAdmin}
                                                         />
                                                     </div>
+                                                    )}
                                                     <div>
-                                                        <label className="text-sm font-medium">Name</label>
+                                                        <label className="text-base font-semibold"><Trans>Name</Trans></label>
                                                         <Input
                                                             value={block.translations?.[0]?.name ?? ''}
                                                             onChange={e =>
                                                                 updateBlockTranslation(index, 'name', e.target.value)
                                                             }
-                                                            placeholder="Section name"
+                                                            placeholder={t`Section name`}
                                                             className="mt-1"
                                                         />
                                                     </div>
@@ -571,6 +685,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                     <BlockValueEditor
                                                         block={block}
                                                         index={index}
+                                                        isSuperAdmin={isSuperAdmin}
                                                         onFieldChange={updateBlockField}
                                                         onFieldsChange={updateBlockFields}
                                                         onMetadataChange={updateBlockMetadata}
@@ -582,10 +697,12 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                     </Card>
                                 );
                             })}
+                                </>
+                            )}
 
                             {contentBlocks.length === 0 && (
                                 <div className="text-center py-16 text-muted-foreground border border-dashed rounded-lg">
-                                    {isSuperAdmin ? 'No sections yet. Add one below.' : 'No sections yet.'}
+                                    {isSuperAdmin ? t`No sections yet. Add one below.` : t`No sections yet.`}
                                 </div>
                             )}
 
@@ -598,7 +715,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                     onClick={() => setAddMenuOpen(!addMenuOpen)}
                                 >
                                     <PlusIcon className="mr-2 h-5 w-5" />
-                                    Add Section
+                                    <Trans>Add Section</Trans>
                                 </Button>
                                 {addMenuOpen && (
                                     <div className="absolute z-10 mt-2 w-full bg-popover border rounded-lg shadow-lg p-5">
@@ -607,7 +724,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                             return (
                                                 <div key={group.key} className="mb-5 last:mb-0">
                                                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                                                        {group.label}
+                                                        {t(group.label)}
                                                     </div>
                                                     <div className="grid grid-cols-2 @lg:grid-cols-3 gap-2">
                                                         {groupTypes.map(bt => {
@@ -624,8 +741,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                                 >
                                                                     <BtIcon className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                                                                     <div className="min-w-0">
-                                                                        <div className="text-sm font-medium">{bt.label}</div>
-                                                                        <div className="text-xs text-muted-foreground">{bt.description}</div>
+                                                                        <div className="text-sm font-medium">{t(bt.label)}</div>
+                                                                        <div className="text-xs text-muted-foreground">{t(bt.description)}</div>
                                                                     </div>
                                                                 </button>
                                                             );
@@ -643,28 +760,137 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 </Card>
             </div>
 
-            {!isNew && entity?.acceptsSubmissions && (
-                <SubmissionsPanel pageId={params.id} />
-            )}
+            <div className="w-full mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="text-lg font-semibold"><Trans>Page Details</Trans></div>
+                    </CardHeader>
+                    <CardContent>
+                        <DetailFormGrid>
+                        <TranslatableFormFieldWrapper
+                            control={form.control}
+                            name="name"
+                            label={t`Name`}
+                            render={({ field }) => (
+                                <Input {...field} placeholder={t`Page name`} disabled={!isSuperAdmin} />
+                            )}
+                        />
+                        <TranslatableFormFieldWrapper
+                            control={form.control}
+                            name="slug"
+                            label={t`Slug`}
+                            render={({ field }) => (
+                                <Input {...field} placeholder={t`page-slug`} disabled={!isSuperAdmin} />
+                            )}
+                        />
+                        {isSuperAdmin && (
+                        <FormFieldWrapper
+                            control={form.control}
+                            name="key"
+                            label={t`Key`}
+                            render={({ field }) => (
+                                <Input {...field} placeholder={t`e.g. homepage`} disabled={!isSuperAdmin} />
+                            )}
+                        />
+                        )}
+                        <FormFieldWrapper
+                            control={form.control}
+                            name="enabled"
+                            label={t`Enabled`}
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={!isSuperAdmin}
+                                />
+                            )}
+                        />
+                        <FormFieldWrapper
+                            control={form.control}
+                            name="acceptsSubmissions"
+                            label={t`Accepts Submissions`}
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={checked => {
+                                        field.onChange(checked);
+                                        if (checked) (form as any).setValue('isCollection', false, { shouldDirty: true });
+                                    }}
+                                    disabled={!isSuperAdmin}
+                                />
+                            )}
+                        />
+                        <FormFieldWrapper
+                            control={form.control}
+                            name={'isCollection' as any}
+                            label={t`Collection`}
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={checked => {
+                                        field.onChange(checked);
+                                        if (checked) form.setValue('acceptsSubmissions', false, { shouldDirty: true });
+                                    }}
+                                    disabled={!isSuperAdmin}
+                                />
+                            )}
+                        />
+                        <FormFieldWrapper
+                            control={form.control}
+                            name={'pinnedInSidebar' as any}
+                            label={t`Pin to Sidebar`}
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={!isSuperAdmin}
+                                />
+                            )}
+                        />
+                        {isSuperAdmin && form.watch('acceptsSubmissions') && (
+                            <div>
+                                <FormFieldWrapper
+                                    control={form.control}
+                                    name={'allowCustomerCreation' as any}
+                                    label={t`Allow Customer Creation`}
+                                    render={({ field }) => (
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    )}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    <Trans>When enabled, submissions can be converted to customers. Use these block keys:</Trans>{' '}
+                                    <code>email</code> (<Trans>required</Trans>), <code>firstName</code>, <code>lastName</code>, <code>phone</code>
+                                </p>
+                            </div>
+                        )}
+                    </DetailFormGrid>
+                    </CardContent>
+                </Card>
+            </div>
         </Page>
     );
 }
 
-function SubmissionsPanel({ pageId }: { pageId: string }) {
+function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: string; schema: any[]; allowCustomerCreation: boolean }) {
+    const { t } = useLingui();
     const [submissions, setSubmissions] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);
-    const [currentPage, setCurrentPage] = useState(0);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const pageSize = 10;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [customerMap, setCustomerMap] = useState<Map<string, string>>(new Map());
+    const [editingSubmission, setEditingSubmission] = useState<any | null>(null);
 
     const loadSubmissions = useCallback(async () => {
         const result = await api.query(formSubmissionsDocument, {
             pageId,
-            options: { take: pageSize, skip: currentPage * pageSize, sort: { createdAt: 'DESC' as any } },
+            options: { take: itemsPerPage, skip: (currentPage - 1) * itemsPerPage, sort: { createdAt: 'DESC' as any } },
         });
         setSubmissions(result.formSubmissions.items);
         setTotalItems(result.formSubmissions.totalItems);
-    }, [pageId, currentPage]);
+    }, [pageId, currentPage, itemsPerPage]);
 
     useEffect(() => {
         loadSubmissions();
@@ -672,11 +898,100 @@ function SubmissionsPanel({ pageId }: { pageId: string }) {
 
     const handleDelete = async (id: string) => {
         await api.mutate(deleteFormSubmissionDocument, { id });
-        toast.success('Submission deleted');
+        toast.success(t`Submission deleted`);
         loadSubmissions();
     };
 
-    const totalPages = Math.ceil(totalItems / pageSize);
+    const handleCreateCustomer = async (submissionId: string) => {
+        try {
+            const result = await api.mutate(createCustomerFromSubmissionDocument, { submissionId });
+            const { customerId, existing } = result.createCustomerFromSubmission;
+            if (existing) {
+                toast.info(t`Customer already exists`);
+            } else {
+                toast.success(t`Customer created`);
+            }
+            setCustomerMap(prev => new Map(prev).set(submissionId, customerId));
+        } catch (e: any) {
+            toast.error(t`Failed to create customer`, {
+                description: e?.message || t`Unknown error`,
+            });
+        }
+    };
+
+    const schemaFields = schema.filter(b => b.key);
+
+    const formatCellValue = (type: string, value: any): string => {
+        if (value == null || value === '') return '-';
+        switch (type) {
+            case 'BOOLEAN':
+                return value ? t`Yes` : t`No`;
+            case 'DATE':
+                return new Date(value).toLocaleDateString();
+            case 'IMAGE':
+            case 'IMAGE_GALLERY':
+                return value ? `[${t`Image`}]` : '-';
+            case 'RICH_TEXT': {
+                const stripped = String(value).replace(/<[^>]*>/g, '').trim();
+                return stripped.length > 60 ? stripped.slice(0, 60) + '...' : stripped;
+            }
+            default: {
+                const str = String(value);
+                return str.length > 80 ? str.slice(0, 80) + '...' : str;
+            }
+        }
+    };
+
+    const columns = [
+        {
+            id: 'createdAt',
+            header: t`Date`,
+            accessorFn: (row: any) => new Date(row.createdAt).toLocaleDateString(),
+        },
+        ...schemaFields.map(block => ({
+            id: block.key,
+            header: block.translations?.[0]?.name || block.key,
+            accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
+        })),
+        {
+            id: '_actions',
+            header: '',
+            cell: ({ row }: any) => {
+                const sub = row.original;
+                const customerId = customerMap.get(sub.id);
+                return (
+                    <div className="flex items-center gap-1 justify-end">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingSubmission(sub)}>
+                            <EyeIcon className="h-3.5 w-3.5" />
+                        </Button>
+                        {allowCustomerCreation && (
+                            customerId ? (
+                                <Button asChild variant="ghost" size="sm">
+                                    <Link to={`/customers/${customerId}`}>
+                                        <Trans>View Customer</Trans>
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => handleCreateCustomer(sub.id)}>
+                                    <Trans>Create Customer</Trans>
+                                </Button>
+                            )
+                        )}
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(sub.id)}>
+                            <TrashIcon className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                );
+            },
+            enableSorting: false,
+            enableColumnFilter: false,
+        },
+    ];
+
+    const defaultVisibility: Record<string, boolean> = {};
+    schemaFields.forEach((block, i) => {
+        if (i >= 5) defaultVisibility[block.key] = false;
+    });
 
     return (
         <div className="w-full mt-4">
@@ -685,99 +1000,205 @@ function SubmissionsPanel({ pageId }: { pageId: string }) {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <MailIcon className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-lg font-semibold">Submissions</span>
+                            <span className="text-lg font-semibold"><Trans>Submissions</Trans></span>
                             <Badge variant="secondary">{totalItems}</Badge>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {editingSubmission && (
+                        <SubmissionDetailModal
+                            submission={editingSubmission}
+                            schema={schemaFields}
+                            onClose={() => setEditingSubmission(null)}
+                        />
+                    )}
+
                     {submissions.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
-                            No submissions yet.
+                            <Trans>No submissions yet.</Trans>
                         </div>
                     ) : (
-                        <div className="space-y-2">
-                            {submissions.map((sub: any) => {
-                                const isExpanded = expandedId === sub.id;
-                                const data = sub.data as Record<string, unknown>;
-                                const keys = Object.keys(data);
-                                const preview = keys.slice(0, 3).map(k => `${k}: ${String(data[k]).slice(0, 40)}`).join(' · ');
-                                return (
-                                    <Card key={sub.id} className="border-border/60">
-                                        <div
-                                            className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                                            onClick={() => setExpandedId(isExpanded ? null : sub.id)}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                {isExpanded
-                                                    ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                    : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                }
-                                                <span className="text-xs text-muted-foreground shrink-0">
-                                                    {new Date(sub.createdAt).toLocaleString()}
-                                                </span>
-                                                {!isExpanded && (
-                                                    <span className="text-sm text-muted-foreground truncate">
-                                                        {preview}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div onClick={e => e.stopPropagation()}>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-destructive"
-                                                    onClick={() => handleDelete(sub.id)}
-                                                >
-                                                    <TrashIcon className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        {isExpanded && (
-                                            <CardContent className="px-4 pb-4 pt-0 border-t">
-                                                <div className="grid gap-2 pt-3">
-                                                    {keys.map(key => (
-                                                        <div key={key} className="flex gap-2">
-                                                            <span className="text-sm font-medium min-w-[120px] text-muted-foreground">{key}</span>
-                                                            <span className="text-sm break-all">{String(data[key])}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </CardContent>
-                                        )}
-                                    </Card>
-                                );
-                            })}
+                        <PageBlockContext.Provider value={{ blockId: 'submissions-table', column: 'main' }}>
+                            <DataTable
+                                columns={columns as any}
+                                data={submissions}
+                                totalItems={totalItems}
+                                page={currentPage}
+                                itemsPerPage={itemsPerPage}
+                                defaultColumnVisibility={defaultVisibility}
+                                onPageChange={(_table, page, perPage) => {
+                                    setCurrentPage(page);
+                                    setItemsPerPage(perPage);
+                                }}
+                            />
+                        </PageBlockContext.Provider>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
 
-                            {totalPages > 1 && (
-                                <div className="flex items-center justify-between pt-3">
-                                    <span className="text-sm text-muted-foreground">
-                                        Page {currentPage + 1} of {totalPages}
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={currentPage === 0}
-                                            onClick={() => setCurrentPage(p => p - 1)}
-                                        >
-                                            Previous
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={currentPage >= totalPages - 1}
-                                            onClick={() => setCurrentPage(p => p + 1)}
-                                        >
-                                            Next
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+function SubmissionDetailModal({ submission, schema, onClose }: { submission: any; schema: any[]; onClose: () => void }) {
+    const { t } = useLingui();
+    const data = submission.data as Record<string, unknown>;
+
+    return (
+        <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">
+                    <Trans>Submission</Trans> — {new Date(submission.createdAt).toLocaleString()}
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+                    <XIcon className="h-4 w-4" />
+                </Button>
+            </div>
+            <div className="grid gap-2">
+                {schema.map(block => {
+                    const value = data[block.key];
+                    const label = block.translations?.[0]?.name || block.key;
+                    return (
+                        <div key={block.key} className="flex gap-2">
+                            <span className="text-sm font-medium min-w-[140px] text-muted-foreground">{label}</span>
+                            <span className="text-sm break-all">{value != null ? String(value) : '-'}</span>
                         </div>
+                    );
+                })}
+                {/* Show any fields not in schema */}
+                {Object.keys(data).filter(k => !schema.some(b => b.key === k)).map(key => (
+                    <div key={key} className="flex gap-2">
+                        <span className="text-sm font-medium min-w-[140px] text-muted-foreground">{key}</span>
+                        <span className="text-sm break-all">{String(data[key])}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function CollectionEntriesPanel({ pageId, schema }: { pageId: string; schema: any[] }) {
+    const { t } = useLingui();
+    const [entries, setEntries] = useState<any[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    const loadEntries = useCallback(async () => {
+        const result = await api.query(formSubmissionsDocument, {
+            pageId,
+            options: { take: itemsPerPage, skip: (currentPage - 1) * itemsPerPage, sort: { createdAt: 'DESC' as any } },
+        });
+        setEntries(result.formSubmissions.items);
+        setTotalItems(result.formSubmissions.totalItems);
+    }, [pageId, currentPage, itemsPerPage]);
+
+    useEffect(() => {
+        loadEntries();
+    }, [loadEntries]);
+
+    const handleDelete = async (id: string) => {
+        await api.mutate(deleteFormSubmissionDocument, { id });
+        toast.success(t`Entry deleted`);
+        loadEntries();
+    };
+
+    const schemaFields = schema.filter(b => b.key);
+
+    const formatCellValue = (type: string, value: any): string => {
+        if (value == null || value === '') return '-';
+        switch (type) {
+            case 'BOOLEAN':
+                return value ? t`Yes` : t`No`;
+            case 'DATE':
+                return new Date(value).toLocaleDateString();
+            case 'IMAGE':
+            case 'IMAGE_GALLERY':
+                return value ? `[${t`Image`}]` : '-';
+            case 'RICH_TEXT': {
+                const stripped = String(value).replace(/<[^>]*>/g, '').trim();
+                return stripped.length > 60 ? stripped.slice(0, 60) + '...' : stripped;
+            }
+            default: {
+                const str = String(value);
+                return str.length > 80 ? str.slice(0, 80) + '...' : str;
+            }
+        }
+    };
+
+    const columns = [
+        {
+            id: 'createdAt',
+            header: t`Date`,
+            accessorFn: (row: any) => new Date(row.createdAt).toLocaleDateString(),
+        },
+        ...schemaFields.map(block => ({
+            id: block.key,
+            header: block.translations?.[0]?.name || block.key,
+            accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
+        })),
+        {
+            id: '_actions',
+            header: '',
+            cell: ({ row }: any) => (
+                <div className="flex items-center gap-1 justify-end">
+                    <Button asChild variant="ghost" size="sm">
+                        <Link to={`/cms-pages/${pageId}/entries/${row.original.id}`}>
+                            <Trans>Edit</Trans>
+                        </Link>
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.original.id)}>
+                        <TrashIcon className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            ),
+            enableSorting: false,
+            enableColumnFilter: false,
+        },
+    ];
+
+    const defaultVisibility: Record<string, boolean> = {};
+    schemaFields.forEach((block, i) => {
+        if (i >= 5) defaultVisibility[block.key] = false;
+    });
+
+    return (
+        <div className="w-full mt-4">
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg font-semibold"><Trans>Collection Entries</Trans></span>
+                            <Badge variant="secondary">{totalItems}</Badge>
+                        </div>
+                        <Button asChild>
+                            <Link to={`/cms-pages/${pageId}/entries/new`}>
+                                <PlusIcon className="mr-2 h-4 w-4" />
+                                <Trans>Add Entry</Trans>
+                            </Link>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {entries.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
+                            <Trans>No entries yet. Add one above.</Trans>
+                        </div>
+                    ) : (
+                        <PageBlockContext.Provider value={{ blockId: 'collection-entries-table', column: 'main' }}>
+                            <DataTable
+                                columns={columns as any}
+                                data={entries}
+                                totalItems={totalItems}
+                                page={currentPage}
+                                itemsPerPage={itemsPerPage}
+                                defaultColumnVisibility={defaultVisibility}
+                                onPageChange={(_table, page, perPage) => {
+                                    setCurrentPage(page);
+                                    setItemsPerPage(perPage);
+                                }}
+                            />
+                        </PageBlockContext.Provider>
                     )}
                 </CardContent>
             </Card>
@@ -788,6 +1209,7 @@ function SubmissionsPanel({ pageId }: { pageId: string }) {
 function BlockValueEditor({
     block,
     index,
+    isSuperAdmin,
     onFieldChange,
     onFieldsChange,
     onMetadataChange,
@@ -795,11 +1217,13 @@ function BlockValueEditor({
 }: {
     block: any;
     index: number;
+    isSuperAdmin: boolean;
     onFieldChange: (index: number, field: string, value: any) => void;
     onFieldsChange: (index: number, fields: Record<string, any>) => void;
     onMetadataChange: (index: number, key: string, value: any) => void;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
+    const { t } = useLingui();
     switch (block.type) {
         case 'TEXT_SHORT':
             return <TextShortEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
@@ -808,7 +1232,7 @@ function BlockValueEditor({
         case 'RICH_TEXT':
             return <RichTextBlockEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
         case 'BOOLEAN':
-            return <BooleanEditor block={block} index={index} onFieldChange={onFieldChange} onMetadataChange={onMetadataChange} />;
+            return <BooleanEditor block={block} index={index} isSuperAdmin={isSuperAdmin} onFieldChange={onFieldChange} onMetadataChange={onMetadataChange} />;
         case 'ENUM':
             return <EnumEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
         case 'IMAGE':
@@ -818,7 +1242,7 @@ function BlockValueEditor({
         case 'DATE':
             return (
                 <div>
-                    <label className="text-sm font-medium">Date</label>
+                    <label className="text-sm font-medium"><Trans>Date</Trans></label>
                     <Input
                         type="datetime-local"
                         value={block.dateValue ? new Date(block.dateValue).toISOString().slice(0, 16) : ''}
@@ -836,7 +1260,7 @@ function BlockValueEditor({
         case 'NUMBER':
             return (
                 <div>
-                    <label className="text-sm font-medium">Number</label>
+                    <label className="text-sm font-medium"><Trans>Number</Trans></label>
                     <Input
                         type="number"
                         value={block.numberValue ?? ''}
@@ -864,15 +1288,16 @@ function TextShortEditor({ block, index, onTranslationChange }: {
     index: number;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
+    const { t } = useLingui();
     const maxLength = block.metadata?.maxLength ?? 255;
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium">Short Text</label>
+            <label className="text-sm font-medium"><Trans>Short Text</Trans></label>
             <Input
                 value={currentValue}
                 onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder="Enter text"
+                placeholder={t`Enter text`}
                 maxLength={maxLength}
                 className="mt-1"
             />
@@ -888,15 +1313,16 @@ function TextLongEditor({ block, index, onTranslationChange }: {
     index: number;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
+    const { t } = useLingui();
     const maxLength = block.metadata?.maxLength ?? 2000;
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium">Long Text</label>
+            <label className="text-sm font-medium"><Trans>Long Text</Trans></label>
             <Textarea
                 value={currentValue}
                 onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder="Enter text content..."
+                placeholder={t`Enter text content...`}
                 maxLength={maxLength}
                 rows={4}
                 className="mt-1"
@@ -916,7 +1342,7 @@ function RichTextBlockEditor({ block, index, onTranslationChange }: {
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium">Rich Text Content</label>
+            <label className="text-sm font-medium"><Trans>Rich Text Content</Trans></label>
             <div className="mt-1">
                 <RichTextEditor
                     value={currentValue}
@@ -927,39 +1353,43 @@ function RichTextBlockEditor({ block, index, onTranslationChange }: {
     );
 }
 
-function BooleanEditor({ block, index, onFieldChange, onMetadataChange }: {
+function BooleanEditor({ block, index, isSuperAdmin, onFieldChange, onMetadataChange }: {
     block: any;
     index: number;
+    isSuperAdmin: boolean;
     onFieldChange: (index: number, field: string, value: any) => void;
     onMetadataChange: (index: number, key: string, value: any) => void;
 }) {
-    const trueLabel = block.metadata?.trueLabel ?? 'Yes';
-    const falseLabel = block.metadata?.falseLabel ?? 'No';
+    const { t } = useLingui();
+    const trueLabel = block.metadata?.trueLabel ?? t`Yes`;
+    const falseLabel = block.metadata?.falseLabel ?? t`No`;
     const isTrue = block.numberValue === 1;
     const activeLabel = isTrue ? trueLabel : falseLabel;
 
     return (
         <div className="space-y-3">
+            {isSuperAdmin && (
             <div className="grid gap-3 @md:grid-cols-2">
                 <div>
-                    <label className="text-sm font-medium">True Label</label>
+                    <label className="text-sm font-medium"><Trans>True Label</Trans></label>
                     <Input
                         value={trueLabel}
                         onChange={e => onMetadataChange(index, 'trueLabel', e.target.value)}
-                        placeholder="e.g. Show Banner"
+                        placeholder={t`e.g. Show Banner`}
                         className="mt-1"
                     />
                 </div>
                 <div>
-                    <label className="text-sm font-medium">False Label</label>
+                    <label className="text-sm font-medium"><Trans>False Label</Trans></label>
                     <Input
                         value={falseLabel}
                         onChange={e => onMetadataChange(index, 'falseLabel', e.target.value)}
-                        placeholder="e.g. Hide Banner"
+                        placeholder={t`e.g. Hide Banner`}
                         className="mt-1"
                     />
                 </div>
             </div>
+            )}
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
                 <Switch
                     checked={isTrue}
@@ -976,17 +1406,18 @@ function EnumEditor({ block, index, onTranslationChange }: {
     index: number;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
+    const { t } = useLingui();
     const currentValue = block.translations?.[0]?.textContent ?? '';
     const options = currentValue.split('\n').filter((line: string) => line.trim());
 
     return (
         <div>
-            <label className="text-sm font-medium">Options</label>
-            <p className="text-xs text-muted-foreground mb-1">Enter one option per line</p>
+            <label className="text-sm font-medium"><Trans>Options</Trans></label>
+            <p className="text-xs text-muted-foreground mb-1"><Trans>Enter one option per line</Trans></p>
             <Textarea
                 value={currentValue}
                 onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder={"Small\nMedium\nLarge\nExtra Large"}
+                placeholder={t`Small\nMedium\nLarge\nExtra Large`}
                 rows={4}
                 className="mt-1 font-mono text-sm"
             />
@@ -1007,6 +1438,7 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
     onFieldsChange: (index: number, fields: Record<string, any>) => void;
     onTranslationChange: (index: number, field: string, value: string) => void;
 }) {
+    const { t } = useLingui();
     const [pickerOpen, setPickerOpen] = useState(false);
     const assetPreview = block._assetPreview ?? block.featuredAsset?.preview;
     const hasAsset = !!block.featuredAssetId;
@@ -1041,14 +1473,14 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
                         size="sm"
                         onClick={() => setPickerOpen(true)}
                     >
-                        {hasAsset ? 'Change Image' : 'Select Image'}
+                        {hasAsset ? t`Change Image` : t`Select Image`}
                     </Button>
                     <div>
-                        <label className="text-sm font-medium">Alt Text</label>
+                        <label className="text-sm font-medium"><Trans>Alt Text</Trans></label>
                         <Input
                             value={block.translations?.[0]?.altText ?? ''}
                             onChange={e => onTranslationChange(index, 'altText', e.target.value)}
-                            placeholder="Image description"
+                            placeholder={t`Image description`}
                             className="mt-1"
                         />
                     </div>
@@ -1076,6 +1508,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
     index: number;
     onFieldChange: (index: number, field: string, value: any) => void;
 }) {
+    const { t } = useLingui();
     const [pickerOpen, setPickerOpen] = useState(false);
     const assetIds: string[] = block.metadata?.assetIds ?? [];
     const assetPreviews: string[] = block.metadata?.assetPreviews ?? [];
@@ -1093,7 +1526,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
 
     return (
         <div>
-            <label className="text-sm font-medium">Images</label>
+            <label className="text-sm font-medium"><Trans>Images</Trans></label>
             <div className="flex gap-2 flex-wrap mt-2">
                 {assetPreviews.map((preview, i) => (
                     <div key={assetIds[i] ?? i} className="relative group">
@@ -1120,7 +1553,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
                 </button>
             </div>
             {assetIds.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Click + to add images</p>
+                <p className="text-xs text-muted-foreground mt-1"><Trans>Click + to add images</Trans></p>
             )}
             {pickerOpen && (
                 <AssetPickerDialog
@@ -1146,7 +1579,7 @@ export const cmsPageDetail: DashboardRouteDefinition = {
         queryDocument: cmsPageDetailDocument,
         breadcrumb: (isNew, entity) => [
             { path: '/cms-pages', label: 'Pages' },
-            isNew ? 'New page' : entity?.name,
+            isNew ? 'New Page' : entity?.name,
         ],
     }),
     component: route => <CmsPageDetailPage route={route} />,
