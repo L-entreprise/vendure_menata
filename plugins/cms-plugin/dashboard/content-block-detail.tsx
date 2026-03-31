@@ -1,4 +1,5 @@
 import { graphql } from '@/graphql/graphql';
+import { useLingui } from '@lingui/react/macro';
 import { DashboardRouteDefinition, DetailPage, detailPageRouteLoader } from '@vendure/dashboard';
 
 const contentBlockDetailDocument = graphql(`
@@ -44,23 +45,16 @@ const createContentBlockDocument = graphql(`
     }
 `);
 
-export const contentBlockDetail: DashboardRouteDefinition = {
-    path: '/content-blocks/$id',
-    loader: detailPageRouteLoader({
-        queryDocument: contentBlockDetailDocument,
-        breadcrumb: (isNew, entity) => [
-            { path: '/content-blocks', label: 'Content Blocks' },
-            isNew ? 'New content block' : entity?.name,
-        ],
-    }),
-    component: route => (
+function ContentBlockDetailContent({ route }: { route: any }) {
+    const { t } = useLingui();
+    return (
         <DetailPage
             pageId="content-block-detail"
             queryDocument={contentBlockDetailDocument}
             updateDocument={updateContentBlockDocument}
             createDocument={createContentBlockDocument}
             route={route}
-            title={block => block?.name ?? 'New Content Block'}
+            title={block => block?.name ?? t`New Content Block`}
             setValuesForUpdate={block => ({
                 id: block.id,
                 key: block.key,
@@ -75,5 +69,17 @@ export const contentBlockDetail: DashboardRouteDefinition = {
                 translations: [],
             })}
         />
-    ),
+    );
+}
+
+export const contentBlockDetail: DashboardRouteDefinition = {
+    path: '/content-blocks/$id',
+    loader: detailPageRouteLoader({
+        queryDocument: contentBlockDetailDocument,
+        breadcrumb: (isNew, entity) => [
+            { path: '/content-blocks', label: 'Content Blocks' },
+            isNew ? 'New content block' : entity?.name,
+        ],
+    }),
+    component: route => <ContentBlockDetailContent route={route} />,
 };

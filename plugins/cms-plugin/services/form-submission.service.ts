@@ -3,6 +3,7 @@ import { DeletionResponse, DeletionResult } from '@vendure/common/lib/generated-
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import {
     ChannelService,
+    CustomerService,
     ListQueryBuilder,
     ListQueryOptions,
     RequestContext,
@@ -10,6 +11,7 @@ import {
     UserInputError,
 } from '@vendure/core';
 
+import { ContentBlock } from '../entities/content-block.entity';
 import { CmsPage } from '../entities/cms-page.entity';
 import { FormSubmission } from '../entities/form-submission.entity';
 
@@ -25,6 +27,7 @@ export class FormSubmissionService {
         private connection: TransactionalConnection,
         private channelService: ChannelService,
         private listQueryBuilder: ListQueryBuilder,
+        private customerService: CustomerService,
     ) {}
 
     async findByPage(
@@ -80,6 +83,109 @@ export class FormSubmissionService {
         await this.connection.getRepository(ctx, FormSubmission).save(submission);
 
         return { success: true };
+    }
+
+    async createEntry(
+        ctx: RequestContext,
+        input: { pageId: ID; data: Record<string, unknown> },
+    ): Promise<FormSubmission> {
+        const page = await this.connection.getRepository(ctx, CmsPage).findOne({
+            where: { id: input.pageId },
+        });
+        if (!page || !page.isCollection) {
+            throw new UserInputError('Page is not a collection');
+        }
+        const blocks = await this.connection.getRepository(ctx, ContentBlock)
+            .createQueryBuilder('block')
+            .where('block.pageId = :pageId', { pageId: input.pageId })
+            .getMany();
+        this.validateEntryData(blocks, input.data);
+
+        const submission = new FormSubmission();
+        submission.pageId = input.pageId;
+        submission.data = input.data;
+        await this.channelService.assignToCurrentChannel(submission, ctx);
+        return this.connection.getRepository(ctx, FormSubmission).save(submission);
+    }
+
+    async updateEntry(
+        ctx: RequestContext,
+        input: { id: ID; data: Record<string, unknown> },
+    ): Promise<FormSubmission> {
+        const submission = await this.connection.getEntityOrThrow(ctx, FormSubmission, input.id, {
+            channelId: ctx.channelId,
+        });
+        const page = await this.connection.getRepository(ctx, CmsPage).findOne({
+            where: { id: submission.pageId },
+        });
+        if (!page || !page.isCollection) {
+            throw new UserInputError('Page is not a collection');
+        }
+        const blocks = await this.connection.getRepository(ctx, ContentBlock)
+            .createQueryBuilder('block')
+            .where('block.pageId = :pageId', { pageId: submission.pageId })
+            .getMany();
+        this.validateEntryData(blocks, input.data);
+        submission.data = input.data;
+        return this.connection.getRepository(ctx, FormSubmission).save(submission);
+    }
+
+    async createCustomerFromSubmission(
+        ctx: RequestContext,
+        submissionId: ID,
+    ): Promise<{ submission: FormSubmission; customerId: ID; existing: boolean }> {
+        const submission = await this.connection.getEntityOrThrow(ctx, FormSubmission, submissionId, {
+            channelId: ctx.channelId,
+            relations: ['page'],
+        });
+        if (!submission.page?.allowCustomerCreation) {
+            throw new UserInputError('Customer creation is not enabled for this page');
+        }
+        const data = submission.data;
+        const email = data.email;
+        if (!email || typeof email !== 'string') {
+            throw new UserInputError('Submission must contain an "email" field to create a customer');
+        }
+
+        // Check if a customer with this email already exists
+        const existing = await this.customerService.findAll(ctx, {
+            filter: { emailAddress: { eq: email } },
+            take: 1,
+        });
+        if (existing.items.length > 0) {
+            return { submission, customerId: existing.items[0].id, existing: true };
+        }
+
+        const createResult = await this.customerService.create(ctx, {
+            emailAddress: email,
+            firstName: typeof data.firstName === 'string' ? data.firstName : '',
+            lastName: typeof data.lastName === 'string' ? data.lastName : '',
+            phoneNumber: typeof data.phone === 'string' ? data.phone : undefined,
+        });
+        if ((createResult as any).__typename && (createResult as any).__typename !== 'Customer') {
+            throw new UserInputError((createResult as any).message || 'Failed to create customer');
+        }
+        return { submission, customerId: (createResult as any).id, existing: false };
+    }
+
+    private validateEntryData(blocks: ContentBlock[], data: Record<string, unknown>): void {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+            throw new UserInputError('Entry data must be a JSON object');
+        }
+        const blockKeys = new Set(blocks.map(b => b.key).filter(Boolean));
+        for (const key of Object.keys(data)) {
+            if (!blockKeys.has(key)) {
+                throw new UserInputError(`Unknown field: ${key}`);
+            }
+            const value = data[key];
+            if (typeof value === 'string' && value.length > MAX_FIELD_VALUE_LENGTH) {
+                throw new UserInputError(`Field "${key}" exceeds maximum length`);
+            }
+        }
+        const serialized = JSON.stringify(data);
+        if (serialized.length > MAX_PAYLOAD_BYTES) {
+            throw new UserInputError(`Entry data exceeds maximum size`);
+        }
     }
 
     private sanitizeFields(fields: Record<string, unknown>): Record<string, unknown> {

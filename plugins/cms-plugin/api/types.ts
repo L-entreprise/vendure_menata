@@ -51,6 +51,9 @@ export interface CreateCmsPageInput {
     key: string;
     enabled?: boolean;
     acceptsSubmissions?: boolean;
+    isCollection?: boolean;
+    pinnedInSidebar?: boolean;
+    allowCustomerCreation?: boolean;
     translations: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
 }
@@ -60,8 +63,21 @@ export interface UpdateCmsPageInput {
     key?: string;
     enabled?: boolean;
     acceptsSubmissions?: boolean;
+    isCollection?: boolean;
+    pinnedInSidebar?: boolean;
+    allowCustomerCreation?: boolean;
     translations?: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
+}
+
+export interface CreateCollectionEntryInput {
+    pageId: ID;
+    data: Record<string, unknown>;
+}
+
+export interface UpdateCollectionEntryInput {
+    id: ID;
+    data: Record<string, unknown>;
 }
 
 export interface SubmitFormInput {

@@ -1,4 +1,5 @@
 import { graphql } from '@/graphql/graphql';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
 import { Button, DashboardRouteDefinition, DetailPageButton, ListPage, PageActionBarRight } from '@vendure/dashboard';
@@ -35,6 +36,47 @@ const deleteContentBlockDocument = graphql(`
     }
 `);
 
+function ContentBlockListContent({ route }: { route: any }) {
+    const { t } = useLingui();
+    return (
+        <ListPage
+            pageId="content-block-list"
+            title={t`Content Blocks`}
+            listQuery={getContentBlockList}
+            deleteMutation={deleteContentBlockDocument}
+            route={route}
+            defaultVisibility={{
+                textContent: false,
+                altText: false,
+                featuredAsset: false,
+            }}
+            customizeColumns={{
+                id: {
+                    header: t`ID`,
+                    cell: ({ row }) => (
+                        <DetailPageButton id={row.original.id} label={row.original.id} />
+                    ),
+                },
+                name: {
+                    header: t`Name`,
+                    cell: ({ row }) => (
+                        <DetailPageButton id={row.original.id} label={row.original.name} />
+                    ),
+                },
+            }}
+        >
+            <PageActionBarRight>
+                <Button asChild>
+                    <Link to="./new">
+                        <PlusIcon className="mr-2 h-4 w-4" />
+                        <Trans>New Content Block</Trans>
+                    </Link>
+                </Button>
+            </PageActionBarRight>
+        </ListPage>
+    );
+}
+
 export const contentBlockList: DashboardRouteDefinition = {
     navMenuItem: {
         sectionId: 'cms',
@@ -47,41 +89,5 @@ export const contentBlockList: DashboardRouteDefinition = {
     loader: () => ({
         breadcrumb: 'Content Blocks',
     }),
-    component: route => (
-        <ListPage
-            pageId="content-block-list"
-            title="Content Blocks"
-            listQuery={getContentBlockList}
-            deleteMutation={deleteContentBlockDocument}
-            route={route}
-            defaultVisibility={{
-                textContent: false,
-                altText: false,
-                featuredAsset: false,
-            }}
-            customizeColumns={{
-                id: {
-                    header: 'ID',
-                    cell: ({ row }) => (
-                        <DetailPageButton id={row.original.id} label={row.original.id} />
-                    ),
-                },
-                name: {
-                    header: 'Name',
-                    cell: ({ row }) => (
-                        <DetailPageButton id={row.original.id} label={row.original.name} />
-                    ),
-                },
-            }}
-        >
-            <PageActionBarRight>
-                <Button asChild>
-                    <Link to="./new">
-                        <PlusIcon className="mr-2 h-4 w-4" />
-                        New Content Block
-                    </Link>
-                </Button>
-            </PageActionBarRight>
-        </ListPage>
-    ),
+    component: route => <ContentBlockListContent route={route} />,
 };
