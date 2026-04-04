@@ -64,6 +64,15 @@ const formSubmissionDocument = graphql(`
     }
 `);
 
+const getAssetDocument = graphql(`
+    query GetAssetPreview($id: ID!) {
+        asset(id: $id) {
+            id
+            preview
+        }
+    }
+`);
+
 const createCollectionEntryDocument = graphql(`
     mutation CreateCollectionEntryFromPage($input: CreateCollectionEntryInput!) {
         createCollectionEntry(input: $input) {
@@ -92,6 +101,19 @@ function CollectionEntryPage({ route }: { route: any }) {
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [pickerOpen, setPickerOpen] = useState<string | null>(null);
+    const [assetPreviews, setAssetPreviews] = useState<Map<string, string>>(new Map());
+
+    const loadAssetPreview = useCallback(async (assetId: string) => {
+        if (!assetId || assetPreviews.has(assetId)) return;
+        try {
+            const result = await api.query(getAssetDocument, { id: assetId });
+            if (result.asset?.preview) {
+                setAssetPreviews(prev => new Map(prev).set(assetId, result.asset!.preview));
+            }
+        } catch {
+            // ignore
+        }
+    }, [assetPreviews]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -118,7 +140,20 @@ function CollectionEntryPage({ route }: { route: any }) {
                 });
                 const entry = entryResult.formSubmissions.items[0];
                 if (entry) {
-                    setFormData({ ...(entry.data as Record<string, any>) });
+                    const data = { ...(entry.data as Record<string, any>) };
+                    setFormData(data);
+                    // Resolve asset previews for IMAGE fields
+                    const imageBlocks = blocks.filter(b => b.type === 'IMAGE' && data[b.key]);
+                    for (const block of imageBlocks) {
+                        const assetId = data[block.key];
+                        if (assetId) {
+                            api.query(getAssetDocument, { id: assetId }).then(r => {
+                                if (r.asset?.preview) {
+                                    setAssetPreviews(prev => new Map(prev).set(assetId, r.asset!.preview));
+                                }
+                            }).catch(() => {});
+                        }
+                    }
                 }
             }
         } finally {
@@ -248,12 +283,15 @@ function CollectionEntryPage({ route }: { route: any }) {
             }
             case 'IMAGE': {
                 const assetId = formData[block.key];
+                const preview = assetId ? assetPreviews.get(assetId) : undefined;
                 return (
                     <div key={block.key}>
                         <label className="text-sm font-medium">{fieldLabel}</label>
                         <div className="flex items-center gap-3 mt-1">
-                            {assetId ? (
-                                <Badge variant="secondary">{t`Image selected`} (ID: {assetId})</Badge>
+                            {assetId && preview ? (
+                                <img src={`${preview}?preset=thumb`} alt={fieldLabel} className="h-16 w-16 rounded object-cover border" />
+                            ) : assetId ? (
+                                <Badge variant="secondary">{t`Image selected`}</Badge>
                             ) : null}
                             <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(block.key)}>
                                 {assetId ? t`Change Image` : t`Select Image`}
@@ -271,7 +309,11 @@ function CollectionEntryPage({ route }: { route: any }) {
                                 multiSelect={false}
                                 onSelect={assets => {
                                     if (assets.length > 0) {
-                                        setFormData(prev => ({ ...prev, [block.key]: assets[0].id }));
+                                        const asset = assets[0];
+                                        setFormData(prev => ({ ...prev, [block.key]: asset.id }));
+                                        if (asset.preview) {
+                                            setAssetPreviews(prev => new Map(prev).set(asset.id, asset.preview));
+                                        }
                                     }
                                 }}
                             />

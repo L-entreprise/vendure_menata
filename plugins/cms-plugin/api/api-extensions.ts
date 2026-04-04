@@ -65,6 +65,7 @@ const commonApiExtensions = gql`
         isCollection: Boolean!
         pinnedInSidebar: Boolean!
         allowCustomerCreation: Boolean!
+        sidebarOrder: Int!
         name: String!
         slug: String!
         translations: [CmsPageTranslation!]!
@@ -162,6 +163,7 @@ export const adminApiExtensions = gql`
         isCollection: Boolean
         pinnedInSidebar: Boolean
         allowCustomerCreation: Boolean
+        sidebarOrder: Int
         translations: [CmsPageTranslationInput!]!
         contentBlocks: [UpdatePageContentBlockInput!]
     }
@@ -174,6 +176,7 @@ export const adminApiExtensions = gql`
         isCollection: Boolean
         pinnedInSidebar: Boolean
         allowCustomerCreation: Boolean
+        sidebarOrder: Int
         translations: [CmsPageTranslationInput!]
         contentBlocks: [UpdatePageContentBlockInput!]
     }

@@ -39,6 +39,9 @@ export class CmsPage extends VendureEntity implements Translatable, HasCustomFie
     @Column({ default: false })
     allowCustomerCreation: boolean;
 
+    @Column({ type: 'int', default: 0 })
+    sidebarOrder: number;
+
     name: LocaleString;
     slug: LocaleString;
 

@@ -75,6 +75,7 @@ export const cmsPageList: DashboardRouteDefinition = {
         id: 'cms-pages',
         url: '/cms-pages',
         title: 'Pages',
+        order: 0,
         requiresPermission: ['ReadCmsPage'],
     },
     path: '/cms-pages',

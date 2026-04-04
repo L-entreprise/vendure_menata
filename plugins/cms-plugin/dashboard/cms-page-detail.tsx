@@ -63,6 +63,7 @@ const cmsPageDetailDocument = graphql(`
             isCollection
             pinnedInSidebar
             allowCustomerCreation
+            sidebarOrder
             name
             slug
             translations {
@@ -156,6 +157,18 @@ const createCustomerFromSubmissionDocument = graphql(`
             }
             customerId
             existing
+        }
+    }
+`);
+
+const getCustomersByEmailDocument = graphql(`
+    query GetCustomersByEmail($options: CustomerListOptions) {
+        customers(options: $options) {
+            items {
+                id
+                emailAddress
+            }
+            totalItems
         }
     }
 `);
@@ -294,6 +307,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             isCollection: page.isCollection ?? false,
             pinnedInSidebar: page.pinnedInSidebar ?? false,
             allowCustomerCreation: page.allowCustomerCreation ?? false,
+            sidebarOrder: page.sidebarOrder ?? 0,
             name: page.name,
             slug: page.slug,
             translations: page.translations,
@@ -325,6 +339,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 isCollection: input.isCollection ?? false,
                 pinnedInSidebar: input.pinnedInSidebar ?? false,
                 allowCustomerCreation: input.allowCustomerCreation ?? false,
+                sidebarOrder: input.sidebarOrder ?? 0,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -338,6 +353,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 isCollection: input.isCollection,
                 pinnedInSidebar: input.pinnedInSidebar,
                 allowCustomerCreation: input.allowCustomerCreation,
+                sidebarOrder: input.sidebarOrder,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -531,7 +547,6 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 <>
                                     {contentBlocks.map((block, index) => {
                                         const Icon = getBlockTypeIcon(block.type);
-                                        const typeInfo = getBlockTypeInfo(block.type);
                                         const isExpanded = expandedBlocks.has(index);
                                         return (
                                             <div key={block.id ?? `new-${index}`} className="border rounded-md">
@@ -545,10 +560,6 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                             : <ChevronRightIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                                                         }
                                                         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                        <span className="font-medium">
-                                                            {block.translations?.[0]?.name || block.key || t`Unnamed`}
-                                                        </span>
-                                                        <Badge variant="outline" className="shrink-0">{typeInfo ? t(typeInfo.label) : block.type}</Badge>
                                                         {block.key && (
                                                             <code className="text-xs text-muted-foreground">{block.key}</code>
                                                         )}
@@ -847,6 +858,22 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 />
                             )}
                         />
+                        {form.watch('pinnedInSidebar') && (
+                            <FormFieldWrapper
+                                control={form.control}
+                                name={'sidebarOrder' as any}
+                                label={t`Sidebar Order`}
+                                render={({ field }) => (
+                                    <Input
+                                        type="number"
+                                        value={field.value ?? 0}
+                                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                        disabled={!isSuperAdmin}
+                                        className="w-24"
+                                    />
+                                )}
+                            />
+                        )}
                         {isSuperAdmin && form.watch('acceptsSubmissions') && (
                             <div>
                                 <FormFieldWrapper
@@ -881,16 +908,55 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [customerMap, setCustomerMap] = useState<Map<string, string>>(new Map());
-    const [editingSubmission, setEditingSubmission] = useState<any | null>(null);
+
+    const lookupExistingCustomers = useCallback(async (subs: any[]) => {
+        if (!allowCustomerCreation) return;
+        const emails = subs
+            .map(sub => sub.data?.email)
+            .filter((e): e is string => typeof e === 'string' && e.length > 0);
+        const uniqueEmails = [...new Set(emails)];
+        if (uniqueEmails.length === 0) return;
+
+        const newMap = new Map<string, string>();
+        // Query customers for each unique email (batch of in-filters not available, so query per email)
+        await Promise.all(
+            uniqueEmails.map(async (email) => {
+                try {
+                    const result = await api.query(getCustomersByEmailDocument, {
+                        options: { filter: { emailAddress: { eq: email } }, take: 1 },
+                    });
+                    if (result.customers.items.length > 0) {
+                        const customerId = result.customers.items[0].id;
+                        for (const sub of subs) {
+                            if (sub.data?.email === email) {
+                                newMap.set(sub.id, customerId);
+                            }
+                        }
+                    }
+                } catch {
+                    // Ignore lookup errors - button will just show "Create Customer"
+                }
+            }),
+        );
+        if (newMap.size > 0) {
+            setCustomerMap(prev => {
+                const merged = new Map(prev);
+                for (const [k, v] of newMap) merged.set(k, v);
+                return merged;
+            });
+        }
+    }, [allowCustomerCreation]);
 
     const loadSubmissions = useCallback(async () => {
         const result = await api.query(formSubmissionsDocument, {
             pageId,
             options: { take: itemsPerPage, skip: (currentPage - 1) * itemsPerPage, sort: { createdAt: 'DESC' as any } },
         });
-        setSubmissions(result.formSubmissions.items);
+        const items = result.formSubmissions.items;
+        setSubmissions(items);
         setTotalItems(result.formSubmissions.totalItems);
-    }, [pageId, currentPage, itemsPerPage]);
+        lookupExistingCustomers(items);
+    }, [pageId, currentPage, itemsPerPage, lookupExistingCustomers]);
 
     useEffect(() => {
         loadSubmissions();
@@ -961,8 +1027,10 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
                 const customerId = customerMap.get(sub.id);
                 return (
                     <div className="flex items-center gap-1 justify-end">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingSubmission(sub)}>
-                            <EyeIcon className="h-3.5 w-3.5" />
+                        <Button asChild variant="ghost" size="sm">
+                            <Link to={`/cms-pages/${pageId}/submissions/${sub.id}`}>
+                                <EyeIcon className="h-3.5 w-3.5" />
+                            </Link>
                         </Button>
                         {allowCustomerCreation && (
                             customerId ? (
@@ -1006,14 +1074,6 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {editingSubmission && (
-                        <SubmissionDetailModal
-                            submission={editingSubmission}
-                            schema={schemaFields}
-                            onClose={() => setEditingSubmission(null)}
-                        />
-                    )}
-
                     {submissions.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
                             <Trans>No submissions yet.</Trans>
@@ -1036,43 +1096,6 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
                     )}
                 </CardContent>
             </Card>
-        </div>
-    );
-}
-
-function SubmissionDetailModal({ submission, schema, onClose }: { submission: any; schema: any[]; onClose: () => void }) {
-    const { t } = useLingui();
-    const data = submission.data as Record<string, unknown>;
-
-    return (
-        <div className="mb-4 p-4 border rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">
-                    <Trans>Submission</Trans> — {new Date(submission.createdAt).toLocaleString()}
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-                    <XIcon className="h-4 w-4" />
-                </Button>
-            </div>
-            <div className="grid gap-2">
-                {schema.map(block => {
-                    const value = data[block.key];
-                    const label = block.translations?.[0]?.name || block.key;
-                    return (
-                        <div key={block.key} className="flex gap-2">
-                            <span className="text-sm font-medium min-w-[140px] text-muted-foreground">{label}</span>
-                            <span className="text-sm break-all">{value != null ? String(value) : '-'}</span>
-                        </div>
-                    );
-                })}
-                {/* Show any fields not in schema */}
-                {Object.keys(data).filter(k => !schema.some(b => b.key === k)).map(key => (
-                    <div key={key} className="flex gap-2">
-                        <span className="text-sm font-medium min-w-[140px] text-muted-foreground">{key}</span>
-                        <span className="text-sm break-all">{String(data[key])}</span>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 }

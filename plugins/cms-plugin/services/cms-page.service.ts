@@ -132,6 +132,7 @@ export class CmsPageService {
         isCollection?: boolean;
         pinnedInSidebar?: boolean;
         allowCustomerCreation?: boolean;
+        sidebarOrder?: number;
         translations: Array<{
             languageCode: LanguageCode;
             name: string;
@@ -151,6 +152,7 @@ export class CmsPageService {
             isCollection: input.isCollection ?? false,
             pinnedInSidebar: input.pinnedInSidebar ?? false,
             allowCustomerCreation: input.allowCustomerCreation ?? false,
+            sidebarOrder: input.sidebarOrder ?? 0,
             translations: input.translations,
         };
         const page = await this.translatableSaver.create({
@@ -182,6 +184,7 @@ export class CmsPageService {
         isCollection?: boolean;
         pinnedInSidebar?: boolean;
         allowCustomerCreation?: boolean;
+        sidebarOrder?: number;
         translations?: Array<{
             id?: ID;
             languageCode: LanguageCode;
@@ -208,6 +211,7 @@ export class CmsPageService {
                 ...(input.isCollection !== undefined && { isCollection: input.isCollection }),
                 ...(input.pinnedInSidebar !== undefined && { pinnedInSidebar: input.pinnedInSidebar }),
                 ...(input.allowCustomerCreation !== undefined && { allowCustomerCreation: input.allowCustomerCreation }),
+                ...(input.sidebarOrder !== undefined && { sidebarOrder: input.sidebarOrder }),
                 ...(input.translations && { translations: input.translations }),
             };
             await this.translatableSaver.update({
@@ -244,6 +248,8 @@ export class CmsPageService {
             })
             .where('page.pinnedInSidebar = :pinned', { pinned: true })
             .andWhere('page.enabled = :enabled', { enabled: true })
+            .orderBy('page.sidebarOrder', 'ASC')
+            .addOrderBy('page.id', 'ASC')
             .getMany();
         return pages.map(page => translateDeep(page, ctx.languageCode));
     }
