@@ -1,0 +1,39 @@
+msgid ""
+msgstr ""
+"Language: fr\n"
+
+msgid "Translations"
+msgstr "Traductions"
+
+msgid "Languages"
+msgstr "Langues"
+
+msgid "Translation Settings"
+msgstr "Paramètres de traduction"
+
+msgid "Save Translations"
+msgstr "Enregistrer les traductions"
+
+msgid "Save Languages"
+msgstr "Enregistrer les langues"
+
+msgid "Add Language"
+msgstr "Ajouter une langue"
+
+msgid "No translatable fields found"
+msgstr "Aucun champ traduisible trouvé"
+
+msgid "Translations saved"
+msgstr "Traductions enregistrées"
+
+msgid "Languages saved"
+msgstr "Langues enregistrées"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "Remove"
+msgstr "Supprimer"
+
+msgid "Field"
+msgstr "Champ"
