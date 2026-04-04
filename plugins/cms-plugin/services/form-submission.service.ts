@@ -85,6 +85,69 @@ export class FormSubmissionService {
         return { success: true };
     }
 
+    async findCollectionEntries(
+        ctx: RequestContext,
+        pageKey: string,
+        options?: ListQueryOptions<FormSubmission>,
+    ): Promise<PaginatedList<FormSubmission>> {
+        const page = await this.connection
+            .getRepository(ctx, CmsPage)
+            .createQueryBuilder('page')
+            .innerJoin('page.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('page.key = :key', { key: pageKey })
+            .andWhere('page.enabled = :enabled', { enabled: true })
+            .andWhere('page.isCollection = :isCollection', { isCollection: true })
+            .andWhere('page.acceptsSubmissions = :acceptsSubmissions', { acceptsSubmissions: false })
+            .getOne();
+
+        if (!page) {
+            return { items: [], totalItems: 0 };
+        }
+
+        return this.listQueryBuilder
+            .build(FormSubmission, options, {
+                ctx,
+                channelId: ctx.channelId,
+            })
+            .andWhere('formsubmission.pageId = :pageId', { pageId: page.id })
+            .getManyAndCount()
+            .then(([items, totalItems]) => ({ items, totalItems }));
+    }
+
+    async findCollectionEntry(
+        ctx: RequestContext,
+        pageKey: string,
+        entryId: ID,
+    ): Promise<FormSubmission | null> {
+        const page = await this.connection
+            .getRepository(ctx, CmsPage)
+            .createQueryBuilder('page')
+            .innerJoin('page.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('page.key = :key', { key: pageKey })
+            .andWhere('page.enabled = :enabled', { enabled: true })
+            .andWhere('page.isCollection = :isCollection', { isCollection: true })
+            .andWhere('page.acceptsSubmissions = :acceptsSubmissions', { acceptsSubmissions: false })
+            .getOne();
+
+        if (!page) {
+            return null;
+        }
+
+        return this.connection
+            .getRepository(ctx, FormSubmission)
+            .createQueryBuilder('submission')
+            .innerJoin('submission.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('submission.id = :entryId', { entryId })
+            .andWhere('submission.pageId = :pageId', { pageId: page.id })
+            .getOne() ?? null;
+    }
+
     async createEntry(
         ctx: RequestContext,
         input: { pageId: ID; data: Record<string, unknown> },
