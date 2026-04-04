@@ -5,6 +5,7 @@ import { FileTextIcon, PinIcon } from 'lucide-react';
 import { cmsCollectionEntry } from './cms-collection-entry';
 import { cmsPageDetail } from './cms-page-detail';
 import { cmsPageList } from './cms-page-list';
+import { cmsSubmissionDetail } from './cms-submission-detail';
 import { contentBlockDetail } from './content-block-detail';
 import { contentBlockList } from './content-block-list';
 
@@ -14,6 +15,7 @@ const pinnedCmsPagesDocument = graphql(`
             id
             name
             key
+            sidebarOrder
         }
     }
 `);
@@ -43,7 +45,7 @@ const pinnedPageRoutes = pinnedPages.map(page => ({
         url: `/cms-pages/${page.id}`,
         sectionId: 'cms',
         icon: PinIcon,
-        order: 100,
+        order: 100 + (page.sidebarOrder ?? 0),
     },
 }));
 
@@ -59,6 +61,7 @@ defineDashboardExtension({
         cmsPageList,
         cmsPageDetail,
         cmsCollectionEntry,
+        cmsSubmissionDetail,
         contentBlockList,
         contentBlockDetail,
         ...pinnedPageRoutes,
