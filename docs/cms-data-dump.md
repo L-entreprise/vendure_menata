@@ -194,11 +194,21 @@ query { cmsPageByKey(key: "Blog") { id key name slug enabled isCollection conten
 query { cmsPageTranslationsByKey(pageKey: "a", languageCode: "en") { entries { contentBlockId fieldName value } } }
 ```
 
-### Get collection entries
+### Get collection entries (shop API, public)
+```graphql
+query { collectionEntries(pageKey: "Blog", options: { take: 50 }) { items { id createdAt data } totalItems } }
+```
+Only returns entries for enabled collection pages (not submission forms).
+
+### Get a single collection entry (shop API, public)
+```graphql
+query { collectionEntry(pageKey: "Blog", entryId: "34") { id createdAt data } }
+```
+
+### Get collection entries (admin API, requires auth)
 ```graphql
 query { formSubmissions(pageId: "1", options: { take: 50 }) { items { id createdAt data } totalItems } }
 ```
-Note: `formSubmissions` is admin-only. From shop API, collection entries are fetched via `cmsPageByKey` which returns the template blocks. Actual entries need to be queried from admin API or exposed via a custom shop resolver.
 
 ### Get translations for a collection entry
 ```graphql

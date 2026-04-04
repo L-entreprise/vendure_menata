@@ -84,6 +84,21 @@ const commonApiExtensions = gql`
 export const shopApiExtensions = gql`
     ${commonApiExtensions}
 
+    type FormSubmission implements Node {
+        id: ID!
+        createdAt: DateTime!
+        updatedAt: DateTime!
+        data: JSON!
+    }
+
+    type FormSubmissionList implements PaginatedList {
+        items: [FormSubmission!]!
+        totalItems: Int!
+    }
+
+    # Auto-generated at runtime by ListQueryBuilder
+    input FormSubmissionListOptions
+
     input SubmitFormInput {
         pageKey: String!
         fields: JSON!
@@ -100,6 +115,8 @@ export const shopApiExtensions = gql`
         cmsPage(id: ID!): CmsPage
         cmsPageByKey(key: String!): CmsPage
         cmsPages(options: CmsPageListOptions): CmsPageList!
+        collectionEntries(pageKey: String!, options: FormSubmissionListOptions): FormSubmissionList!
+        collectionEntry(pageKey: String!, entryId: ID!): FormSubmission
     }
 
     extend type Mutation {
