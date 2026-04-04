@@ -20,47 +20,50 @@ const pinnedCmsPagesDocument = graphql(`
     }
 `);
 
+// Register core CMS extension synchronously so routes/nav are available immediately
+defineDashboardExtension({
+    navSections: [
+        {
+            id: 'cms',
+            title: 'CMS',
+            icon: FileTextIcon,
+        },
+    ],
+    routes: [
+        cmsPageList,
+        cmsPageDetail,
+        cmsCollectionEntry,
+        cmsSubmissionDetail,
+        contentBlockList,
+        contentBlockDetail,
+    ],
+});
+
+// Async: add pinned pages to sidebar after fetching (non-blocking)
 void (async () => {
-    let pinnedPages: Array<{ id: string; name: string; key: string }> = [];
     try {
         const result = await Promise.race([
             api.query(pinnedCmsPagesDocument, {}),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
         ]) as any;
-        pinnedPages = result?.pinnedCmsPages ?? [];
+        const pinnedPages = result?.pinnedCmsPages ?? [];
+        if (pinnedPages.length > 0) {
+            defineDashboardExtension({
+                routes: pinnedPages.map((page: any) => ({
+                    path: '',
+                    component: () => null,
+                    navMenuItem: {
+                        id: `cms-pinned-${page.id}`,
+                        title: page.name || page.key,
+                        url: `/cms-pages/${page.id}`,
+                        sectionId: 'cms',
+                        icon: PinIcon,
+                        order: 100 + (page.sidebarOrder ?? 0),
+                    },
+                })),
+            });
+        }
     } catch {
         // Silently fail — pinned pages are a convenience, not critical
     }
-
-    const pinnedPageRoutes = pinnedPages.map(page => ({
-        path: '',
-        component: () => null,
-        navMenuItem: {
-            id: `cms-pinned-${page.id}`,
-            title: page.name || page.key,
-            url: `/cms-pages/${page.id}`,
-            sectionId: 'cms',
-            icon: PinIcon,
-            order: 100 + (page.sidebarOrder ?? 0),
-        },
-    }));
-
-    defineDashboardExtension({
-        navSections: [
-            {
-                id: 'cms',
-                title: 'CMS',
-                icon: FileTextIcon,
-            },
-        ],
-        routes: [
-            cmsPageList,
-            cmsPageDetail,
-            cmsCollectionEntry,
-            cmsSubmissionDetail,
-            contentBlockList,
-            contentBlockDetail,
-            ...pinnedPageRoutes,
-        ],
-    });
 })();
