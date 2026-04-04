@@ -1,0 +1,39 @@
+msgid ""
+msgstr ""
+"Language: en\n"
+
+msgid "Translations"
+msgstr "Translations"
+
+msgid "Languages"
+msgstr "Languages"
+
+msgid "Translation Settings"
+msgstr "Translation Settings"
+
+msgid "Save Translations"
+msgstr "Save Translations"
+
+msgid "Save Languages"
+msgstr "Save Languages"
+
+msgid "Add Language"
+msgstr "Add Language"
+
+msgid "No translatable fields found"
+msgstr "No translatable fields found"
+
+msgid "Translations saved"
+msgstr "Translations saved"
+
+msgid "Languages saved"
+msgstr "Languages saved"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "Remove"
+msgstr "Remove"
+
+msgid "Field"
+msgstr "Field"

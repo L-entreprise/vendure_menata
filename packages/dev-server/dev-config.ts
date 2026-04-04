@@ -22,6 +22,7 @@ import { DataSourceOptions } from 'typeorm';
 import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
+import { TranslationPlugin } from '../../plugins/translation-plugin/translation.plugin';
 
 const IS_INSTRUMENTED = process.env.IS_INSTRUMENTED === 'true';
 
@@ -88,6 +89,12 @@ export const devConfig: VendureConfig = {
         MenataBrandingPlugin,
         CmsPlugin,
         AuditLogPlugin.init({ retentionDays: 90 }),
+        TranslationPlugin.init({
+            languages: [
+                { code: 'en', name: 'English' },
+                { code: 'fr', name: 'French' },
+            ],
+        }),
         GraphiqlPlugin.init(),
         AssetServerPlugin.init({
             route: 'assets',
