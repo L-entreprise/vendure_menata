@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
     ChannelService,
     RequestContext,
@@ -6,6 +6,7 @@ import {
     UserInputError,
 } from '@vendure/core';
 
+import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 import { TranslationLanguage } from '../entities/translation-language.entity';
 
 export interface LanguageInput {
@@ -21,6 +22,7 @@ export class TranslationLanguageService {
     constructor(
         private connection: TransactionalConnection,
         private channelService: ChannelService,
+        @Optional() private auditLogService?: AuditLogService,
     ) {}
 
     async findAll(ctx: RequestContext): Promise<TranslationLanguage[]> {
@@ -62,10 +64,24 @@ export class TranslationLanguageService {
         }
 
         const results: TranslationLanguage[] = [];
+        const changes: Record<string, Record<string, { from: unknown; to: unknown }>> = {};
         for (let i = 0; i < inputs.length; i++) {
             const input = inputs[i];
             const existingLang = existingByCode.get(input.code);
             if (existingLang) {
+                const langChanges: Record<string, { from: unknown; to: unknown }> = {};
+                if (existingLang.name !== input.name) {
+                    langChanges.name = { from: existingLang.name, to: input.name };
+                }
+                if (existingLang.enabled !== (input.enabled ?? true)) {
+                    langChanges.enabled = { from: existingLang.enabled, to: input.enabled ?? true };
+                }
+                if (existingLang.isDefault !== (input.isDefault ?? false)) {
+                    langChanges.isDefault = { from: existingLang.isDefault, to: input.isDefault ?? false };
+                }
+                if (Object.keys(langChanges).length > 0) {
+                    changes[input.code] = langChanges;
+                }
                 existingLang.name = input.name;
                 existingLang.enabled = input.enabled ?? true;
                 existingLang.isDefault = input.isDefault ?? false;
@@ -83,6 +99,17 @@ export class TranslationLanguageService {
                 results.push(await repo.save(lang));
             }
         }
+
+        this.auditLogService?.log(ctx, {
+            action: 'TranslationLanguagesUpdated',
+            category: 'translation',
+            entityType: 'TranslationLanguage',
+            detail: {
+                added: inputs.filter(i => !existingByCode.has(i.code)).map(i => i.code),
+                removed: toDelete.map(l => l.code),
+                changes: Object.keys(changes).length > 0 ? changes : undefined,
+            },
+        }).catch(() => {});
 
         return results;
     }

@@ -6,8 +6,6 @@ import { cmsCollectionEntry } from './cms-collection-entry';
 import { cmsPageDetail } from './cms-page-detail';
 import { cmsPageList } from './cms-page-list';
 import { cmsSubmissionDetail } from './cms-submission-detail';
-import { contentBlockDetail } from './content-block-detail';
-import { contentBlockList } from './content-block-list';
 
 const pinnedCmsPagesDocument = graphql(`
     query GetPinnedCmsPagesNav {
@@ -34,8 +32,6 @@ defineDashboardExtension({
         cmsPageDetail,
         cmsCollectionEntry,
         cmsSubmissionDetail,
-        contentBlockList,
-        contentBlockDetail,
     ],
 });
 
