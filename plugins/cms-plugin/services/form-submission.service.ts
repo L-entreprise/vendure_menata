@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { DeletionResponse, DeletionResult } from '@vendure/common/lib/generated-types';
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import {
@@ -11,6 +11,7 @@ import {
     UserInputError,
 } from '@vendure/core';
 
+import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 import { ContentBlock } from '../entities/content-block.entity';
 import { CmsPage } from '../entities/cms-page.entity';
 import { FormSubmission } from '../entities/form-submission.entity';
@@ -28,6 +29,7 @@ export class FormSubmissionService {
         private channelService: ChannelService,
         private listQueryBuilder: ListQueryBuilder,
         private customerService: CustomerService,
+        @Optional() private auditLogService?: AuditLogService,
     ) {}
 
     async findByPage(
@@ -49,7 +51,16 @@ export class FormSubmissionService {
         const submission = await this.connection.getEntityOrThrow(ctx, FormSubmission, id, {
             channelId: ctx.channelId,
         });
+        const pageId = submission.pageId;
         await this.connection.getRepository(ctx, FormSubmission).remove(submission);
+        this.auditLogService?.log(ctx, {
+            action: 'SubmissionDeleted',
+            category: 'cms',
+            entityType: 'FormSubmission',
+            entityId: id.toString(),
+            severity: 'warning',
+            detail: { pageId: pageId?.toString() },
+        }).catch(() => {});
         return { result: DeletionResult.DELETED };
     }
 
@@ -82,6 +93,13 @@ export class FormSubmissionService {
         await this.channelService.assignToCurrentChannel(submission, ctx);
         await this.connection.getRepository(ctx, FormSubmission).save(submission);
 
+        this.auditLogService?.log(ctx, {
+            action: 'FormSubmissionCreated',
+            category: 'cms',
+            entityType: 'FormSubmission',
+            entityId: submission.id?.toString(),
+            detail: { pageKey: input.pageKey, data: sanitized },
+        }).catch(() => {});
         return { success: true };
     }
 
@@ -168,7 +186,15 @@ export class FormSubmissionService {
         submission.pageId = input.pageId;
         submission.data = input.data;
         await this.channelService.assignToCurrentChannel(submission, ctx);
-        return this.connection.getRepository(ctx, FormSubmission).save(submission);
+        const saved = await this.connection.getRepository(ctx, FormSubmission).save(submission);
+        this.auditLogService?.log(ctx, {
+            action: 'CollectionEntryCreated',
+            category: 'cms',
+            entityType: 'CollectionEntry',
+            entityId: saved.id.toString(),
+            detail: { pageId: input.pageId.toString(), pageKey: page.key, data: input.data },
+        }).catch(() => {});
+        return saved;
     }
 
     async updateEntry(
@@ -189,8 +215,27 @@ export class FormSubmissionService {
             .where('block.pageId = :pageId', { pageId: submission.pageId })
             .getMany();
         this.validateEntryData(blocks, input.data);
+        const oldData = { ...submission.data };
         submission.data = input.data;
-        return this.connection.getRepository(ctx, FormSubmission).save(submission);
+        const saved = await this.connection.getRepository(ctx, FormSubmission).save(submission);
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+        for (const key of Object.keys(input.data)) {
+            if (JSON.stringify(oldData[key]) !== JSON.stringify(input.data[key])) {
+                changes[key] = { from: oldData[key] ?? null, to: input.data[key] };
+            }
+        }
+        this.auditLogService?.log(ctx, {
+            action: 'CollectionEntryUpdated',
+            category: 'cms',
+            entityType: 'CollectionEntry',
+            entityId: input.id.toString(),
+            detail: {
+                pageId: submission.pageId.toString(),
+                pageKey: page.key,
+                changes: Object.keys(changes).length > 0 ? changes : undefined,
+            },
+        }).catch(() => {});
+        return saved;
     }
 
     async createCustomerFromSubmission(

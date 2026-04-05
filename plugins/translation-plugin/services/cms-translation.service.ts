@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { ID } from '@vendure/common/lib/shared-types';
 import {
     ChannelService,
     RequestContext,
     TransactionalConnection,
 } from '@vendure/core';
+
+import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 
 import { PAGE_TRANSLATABLE_FIELDS, TRANSLATABLE_BLOCK_FIELDS } from '../constants';
 import { CmsTranslationEntry } from '../entities/cms-translation-entry.entity';
@@ -46,6 +48,7 @@ export class CmsTranslationService {
     constructor(
         private connection: TransactionalConnection,
         private channelService: ChannelService,
+        @Optional() private auditLogService?: AuditLogService,
     ) {}
 
     async getTranslatableFields(ctx: RequestContext, pageId: ID): Promise<TranslatableField[]> {
@@ -153,14 +156,19 @@ export class CmsTranslationService {
         );
 
         const results: CmsTranslationEntry[] = [];
+        const changes: Record<string, { from: string | null; to: string }> = {};
         for (const input of entries) {
             const key = `${input.contentBlockId ?? 'page'}|${input.fieldName}`;
             const existingEntry = existingMap.get(key);
 
             if (existingEntry) {
+                if (existingEntry.value !== input.value) {
+                    changes[input.fieldName] = { from: existingEntry.value, to: input.value };
+                }
                 existingEntry.value = input.value;
                 results.push(await repo.save(existingEntry));
             } else {
+                changes[input.fieldName] = { from: null, to: input.value };
                 const entry = new CmsTranslationEntry({
                     languageCode,
                     pageId,
@@ -171,6 +179,16 @@ export class CmsTranslationService {
                 await this.channelService.assignToCurrentChannel(entry, ctx);
                 results.push(await repo.save(entry));
             }
+        }
+
+        if (Object.keys(changes).length > 0) {
+            this.auditLogService?.log(ctx, {
+                action: 'TranslationUpdated',
+                category: 'translation',
+                entityType: 'CmsTranslation',
+                entityId: pageId.toString(),
+                detail: { languageCode, pageId: pageId.toString(), changes },
+            }).catch(() => {});
         }
 
         return results;
@@ -409,13 +427,18 @@ export class CmsTranslationService {
         );
 
         const results: CmsTranslationEntry[] = [];
+        const changes: Record<string, { from: string | null; to: string }> = {};
         for (const input of inputEntries) {
             const existingEntry = existingMap.get(input.fieldName);
 
             if (existingEntry) {
+                if (existingEntry.value !== input.value) {
+                    changes[input.fieldName] = { from: existingEntry.value, to: input.value };
+                }
                 existingEntry.value = input.value;
                 results.push(await repo.save(existingEntry));
             } else {
+                changes[input.fieldName] = { from: null, to: input.value };
                 const entry = new CmsTranslationEntry({
                     languageCode,
                     pageId,
@@ -427,6 +450,16 @@ export class CmsTranslationService {
                 await this.channelService.assignToCurrentChannel(entry, ctx);
                 results.push(await repo.save(entry));
             }
+        }
+
+        if (Object.keys(changes).length > 0) {
+            this.auditLogService?.log(ctx, {
+                action: 'EntryTranslationUpdated',
+                category: 'translation',
+                entityType: 'CollectionEntryTranslation',
+                entityId: entryId.toString(),
+                detail: { languageCode, pageId: pageId.toString(), entryId: entryId.toString(), changes },
+            }).catch(() => {});
         }
 
         return results;

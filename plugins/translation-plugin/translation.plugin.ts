@@ -7,6 +7,7 @@ import {
     Type,
     VendurePlugin,
 } from '@vendure/core';
+import { AuditLogPlugin } from '../audit-log-plugin/audit-log.plugin';
 
 import { adminApiExtensions, shopApiExtensions } from './api/api-extensions';
 import { TranslationAdminResolver } from './api/translation-admin.resolver';
@@ -21,7 +22,7 @@ interface TranslationPluginOptions {
 }
 
 @VendurePlugin({
-    imports: [PluginCommonModule],
+    imports: [PluginCommonModule, AuditLogPlugin],
     entities: [TranslationLanguage, CmsTranslationEntry],
     adminApiExtensions: {
         schema: adminApiExtensions,

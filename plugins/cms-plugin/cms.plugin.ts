@@ -1,4 +1,5 @@
 import { PluginCommonModule, VendurePlugin } from '@vendure/core';
+import { AuditLogPlugin } from '../audit-log-plugin/audit-log.plugin';
 
 import { adminApiExtensions, shopApiExtensions } from './api/api-extensions';
 import { CmsPageAdminResolver } from './api/cms-page-admin.resolver';
@@ -18,7 +19,7 @@ import { ContentBlockService } from './services/content-block.service';
 import { FormSubmissionService } from './services/form-submission.service';
 
 @VendurePlugin({
-    imports: [PluginCommonModule],
+    imports: [PluginCommonModule, AuditLogPlugin],
     entities: [ContentBlock, ContentBlockTranslation, CmsPage, CmsPageTranslation, FormSubmission],
     adminApiExtensions: {
         schema: adminApiExtensions,
