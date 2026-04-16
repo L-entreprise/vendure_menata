@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ChevronDownIcon, ChevronRightIcon, XIcon } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import {
     api,
     AssetPickerDialog,
@@ -48,24 +48,17 @@ const getCmsPageForTranslationDocument = graphql(`
                 key
                 type
                 position
+                translations {
+                    languageCode
+                    name
+                    altText
+                }
             }
         }
     }
 `);
 
 // ── Regular page documents ──
-
-const getDefaultContentDocument = graphql(`
-    query GetCmsPageDefaultContent($pageId: ID!) {
-        cmsPageDefaultContent(pageId: $pageId) {
-            languageCode
-            pageId
-            contentBlockId
-            fieldName
-            value
-        }
-    }
-`);
 
 const getTranslatableFieldsDocument = graphql(`
     query GetTranslatableFields($pageId: ID!) {
@@ -144,17 +137,6 @@ const getCollectionEntryTranslationsDocument = graphql(`
     }
 `);
 
-const getCollectionEntryDefaultContentDocument = graphql(`
-    query GetCollectionEntryDefaultContent($pageId: ID!, $entryId: ID!) {
-        collectionEntryDefaultContent(pageId: $pageId, entryId: $entryId) {
-            languageCode
-            pageId
-            fieldName
-            value
-        }
-    }
-`);
-
 const updateCollectionEntryTranslationsDocument = graphql(`
     mutation UpdateCollectionEntryTranslations($input: UpdateCollectionEntryTranslationsInput!) {
         updateCollectionEntryTranslations(input: $input) {
@@ -197,14 +179,16 @@ function FieldInput({
     fieldName,
     value,
     onChange,
+    disabled,
 }: {
     blockType: string | null;
     fieldName: string;
     value: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
 }) {
     if (blockType === 'RICH_TEXT') {
-        return <RichTextEditor value={value} onChange={onChange} />;
+        return <RichTextEditor value={value} onChange={onChange} disabled={disabled} />;
     }
     if (blockType === 'TEXT_LONG') {
         return (
@@ -212,16 +196,18 @@ function FieldInput({
                 rows={4}
                 value={value}
                 onChange={e => onChange(e.target.value)}
+                disabled={disabled}
             />
         );
     }
     if (blockType === 'IMAGE') {
-        return <ImageFieldInput value={value} onChange={onChange} />;
+        return <ImageFieldInput value={value} onChange={onChange} disabled={disabled} />;
     }
     return (
         <Input
             value={value}
             onChange={e => onChange(e.target.value)}
+            disabled={disabled}
         />
     );
 }
@@ -229,9 +215,11 @@ function FieldInput({
 function ImageFieldInput({
     value,
     onChange,
+    disabled,
 }: {
     value: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
 }) {
     const { t } = useLingui();
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -263,6 +251,7 @@ function ImageFieldInput({
                 variant="outline"
                 size="sm"
                 onClick={() => setPickerOpen(true)}
+                disabled={disabled}
             >
                 {value ? t`Change Image` : t`Select Image`}
             </Button>
@@ -272,6 +261,7 @@ function ImageFieldInput({
                     variant="ghost"
                     size="sm"
                     onClick={() => onChange('')}
+                    disabled={disabled}
                 >
                     <XIcon className="h-4 w-4" />
                 </Button>
@@ -295,6 +285,33 @@ function ImageFieldInput({
     );
 }
 
+const FIELD_SUBTITLES: Record<string, string> = {
+    textContent: 'Content',
+    altText: 'Alt text',
+    image: 'Image',
+    name: 'Name',
+    slug: 'Slug',
+};
+
+function pageFieldLabel(fieldName: string): string {
+    if (fieldName === 'name') return 'Page Name';
+    if (fieldName === 'slug') return 'Page Slug';
+    return fieldName;
+}
+
+function fieldSubtitle(fieldName: string): string {
+    return FIELD_SUBTITLES[fieldName] ?? fieldName;
+}
+
+interface BlockInfo {
+    id: string;
+    name: string;
+    key: string;
+    type: string;
+}
+
+type BlockMap = Map<string, BlockInfo>;
+
 function LanguageHeaders({ languages }: { languages: Language[] }) {
     return (
         <>
@@ -302,7 +319,9 @@ function LanguageHeaders({ languages }: { languages: Language[] }) {
                 <div key={lang.code}>
                     {lang.name} ({lang.code})
                     {lang.isDefault && (
-                        <span className="ml-2 text-xs text-muted-foreground">(CMS)</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                            (CMS — read-only)
+                        </span>
                     )}
                 </div>
             ))}
@@ -316,10 +335,12 @@ function RegularPageTranslation({
     pageId,
     pageName,
     languages,
+    blockMap,
 }: {
     pageId: string;
     pageName: string;
     languages: Language[];
+    blockMap: BlockMap;
 }) {
     const { t } = useLingui();
     const [fields, setFields] = useState<FieldValue[]>([]);
@@ -328,24 +349,16 @@ function RegularPageTranslation({
 
     useEffect(() => {
         const load = async () => {
-            const [fieldsResult, translationsResult, defaultContentResult] = await Promise.all([
+            const [fieldsResult, translationsResult] = await Promise.all([
                 api.query(getTranslatableFieldsDocument, { pageId }),
                 api.query(getPageTranslationsDocument, { pageId }),
-                api.query(getDefaultContentDocument, { pageId }),
             ]);
 
             setFields(fieldsResult.cmsPageTranslatableFields ?? []);
 
-            const defaultLang = languages.find(l => l.isDefault);
             const map: Record<string, Record<string, string>> = {};
             for (const lang of languages) {
                 map[lang.code] = {};
-            }
-            if (defaultLang) {
-                for (const entry of defaultContentResult.cmsPageDefaultContent ?? []) {
-                    const key = `${entry.contentBlockId ?? 'page'}|${entry.fieldName}`;
-                    map[defaultLang.code][key] = entry.value;
-                }
             }
             for (const group of translationsResult.cmsPageTranslations ?? []) {
                 if (!map[group.languageCode]) map[group.languageCode] = {};
@@ -372,19 +385,22 @@ function RegularPageTranslation({
     const handleSave = useCallback(async () => {
         setSaving(true);
         try {
-            const promises = Object.entries(translations).map(([langCode, fieldMap]) => {
-                const entries = Object.entries(fieldMap).map(([key, value]) => {
-                    const [blockIdOrPage, fieldName] = key.split('|');
-                    return {
-                        contentBlockId: blockIdOrPage === 'page' ? null : blockIdOrPage,
-                        fieldName,
-                        value,
-                    };
+            const defaultCode = languages.find(l => l.isDefault)?.code;
+            const promises = Object.entries(translations)
+                .filter(([langCode]) => langCode !== defaultCode)
+                .map(([langCode, fieldMap]) => {
+                    const entries = Object.entries(fieldMap).map(([key, value]) => {
+                        const [blockIdOrPage, fieldName] = key.split('|');
+                        return {
+                            contentBlockId: blockIdOrPage === 'page' ? null : blockIdOrPage,
+                            fieldName,
+                            value,
+                        };
+                    });
+                    return api.mutate(updateTranslationsDocument, {
+                        input: { pageId, languageCode: langCode, entries },
+                    });
                 });
-                return api.mutate(updateTranslationsDocument, {
-                    input: { pageId, languageCode: langCode, entries },
-                });
-            });
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
@@ -392,7 +408,7 @@ function RegularPageTranslation({
         } finally {
             setSaving(false);
         }
-    }, [translations, pageId, t]);
+    }, [translations, pageId, languages, t]);
 
     return (
         <Page>
@@ -406,36 +422,71 @@ function RegularPageTranslation({
             </PageActionBar>
             <Card>
                 <CardContent>
-                    <div
-                        className="grid gap-4 border-b pb-2 mb-4 font-medium"
-                        style={{ gridTemplateColumns: `200px repeat(${languages.length}, 1fr)` }}
-                    >
-                        <div><Trans>Field</Trans></div>
-                        <LanguageHeaders languages={languages} />
-                    </div>
-                    {fields.map(field => {
-                        const fieldKey = `${field.contentBlockId ?? 'page'}|${field.fieldName}`;
-                        return (
-                            <div
-                                key={fieldKey}
-                                className="grid gap-4 mb-4 items-start"
-                                style={{ gridTemplateColumns: `200px repeat(${languages.length}, 1fr)` }}
-                            >
-                                <div className="pt-2 text-sm font-medium text-muted-foreground truncate">
-                                    {field.fieldName}
-                                </div>
-                                {languages.map(lang => (
-                                    <FieldInput
-                                        key={lang.code}
-                                        blockType={field.blockType}
-                                        fieldName={field.fieldName}
-                                        value={translations[lang.code]?.[fieldKey] ?? ''}
-                                        onChange={v => updateValue(lang.code, fieldKey, v)}
-                                    />
-                                ))}
+                    <div className="overflow-x-auto">
+                        <div
+                            className="grid gap-4 border-b pb-2 mb-4 font-medium"
+                            style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
+                        >
+                            <div className="sticky left-0 bg-background z-10">
+                                <Trans>Field</Trans>
                             </div>
-                        );
-                    })}
+                            <LanguageHeaders languages={languages} />
+                        </div>
+                        {(() => {
+                            // Group fields: key '__page__' for page-level, otherwise blockId
+                            const groups = new Map<string, FieldValue[]>();
+                            for (const f of fields) {
+                                const groupId = f.contentBlockId ?? '__page__';
+                                const list = groups.get(String(groupId)) ?? [];
+                                list.push(f);
+                                groups.set(String(groupId), list);
+                            }
+                            const rendered: ReactNode[] = [];
+                            for (const [groupId, groupFields] of groups) {
+                                const isPage = groupId === '__page__';
+                                const block = !isPage ? blockMap.get(groupId) : null;
+                                const header = isPage ? null : (block?.name ?? groupId);
+                                if (!isPage && header) {
+                                    rendered.push(
+                                        <div
+                                            key={`${groupId}-header`}
+                                            className="text-sm font-semibold pt-3 pb-1"
+                                        >
+                                            {header}
+                                        </div>,
+                                    );
+                                }
+                                for (const field of groupFields) {
+                                    const fieldKey = `${field.contentBlockId ?? 'page'}|${field.fieldName}`;
+                                    const label = isPage
+                                        ? pageFieldLabel(field.fieldName)
+                                        : fieldSubtitle(field.fieldName);
+                                    rendered.push(
+                                        <div
+                                            key={fieldKey}
+                                            className="grid gap-4 mb-4 items-start"
+                                            style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
+                                        >
+                                            <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-background z-10">
+                                                {label}
+                                            </div>
+                                            {languages.map(lang => (
+                                                <FieldInput
+                                                    key={lang.code}
+                                                    blockType={field.blockType}
+                                                    fieldName={field.fieldName}
+                                                    value={translations[lang.code]?.[fieldKey] ?? ''}
+                                                    onChange={v => updateValue(lang.code, fieldKey, v)}
+                                                    disabled={lang.isDefault}
+                                                />
+                                            ))}
+                                        </div>,
+                                    );
+                                }
+                            }
+                            return rendered;
+                        })()}
+                    </div>
                 </CardContent>
             </Card>
         </Page>
@@ -460,11 +511,13 @@ function CollectionEntryCard({
     pageId,
     fields,
     languages,
+    blockMap,
 }: {
     entry: CollectionEntry;
     pageId: string;
     fields: CollectionField[];
     languages: Language[];
+    blockMap: BlockMap;
 }) {
     const { t } = useLingui();
     const [expanded, setExpanded] = useState(false);
@@ -475,22 +528,19 @@ function CollectionEntryCard({
     const entryLabel = Object.values(entry.data).find(v => typeof v === 'string' && v.length > 0)
         ?? `#${entry.id}`;
 
+    const blockByKey = new Map<string, BlockInfo>();
+    for (const info of blockMap.values()) blockByKey.set(info.key, info);
+
     const loadTranslations = useCallback(async () => {
         if (loaded) return;
-        const [transResult, defaultResult] = await Promise.all([
-            api.query(getCollectionEntryTranslationsDocument, { pageId, entryId: entry.id }),
-            api.query(getCollectionEntryDefaultContentDocument, { pageId, entryId: entry.id }),
-        ]);
+        const transResult = await api.query(getCollectionEntryTranslationsDocument, {
+            pageId,
+            entryId: entry.id,
+        });
 
-        const defaultLang = languages.find(l => l.isDefault);
         const map: Record<string, Record<string, string>> = {};
         for (const lang of languages) {
             map[lang.code] = {};
-        }
-        if (defaultLang) {
-            for (const e of defaultResult.collectionEntryDefaultContent ?? []) {
-                map[defaultLang.code][e.fieldName] = e.value;
-            }
         }
         for (const group of transResult.collectionEntryTranslations ?? []) {
             if (!map[group.languageCode]) map[group.languageCode] = {};
@@ -521,15 +571,18 @@ function CollectionEntryCard({
     const handleSave = useCallback(async () => {
         setSaving(true);
         try {
-            const promises = Object.entries(translations).map(([langCode, fieldMap]) => {
-                const entries = Object.entries(fieldMap).map(([fieldName, value]) => ({
-                    fieldName,
-                    value,
-                }));
-                return api.mutate(updateCollectionEntryTranslationsDocument, {
-                    input: { pageId, entryId: entry.id, languageCode: langCode, entries },
+            const defaultCode = languages.find(l => l.isDefault)?.code;
+            const promises = Object.entries(translations)
+                .filter(([langCode]) => langCode !== defaultCode)
+                .map(([langCode, fieldMap]) => {
+                    const entries = Object.entries(fieldMap).map(([fieldName, value]) => ({
+                        fieldName,
+                        value,
+                    }));
+                    return api.mutate(updateCollectionEntryTranslationsDocument, {
+                        input: { pageId, entryId: entry.id, languageCode: langCode, entries },
+                    });
                 });
-            });
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
@@ -537,7 +590,7 @@ function CollectionEntryCard({
         } finally {
             setSaving(false);
         }
-    }, [translations, pageId, entry.id, t]);
+    }, [translations, pageId, entry.id, languages, t]);
 
     return (
         <Card>
@@ -560,33 +613,42 @@ function CollectionEntryCard({
                             {saving ? '...' : <Trans>Save</Trans>}
                         </Button>
                     </div>
-                    <div
-                        className="grid gap-4 border-b pb-2 mb-4 font-medium text-sm"
-                        style={{ gridTemplateColumns: `200px repeat(${languages.length}, 1fr)` }}
-                    >
-                        <div><Trans>Field</Trans></div>
-                        <LanguageHeaders languages={languages} />
-                    </div>
-                    {fields.map(field => (
+                    <div className="overflow-x-auto">
                         <div
-                            key={field.fieldName}
-                            className="grid gap-4 mb-4 items-start"
-                            style={{ gridTemplateColumns: `200px repeat(${languages.length}, 1fr)` }}
+                            className="grid gap-4 border-b pb-2 mb-4 font-medium text-sm"
+                            style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                         >
-                            <div className="pt-2 text-sm font-medium text-muted-foreground truncate">
-                                {field.fieldName}
+                            <div className="sticky left-0 bg-background z-10">
+                                <Trans>Field</Trans>
                             </div>
-                            {languages.map(lang => (
-                                <FieldInput
-                                    key={lang.code}
-                                    blockType={field.blockType}
-                                    fieldName={field.fieldName}
-                                    value={translations[lang.code]?.[field.fieldName] ?? ''}
-                                    onChange={v => updateValue(lang.code, field.fieldName, v)}
-                                />
-                            ))}
+                            <LanguageHeaders languages={languages} />
                         </div>
-                    ))}
+                        {fields.map(field => {
+                            const block = blockByKey.get(field.fieldName);
+                            const label = block?.name ?? field.fieldName;
+                            return (
+                                <div
+                                    key={field.fieldName}
+                                    className="grid gap-4 mb-4 items-start"
+                                    style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
+                                >
+                                    <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-background z-10">
+                                        {label}
+                                    </div>
+                                    {languages.map(lang => (
+                                        <FieldInput
+                                            key={lang.code}
+                                            blockType={field.blockType}
+                                            fieldName={field.fieldName}
+                                            value={translations[lang.code]?.[field.fieldName] ?? ''}
+                                            onChange={v => updateValue(lang.code, field.fieldName, v)}
+                                            disabled={lang.isDefault}
+                                        />
+                                    ))}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </CardContent>
             )}
         </Card>
@@ -597,10 +659,12 @@ function CollectionPageTranslation({
     pageId,
     pageName,
     languages,
+    blockMap,
 }: {
     pageId: string;
     pageName: string;
     languages: Language[];
+    blockMap: BlockMap;
 }) {
     const { t } = useLingui();
     const [fields, setFields] = useState<CollectionField[]>([]);
@@ -645,6 +709,7 @@ function CollectionPageTranslation({
                             pageId={pageId}
                             fields={fields}
                             languages={languages}
+                            blockMap={blockMap}
                         />
                     ))}
                 </div>
@@ -661,6 +726,7 @@ function TranslationDetailContent() {
     const [pageName, setPageName] = useState('');
     const [pageId, setPageId] = useState('');
     const [isCollection, setIsCollection] = useState(false);
+    const [blockMap, setBlockMap] = useState<BlockMap>(new Map());
 
     useEffect(() => {
         const match = window.location.pathname.match(/\/cms-translations\/([^/]+)/);
@@ -680,6 +746,18 @@ function TranslationDetailContent() {
             setLanguages(enabledLangs);
             setPageName(pageResult.cmsPage?.name ?? pageResult.cmsPage?.key ?? '');
             setIsCollection(pageResult.cmsPage?.isCollection ?? false);
+
+            const map: BlockMap = new Map();
+            for (const block of pageResult.cmsPage?.contentBlocks ?? []) {
+                const defaultTrans = block.translations?.[0];
+                map.set(block.id, {
+                    id: block.id,
+                    name: defaultTrans?.name || block.key || block.type,
+                    key: block.key,
+                    type: block.type,
+                });
+            }
+            setBlockMap(map);
         };
         load();
     }, [pageId]);
@@ -703,6 +781,7 @@ function TranslationDetailContent() {
                 pageId={pageId}
                 pageName={pageName}
                 languages={languages}
+                blockMap={blockMap}
             />
         );
     }
@@ -712,6 +791,7 @@ function TranslationDetailContent() {
             pageId={pageId}
             pageName={pageName}
             languages={languages}
+            blockMap={blockMap}
         />
     );
 }

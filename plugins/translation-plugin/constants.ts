@@ -6,7 +6,7 @@ export const TRANSLATABLE_BLOCK_FIELDS: Record<string, string[]> = {
     TEXT_SHORT: ['textContent'],
     TEXT_LONG: ['textContent'],
     RICH_TEXT: ['textContent'],
-    IMAGE: ['image'],
+    IMAGE: ['image', 'altText'],
     ENUM: ['textContent'],
 };
 

@@ -4,12 +4,14 @@ import {
     ChannelService,
     RequestContext,
     TransactionalConnection,
+    UserInputError,
 } from '@vendure/core';
 
 import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 
 import { PAGE_TRANSLATABLE_FIELDS, TRANSLATABLE_BLOCK_FIELDS } from '../constants';
 import { CmsTranslationEntry } from '../entities/cms-translation-entry.entity';
+import { TranslationLanguage } from '../entities/translation-language.entity';
 
 // Import CMS plugin entities directly — they are registered with TypeORM at runtime
 import { CmsPage } from '../../cms-plugin/entities/cms-page.entity';
@@ -86,16 +88,42 @@ export class CmsTranslationService {
         pageId: ID,
         languageCode?: string,
     ): Promise<PageTranslations[]> {
+        const defaultCode = await this.getDefaultLanguageCode(ctx);
+
+        const buildDefaultGroup = async (): Promise<PageTranslations | null> => {
+            if (!defaultCode) return null;
+            const defaultEntries = await this.getDefaultContent(ctx, pageId);
+            const asEntries = defaultEntries.map(e =>
+                new CmsTranslationEntry({
+                    languageCode: defaultCode,
+                    pageId,
+                    contentBlockId: e.contentBlockId,
+                    fieldName: e.fieldName,
+                    value: e.value,
+                }),
+            );
+            return { pageId, languageCode: defaultCode, entries: asEntries };
+        };
+
+        // Default-lang specific request: always from CMS, skip CmsTranslationEntry
+        if (languageCode && defaultCode && languageCode === defaultCode) {
+            const group = await buildDefaultGroup();
+            return group ? [group] : [];
+        }
+
         const qb = this.connection
             .getRepository(ctx, CmsTranslationEntry)
             .createQueryBuilder('entry')
             .innerJoin('entry.channels', 'channel', 'channel.id = :channelId', {
                 channelId: ctx.channelId,
             })
-            .where('entry.pageId = :pageId', { pageId });
+            .where('entry.pageId = :pageId', { pageId })
+            .andWhere('entry.entryId IS NULL');
 
         if (languageCode) {
             qb.andWhere('entry.languageCode = :languageCode', { languageCode });
+        } else if (defaultCode) {
+            qb.andWhere('entry.languageCode != :defaultCode', { defaultCode });
         }
 
         const entries = await qb.getMany();
@@ -106,11 +134,19 @@ export class CmsTranslationService {
             grouped.set(entry.languageCode, [...existing, entry]);
         }
 
-        return Array.from(grouped.entries()).map(([code, items]) => ({
+        const results: PageTranslations[] = Array.from(grouped.entries()).map(([code, items]) => ({
             pageId,
             languageCode: code,
             entries: items,
         }));
+
+        // When no specific lang requested, prepend default-lang CMS-derived group
+        if (!languageCode) {
+            const defaultGroup = await buildDefaultGroup();
+            if (defaultGroup) results.unshift(defaultGroup);
+        }
+
+        return results;
     }
 
     async findByPageKey(
@@ -141,6 +177,11 @@ export class CmsTranslationService {
         entries: TranslationEntryInput[],
     ): Promise<CmsTranslationEntry[]> {
         const repo = this.connection.getRepository(ctx, CmsTranslationEntry);
+
+        const defaultCode = await this.getDefaultLanguageCode(ctx);
+        if (defaultCode && languageCode === defaultCode) {
+            throw new UserInputError('Default-language translations are managed in the CMS.');
+        }
 
         const existing = await repo
             .createQueryBuilder('entry')
@@ -214,6 +255,8 @@ export class CmsTranslationService {
             value: string;
         }> = [];
 
+        const defaultCode = (await this.getDefaultLanguageCode(ctx)) ?? '__default__';
+
         // Get page translations (name, slug)
         const pageTranslations = await this.connection
             .getRepository(ctx, CmsPageTranslation)
@@ -227,7 +270,7 @@ export class CmsTranslationService {
                 const value = (pageTrans as any)[fieldName];
                 if (value != null) {
                     entries.push({
-                        languageCode: '__default__',
+                        languageCode: defaultCode,
                         pageId,
                         contentBlockId: null,
                         fieldName,
@@ -253,7 +296,7 @@ export class CmsTranslationService {
             if (block.type === 'IMAGE') {
                 if (block.featuredAssetId) {
                     entries.push({
-                        languageCode: '__default__',
+                        languageCode: defaultCode,
                         pageId,
                         contentBlockId: block.id,
                         fieldName: 'image',
@@ -275,7 +318,7 @@ export class CmsTranslationService {
                     const value = (blockTrans as any)[fieldName];
                     if (value != null) {
                         entries.push({
-                            languageCode: '__default__',
+                            languageCode: defaultCode,
                             pageId,
                             contentBlockId: block.id,
                             fieldName,
@@ -337,6 +380,8 @@ export class CmsTranslationService {
 
         if (!entry) return [];
 
+        const defaultCode = (await this.getDefaultLanguageCode(ctx)) ?? '__default__';
+
         const blocks = await this.connection
             .getRepository(ctx, ContentBlock)
             .createQueryBuilder('block')
@@ -357,7 +402,7 @@ export class CmsTranslationService {
             const value = entry.data[block.key];
             if (value != null && typeof value === 'string') {
                 entries.push({
-                    languageCode: '__default__',
+                    languageCode: defaultCode,
                     pageId,
                     contentBlockId: null,
                     fieldName: block.key,
@@ -375,6 +420,29 @@ export class CmsTranslationService {
         entryId: ID,
         languageCode?: string,
     ): Promise<PageTranslations[]> {
+        const defaultCode = await this.getDefaultLanguageCode(ctx);
+
+        const buildDefaultGroup = async (): Promise<PageTranslations | null> => {
+            if (!defaultCode) return null;
+            const defaultEntries = await this.getCollectionEntryDefaultContent(ctx, pageId, entryId);
+            const asEntries = defaultEntries.map(e =>
+                new CmsTranslationEntry({
+                    languageCode: defaultCode,
+                    pageId,
+                    entryId,
+                    contentBlockId: e.contentBlockId,
+                    fieldName: e.fieldName,
+                    value: e.value,
+                }),
+            );
+            return { pageId, languageCode: defaultCode, entries: asEntries };
+        };
+
+        if (languageCode && defaultCode && languageCode === defaultCode) {
+            const group = await buildDefaultGroup();
+            return group ? [group] : [];
+        }
+
         const qb = this.connection
             .getRepository(ctx, CmsTranslationEntry)
             .createQueryBuilder('entry')
@@ -386,6 +454,8 @@ export class CmsTranslationService {
 
         if (languageCode) {
             qb.andWhere('entry.languageCode = :languageCode', { languageCode });
+        } else if (defaultCode) {
+            qb.andWhere('entry.languageCode != :defaultCode', { defaultCode });
         }
 
         const entries = await qb.getMany();
@@ -396,11 +466,18 @@ export class CmsTranslationService {
             grouped.set(e.languageCode, [...existing, e]);
         }
 
-        return Array.from(grouped.entries()).map(([code, items]) => ({
+        const results: PageTranslations[] = Array.from(grouped.entries()).map(([code, items]) => ({
             pageId,
             languageCode: code,
             entries: items,
         }));
+
+        if (!languageCode) {
+            const defaultGroup = await buildDefaultGroup();
+            if (defaultGroup) results.unshift(defaultGroup);
+        }
+
+        return results;
     }
 
     async updateCollectionEntryTranslations(
@@ -411,6 +488,11 @@ export class CmsTranslationService {
         inputEntries: TranslationEntryInput[],
     ): Promise<CmsTranslationEntry[]> {
         const repo = this.connection.getRepository(ctx, CmsTranslationEntry);
+
+        const defaultCode = await this.getDefaultLanguageCode(ctx);
+        if (defaultCode && languageCode === defaultCode) {
+            throw new UserInputError('Default-language translations are managed in the CMS.');
+        }
 
         const existing = await repo
             .createQueryBuilder('entry')
@@ -472,5 +554,18 @@ export class CmsTranslationService {
             .delete()
             .where('pageId = :pageId', { pageId })
             .execute();
+    }
+
+    private async getDefaultLanguageCode(ctx: RequestContext): Promise<string | null> {
+        const lang = await this.connection
+            .getRepository(ctx, TranslationLanguage)
+            .createQueryBuilder('lang')
+            .innerJoin('lang.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('lang.isDefault = :isDefault', { isDefault: true })
+            .andWhere('lang.enabled = :enabled', { enabled: true })
+            .getOne();
+        return lang?.code ?? null;
     }
 }
