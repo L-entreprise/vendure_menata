@@ -263,11 +263,21 @@ function SubmissionDetailPage({ route }: { route: any }) {
 
 export const cmsSubmissionDetail: DashboardRouteDefinition = {
     path: '/cms-pages/$pageId/submissions/$submissionId',
-    loader: () => ({
-        breadcrumb: [
-            { path: '/cms-pages', label: 'Pages' },
-            'Submission',
-        ],
-    }),
+    loader: async ({ params }: { params: { pageId: string; submissionId: string } }) => {
+        let pageLabel = '…';
+        try {
+            const result = await api.query(cmsPageForSubmissionDocument, { id: params.pageId });
+            pageLabel = result.cmsPage?.name ?? result.cmsPage?.key ?? '…';
+        } catch {
+            // swallow — fall back to placeholder
+        }
+        return {
+            breadcrumb: [
+                { path: '/cms-pages', label: 'Pages' },
+                { path: `/cms-pages/${params.pageId}`, label: pageLabel },
+                'Submission',
+            ],
+        };
+    },
     component: route => <SubmissionDetailPage route={route} />,
 };

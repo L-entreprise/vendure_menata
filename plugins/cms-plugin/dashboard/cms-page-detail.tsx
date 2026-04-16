@@ -1027,11 +1027,6 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
                 const customerId = customerMap.get(sub.id);
                 return (
                     <div className="flex items-center gap-1 justify-end">
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to={`/cms-pages/${pageId}/submissions/${sub.id}`}>
-                                <EyeIcon className="h-3.5 w-3.5" />
-                            </Link>
-                        </Button>
                         {allowCustomerCreation && (
                             customerId ? (
                                 <Button asChild variant="ghost" size="sm">
@@ -1045,6 +1040,11 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
                                 </Button>
                             )
                         )}
+                        <Button asChild variant="ghost" size="sm">
+                            <Link to={`/cms-pages/${pageId}/submissions/${sub.id}`}>
+                                <EyeIcon className="h-3.5 w-3.5" />
+                            </Link>
+                        </Button>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(sub.id)}>
                             <TrashIcon className="h-3.5 w-3.5" />
                         </Button>
