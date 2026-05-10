@@ -42,7 +42,7 @@ msgid "Rich Text"
 msgstr "Texte riche"
 
 msgid "Boolean"
-msgstr "Booleen"
+msgstr "Booléen"
 
 msgid "Options List"
 msgstr "Liste d'options"
@@ -61,16 +61,16 @@ msgstr "Nombre"
 
 #. Block Type Descriptions
 msgid "Single-line text with character limit"
-msgstr "Texte sur une ligne avec limite de caracteres"
+msgstr "Texte sur une ligne avec limite de caractères"
 
 msgid "Multi-line text for paragraphs"
 msgstr "Texte multiligne pour les paragraphes"
 
 msgid "WYSIWYG editor with formatting"
-msgstr "Editeur WYSIWYG avec mise en forme"
+msgstr "Éditeur WYSIWYG avec mise en forme"
 
 msgid "Toggle with custom labels"
-msgstr "Interrupteur avec labels personnalises"
+msgstr "Interrupteur avec libellés personnalisés"
 
 msgid "List of values, one per line"
 msgstr "Liste de valeurs, une par ligne"
@@ -82,20 +82,20 @@ msgid "Multiple images"
 msgstr "Plusieurs images"
 
 msgid "Date and time picker"
-msgstr "Selecteur de date et heure"
+msgstr "Sélecteur de date et heure"
 
 msgid "Numeric value"
-msgstr "Valeur numerique"
+msgstr "Valeur numérique"
 
 #. Block Type Groups
 msgid "Text"
 msgstr "Texte"
 
 msgid "Media"
-msgstr "Media"
+msgstr "Média"
 
 msgid "Data"
-msgstr "Donnees"
+msgstr "Données"
 
 #. Block Summary
 msgid "Empty"
@@ -111,7 +111,7 @@ msgid "{0} options"
 msgstr "{0} options"
 
 msgid "Image selected"
-msgstr "Image selectionnee"
+msgstr "Image sélectionnée"
 
 msgid "No image"
 msgstr "Aucune image"
@@ -123,17 +123,17 @@ msgid "No images"
 msgstr "Aucune image"
 
 msgid "Not set"
-msgstr "Non defini"
+msgstr "Non défini"
 
 #. CMS Page Detail - Main
 msgid "Page created"
-msgstr "Page creee"
+msgstr "Page créée"
 
 msgid "Page updated"
-msgstr "Page mise a jour"
+msgstr "Page mise à jour"
 
 msgid "Failed to save page"
-msgstr "Echec de l'enregistrement de la page"
+msgstr "Échec de l'enregistrement de la page"
 
 msgid "Unknown error"
 msgstr "Erreur inconnue"
@@ -151,7 +151,7 @@ msgid "Add Section"
 msgstr "Ajouter une section"
 
 msgid "Key"
-msgstr "Cle"
+msgstr "Clé"
 
 msgid "e.g. hero-title"
 msgstr "ex. titre-principal"
@@ -160,7 +160,7 @@ msgid "Section name"
 msgstr "Nom de la section"
 
 msgid "Page Details"
-msgstr "Details de la page"
+msgstr "Détails de la page"
 
 msgid "Page name"
 msgstr "Nom de la page"
@@ -175,7 +175,7 @@ msgid "e.g. homepage"
 msgstr "ex. page-accueil"
 
 msgid "Enabled"
-msgstr "Active"
+msgstr "Activé"
 
 msgid "Accepts Submissions"
 msgstr "Accepte les soumissions"
@@ -184,19 +184,19 @@ msgid "Collection"
 msgstr "Collection"
 
 msgid "Pin to Sidebar"
-msgstr "Epingler dans la barre laterale"
+msgstr "Épingler dans la barre latérale"
 
 msgid "Allow Customer Creation"
-msgstr "Autoriser la creation de clients"
+msgstr "Autoriser la création de clients"
 
 msgid "When enabled, submissions can be converted to customers. Use these block keys:"
-msgstr "Lorsqu'active, les soumissions peuvent etre converties en clients. Utilisez ces cles de bloc :"
+msgstr "Lorsque activé, les soumissions peuvent être converties en clients. Utilisez ces clés de bloc :"
 
 msgid "required"
 msgstr "obligatoire"
 
 msgid "Create"
-msgstr "Creer"
+msgstr "Créer"
 
 msgid "Save"
 msgstr "Enregistrer"
@@ -212,16 +212,16 @@ msgid "No submissions yet."
 msgstr "Aucune soumission pour le moment."
 
 msgid "Submission deleted"
-msgstr "Soumission supprimee"
+msgstr "Soumission supprimée"
 
 msgid "Customer created"
-msgstr "Client cree"
+msgstr "Client créé"
 
 msgid "Failed to create customer"
-msgstr "Echec de la creation du client"
+msgstr "Échec de la création du client"
 
 msgid "Create Customer"
-msgstr "Creer un client"
+msgstr "Créer un client"
 
 msgid "View Customer"
 msgstr "Voir le client"
@@ -230,50 +230,50 @@ msgid "Page {0} of {1}"
 msgstr "Page {0} sur {1}"
 
 msgid "Previous"
-msgstr "Precedent"
+msgstr "Précédent"
 
 msgid "Next"
 msgstr "Suivant"
 
 #. Collection Entries Panel
 msgid "Collection Entries"
-msgstr "Entrees de collection"
+msgstr "Entrées de collection"
 
 msgid "Add Entry"
-msgstr "Ajouter une entree"
+msgstr "Ajouter une entrée"
 
 msgid "Edit Entry"
-msgstr "Modifier l'entree"
+msgstr "Modifier l'entrée"
 
 msgid "New Entry"
-msgstr "Nouvelle entree"
+msgstr "Nouvelle entrée"
 
 msgid "Update"
-msgstr "Mettre a jour"
+msgstr "Mettre à jour"
 
 msgid "Cancel"
 msgstr "Annuler"
 
 msgid "No entries yet. Add one above."
-msgstr "Aucune entree pour le moment. Ajoutez-en une ci-dessus."
+msgstr "Aucune entrée pour le moment. Ajoutez-en une ci-dessus."
 
 msgid "Entry deleted"
-msgstr "Entree supprimee"
+msgstr "Entrée supprimée"
 
 msgid "Entry updated"
-msgstr "Entree mise a jour"
+msgstr "Entrée mise à jour"
 
 msgid "Entry created"
-msgstr "Entree creee"
+msgstr "Entrée créée"
 
 msgid "Failed to save entry"
-msgstr "Echec de l'enregistrement de l'entree"
+msgstr "Échec de l'enregistrement de l'entrée"
 
 msgid "Edit"
 msgstr "Modifier"
 
 msgid "Select..."
-msgstr "Selectionner..."
+msgstr "Sélectionner..."
 
 #. Block Editors
 msgid "Enter text"
@@ -286,16 +286,16 @@ msgid "Rich Text Content"
 msgstr "Contenu en texte riche"
 
 msgid "True Label"
-msgstr "Label vrai"
+msgstr "Libellé Vrai"
 
 msgid "False Label"
-msgstr "Label faux"
+msgstr "Libellé Faux"
 
 msgid "e.g. Show Banner"
-msgstr "ex. Afficher la banniere"
+msgstr "ex. Afficher la bannière"
 
 msgid "e.g. Hide Banner"
-msgstr "ex. Masquer la banniere"
+msgstr "ex. Masquer la bannière"
 
 msgid "Options"
 msgstr "Options"
@@ -303,14 +303,14 @@ msgstr "Options"
 msgid "Enter one option per line"
 msgstr "Saisissez une option par ligne"
 
-msgid "Small\\nMedium\\nLarge\\nExtra Large"
-msgstr "Petit\\nMoyen\\nGrand\\nTres grand"
+msgid "Small\nMedium\nLarge\nExtra Large"
+msgstr "Petit\nMoyen\nGrand\nTrès grand"
 
 msgid "Change Image"
 msgstr "Changer l'image"
 
 msgid "Select Image"
-msgstr "Selectionner une image"
+msgstr "Sélectionner une image"
 
 msgid "Alt Text"
 msgstr "Texte alternatif"
@@ -326,21 +326,33 @@ msgstr "Cliquez sur + pour ajouter des images"
 
 #. Collection schema view
 msgid "Schema Fields"
-msgstr "Champs du schema"
+msgstr "Champs du schéma"
 
 msgid "These fields define the columns for collection entries."
-msgstr "Ces champs definissent les colonnes des entrees de collection."
+msgstr "Ces champs définissent les colonnes des entrées de collection."
 
 msgid "These fields define the form structure for submissions."
-msgstr "Ces champs definissent la structure du formulaire pour les soumissions."
+msgstr "Ces champs définissent la structure du formulaire pour les soumissions."
 
 msgid "Unnamed"
 msgstr "Sans nom"
 
 #. Customer creation
 msgid "Customer already exists"
-msgstr "Le client existe deja"
+msgstr "Le client existe déjà"
 
 #. Collection entry page
 msgid "Loading..."
 msgstr "Chargement..."
+
+msgid "Additional Fields"
+msgstr "Champs supplémentaires"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Entry"
+msgstr "Entrée"

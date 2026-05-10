@@ -285,22 +285,25 @@ function ImageFieldInput({
     );
 }
 
-const FIELD_SUBTITLES: Record<string, string> = {
-    textContent: 'Content',
-    altText: 'Alt text',
-    image: 'Image',
-    name: 'Name',
-    slug: 'Slug',
-};
-
-function pageFieldLabel(fieldName: string): string {
-    if (fieldName === 'name') return 'Page Name';
-    if (fieldName === 'slug') return 'Page Slug';
-    return fieldName;
-}
-
-function fieldSubtitle(fieldName: string): string {
-    return FIELD_SUBTITLES[fieldName] ?? fieldName;
+function useFieldLabels() {
+    const { t } = useLingui();
+    const subtitles: Record<string, string> = {
+        textContent: t`Content`,
+        altText: t`Alt text`,
+        image: t`Image`,
+        name: t`Name`,
+        slug: t`Slug`,
+    };
+    return {
+        pageFieldLabel(fieldName: string): string {
+            if (fieldName === 'name') return t`Page Name`;
+            if (fieldName === 'slug') return t`Page Slug`;
+            return fieldName;
+        },
+        fieldSubtitle(fieldName: string): string {
+            return subtitles[fieldName] ?? fieldName;
+        },
+    };
 }
 
 interface BlockInfo {
@@ -320,7 +323,7 @@ function LanguageHeaders({ languages }: { languages: Language[] }) {
                     {lang.name} ({lang.code})
                     {lang.isDefault && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                            (CMS — read-only)
+                            (<Trans>CMS — read-only</Trans>)
                         </span>
                     )}
                 </div>
@@ -343,6 +346,7 @@ function RegularPageTranslation({
     blockMap: BlockMap;
 }) {
     const { t } = useLingui();
+    const { pageFieldLabel, fieldSubtitle } = useFieldLabels();
     const [fields, setFields] = useState<FieldValue[]>([]);
     const [saving, setSaving] = useState(false);
     const [translations, setTranslations] = useState<Record<string, Record<string, string>>>({});
@@ -404,7 +408,7 @@ function RegularPageTranslation({
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
-            toast.error(err.message ?? 'Failed to save translations');
+            toast.error(err.message ?? t`Failed to save translations`);
         } finally {
             setSaving(false);
         }
@@ -424,10 +428,10 @@ function RegularPageTranslation({
                 <CardContent>
                     <div className="overflow-x-auto">
                         <div
-                            className="grid gap-4 border-b pb-2 mb-4 font-medium"
+                            className="grid gap-4 border-b pb-2 mb-4 text-sm font-medium text-muted-foreground"
                             style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                         >
-                            <div className="sticky left-0 bg-background z-10">
+                            <div className="sticky left-0 bg-card z-10">
                                 <Trans>Field</Trans>
                             </div>
                             <LanguageHeaders languages={languages} />
@@ -450,7 +454,7 @@ function RegularPageTranslation({
                                     rendered.push(
                                         <div
                                             key={`${groupId}-header`}
-                                            className="text-sm font-semibold pt-3 pb-1"
+                                            className="text-xs font-medium uppercase tracking-wide text-muted-foreground pt-3 pb-1"
                                         >
                                             {header}
                                         </div>,
@@ -467,7 +471,7 @@ function RegularPageTranslation({
                                             className="grid gap-4 mb-4 items-start"
                                             style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                                         >
-                                            <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-background z-10">
+                                            <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-card z-10">
                                                 {label}
                                             </div>
                                             {languages.map(lang => (
@@ -586,7 +590,7 @@ function CollectionEntryCard({
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
-            toast.error(err.message ?? 'Failed to save translations');
+            toast.error(err.message ?? t`Failed to save translations`);
         } finally {
             setSaving(false);
         }
@@ -615,10 +619,10 @@ function CollectionEntryCard({
                     </div>
                     <div className="overflow-x-auto">
                         <div
-                            className="grid gap-4 border-b pb-2 mb-4 font-medium text-sm"
+                            className="grid gap-4 border-b pb-2 mb-4 text-sm font-medium text-muted-foreground"
                             style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                         >
-                            <div className="sticky left-0 bg-background z-10">
+                            <div className="sticky left-0 bg-card z-10">
                                 <Trans>Field</Trans>
                             </div>
                             <LanguageHeaders languages={languages} />
@@ -632,7 +636,7 @@ function CollectionEntryCard({
                                     className="grid gap-4 mb-4 items-start"
                                     style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                                 >
-                                    <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-background z-10">
+                                    <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-card z-10">
                                         {label}
                                     </div>
                                     {languages.map(lang => (

@@ -1,9 +1,16 @@
 msgid ""
 msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
 "Language: en\n"
 
 msgid "Translations"
 msgstr "Translations"
+
+msgid "Translation"
+msgstr "Translation"
 
 msgid "Languages"
 msgstr "Languages"
@@ -17,6 +24,9 @@ msgstr "Save Translations"
 msgid "Save Languages"
 msgstr "Save Languages"
 
+msgid "Save"
+msgstr "Save"
+
 msgid "Add Language"
 msgstr "Add Language"
 
@@ -29,6 +39,12 @@ msgstr "Translations saved"
 msgid "Languages saved"
 msgstr "Languages saved"
 
+msgid "Failed to save translations"
+msgstr "Failed to save translations"
+
+msgid "Failed to save languages"
+msgstr "Failed to save languages"
+
 msgid "Page"
 msgstr "Page"
 
@@ -37,3 +53,66 @@ msgstr "Remove"
 
 msgid "Field"
 msgstr "Field"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Enabled"
+msgstr "Enabled"
+
+msgid "Default"
+msgstr "Default"
+
+msgid "Collection"
+msgstr "Collection"
+
+msgid "Collection Translations"
+msgstr "Collection Translations"
+
+msgid "No entries found in this collection."
+msgstr "No entries found in this collection."
+
+msgid "Content"
+msgstr "Content"
+
+msgid "Alt text"
+msgstr "Alt text"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Slug"
+msgstr "Slug"
+
+msgid "Page Name"
+msgstr "Page Name"
+
+msgid "Page Slug"
+msgstr "Page Slug"
+
+msgid "Image selected"
+msgstr "Image selected"
+
+msgid "Change Image"
+msgstr "Change Image"
+
+msgid "Select Image"
+msgstr "Select Image"
+
+msgid "CMS — read-only"
+msgstr "CMS — read-only"
+
+msgid "Only SuperAdmin can manage translation languages."
+msgstr "Only SuperAdmin can manage translation languages."
+
+msgid "No languages configured. Add one to get started."
+msgstr "No languages configured. Add one to get started."
+
+msgid "Translating products, collections & facets"
+msgstr "Translating products, collections & facets"
+
+msgid "For products, collections, facets and other built-in Vendure entities, switch the content language using the language selector at the top of the dashboard, then open the entity and edit its name, slug or description directly. Saving will store the translation for the selected language."
+msgstr "For products, collections, facets and other built-in Vendure entities, switch the content language using the language selector at the top of the dashboard, then open the entity and edit its name, slug or description directly. Saving will store the translation for the selected language."

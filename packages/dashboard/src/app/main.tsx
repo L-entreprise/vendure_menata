@@ -67,8 +67,19 @@ function InnerApp() {
     const { loadAndActivateLocale } = useUiLanguageLoader();
 
     useEffect(() => {
-        void loadAndActivateLocale(settings.displayLanguage);
-    }, [settings.displayLanguage]);
+        // Prefer the user's explicit display language. If it has not been
+        // changed from the default ('en') but the content language (set via
+        // the top-bar channel language selector) differs, fall back to that
+        // so plugin UI strings follow the language the user actually picked.
+        const explicit = settings.displayLanguage && settings.displayLanguage !== 'en'
+            ? settings.displayLanguage
+            : null;
+        const fallback = settings.contentLanguage && settings.contentLanguage !== 'en'
+            ? settings.contentLanguage
+            : null;
+        const locale = explicit ?? fallback ?? settings.displayLanguage ?? 'en';
+        void loadAndActivateLocale(locale);
+    }, [settings.displayLanguage, settings.contentLanguage]);
 
     useEffect(() => {
         if (!serverConfig) {

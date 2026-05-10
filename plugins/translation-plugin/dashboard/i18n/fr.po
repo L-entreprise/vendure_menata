@@ -1,9 +1,16 @@
 msgid ""
 msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
 "Language: fr\n"
 
 msgid "Translations"
 msgstr "Traductions"
+
+msgid "Translation"
+msgstr "Traduction"
 
 msgid "Languages"
 msgstr "Langues"
@@ -17,6 +24,9 @@ msgstr "Enregistrer les traductions"
 msgid "Save Languages"
 msgstr "Enregistrer les langues"
 
+msgid "Save"
+msgstr "Enregistrer"
+
 msgid "Add Language"
 msgstr "Ajouter une langue"
 
@@ -29,6 +39,12 @@ msgstr "Traductions enregistrées"
 msgid "Languages saved"
 msgstr "Langues enregistrées"
 
+msgid "Failed to save translations"
+msgstr "Échec de l'enregistrement des traductions"
+
+msgid "Failed to save languages"
+msgstr "Échec de l'enregistrement des langues"
+
 msgid "Page"
 msgstr "Page"
 
@@ -37,3 +53,66 @@ msgstr "Supprimer"
 
 msgid "Field"
 msgstr "Champ"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Enabled"
+msgstr "Activé"
+
+msgid "Default"
+msgstr "Défaut"
+
+msgid "Collection"
+msgstr "Collection"
+
+msgid "Collection Translations"
+msgstr "Traductions de collection"
+
+msgid "No entries found in this collection."
+msgstr "Aucune entrée trouvée dans cette collection."
+
+msgid "Content"
+msgstr "Contenu"
+
+msgid "Alt text"
+msgstr "Texte alternatif"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Slug"
+msgstr "Slug"
+
+msgid "Page Name"
+msgstr "Nom de la page"
+
+msgid "Page Slug"
+msgstr "Slug de la page"
+
+msgid "Image selected"
+msgstr "Image sélectionnée"
+
+msgid "Change Image"
+msgstr "Changer l'image"
+
+msgid "Select Image"
+msgstr "Sélectionner une image"
+
+msgid "CMS — read-only"
+msgstr "CMS — lecture seule"
+
+msgid "Only SuperAdmin can manage translation languages."
+msgstr "Seul un SuperAdmin peut gérer les langues de traduction."
+
+msgid "No languages configured. Add one to get started."
+msgstr "Aucune langue configurée. Ajoutez-en une pour commencer."
+
+msgid "Translating products, collections & facets"
+msgstr "Traduire les produits, collections et facettes"
+
+msgid "For products, collections, facets and other built-in Vendure entities, switch the content language using the language selector at the top of the dashboard, then open the entity and edit its name, slug or description directly. Saving will store the translation for the selected language."
+msgstr "Pour les produits, collections, facettes et autres entités natives de Vendure, changez la langue de contenu via le sélecteur de langue en haut du tableau de bord, puis ouvrez l'entité et modifiez directement son nom, son slug ou sa description. L'enregistrement stockera la traduction pour la langue sélectionnée."

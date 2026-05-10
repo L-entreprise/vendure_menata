@@ -1,10 +1,12 @@
 import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
-import { SettingsIcon } from 'lucide-react';
+import { InfoIcon, SettingsIcon } from 'lucide-react';
 import {
     Badge,
     Button,
+    Card,
+    CardContent,
     DashboardRouteDefinition,
     DetailPageButton,
     ListPage,
@@ -32,6 +34,25 @@ const getCmsPageListDocument = graphql(`
 function TranslationListContent({ route }: { route: any }) {
     const { t } = useLingui();
     return (
+        <>
+        <Card className="mb-4">
+            <CardContent className="flex items-start gap-3 py-4 text-sm">
+                <InfoIcon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                    <div className="font-medium">
+                        <Trans>Translating products, collections & facets</Trans>
+                    </div>
+                    <div className="text-muted-foreground">
+                        <Trans>
+                            For products, collections, facets and other built-in Vendure entities,
+                            switch the content language using the language selector at the top of the dashboard,
+                            then open the entity and edit its name, slug or description directly. Saving will store
+                            the translation for the selected language.
+                        </Trans>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
         <ListPage
             pageId="translation-list"
             title={t`Translations`}
@@ -75,6 +96,7 @@ function TranslationListContent({ route }: { route: any }) {
                 </Button>
             </PageActionBarRight>
         </ListPage>
+        </>
     );
 }
 
