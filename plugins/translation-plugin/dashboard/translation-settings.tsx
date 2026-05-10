@@ -113,7 +113,7 @@ function TranslationSettingsContent() {
             );
             toast.success(t`Languages saved`);
         } catch (err: any) {
-            toast.error(err.message ?? 'Failed to save languages');
+            toast.error(err.message ?? t`Failed to save languages`);
         } finally {
             setSaving(false);
         }
@@ -153,10 +153,10 @@ function TranslationSettingsContent() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-[100px_1fr_80px_80px_50px] gap-4 border-b pb-2 mb-4 font-medium text-sm text-muted-foreground">
-                        <div>Code</div>
-                        <div>Name</div>
-                        <div>Enabled</div>
-                        <div>Default</div>
+                        <div><Trans>Code</Trans></div>
+                        <div><Trans>Name</Trans></div>
+                        <div><Trans>Enabled</Trans></div>
+                        <div><Trans>Default</Trans></div>
                         <div></div>
                     </div>
 

@@ -330,3 +330,15 @@ msgstr "Unnamed"
 
 msgid "Loading..."
 msgstr "Loading..."
+
+msgid "Additional Fields"
+msgstr "Additional Fields"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Entry"
+msgstr "Entry"
