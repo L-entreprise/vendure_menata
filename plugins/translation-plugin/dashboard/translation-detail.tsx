@@ -285,25 +285,22 @@ function ImageFieldInput({
     );
 }
 
-function useFieldLabels() {
-    const { t } = useLingui();
-    const subtitles: Record<string, string> = {
-        textContent: t`Content`,
-        altText: t`Alt text`,
-        image: t`Image`,
-        name: t`Name`,
-        slug: t`Slug`,
-    };
-    return {
-        pageFieldLabel(fieldName: string): string {
-            if (fieldName === 'name') return t`Page Name`;
-            if (fieldName === 'slug') return t`Page Slug`;
-            return fieldName;
-        },
-        fieldSubtitle(fieldName: string): string {
-            return subtitles[fieldName] ?? fieldName;
-        },
-    };
+const FIELD_SUBTITLES: Record<string, string> = {
+    textContent: 'Content',
+    altText: 'Alt text',
+    image: 'Image',
+    name: 'Name',
+    slug: 'Slug',
+};
+
+function pageFieldLabel(fieldName: string): string {
+    if (fieldName === 'name') return 'Page Name';
+    if (fieldName === 'slug') return 'Page Slug';
+    return fieldName;
+}
+
+function fieldSubtitle(fieldName: string): string {
+    return FIELD_SUBTITLES[fieldName] ?? fieldName;
 }
 
 interface BlockInfo {
@@ -323,7 +320,7 @@ function LanguageHeaders({ languages }: { languages: Language[] }) {
                     {lang.name} ({lang.code})
                     {lang.isDefault && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                            (<Trans>CMS — read-only</Trans>)
+                            (CMS — read-only)
                         </span>
                     )}
                 </div>
@@ -346,7 +343,6 @@ function RegularPageTranslation({
     blockMap: BlockMap;
 }) {
     const { t } = useLingui();
-    const { pageFieldLabel, fieldSubtitle } = useFieldLabels();
     const [fields, setFields] = useState<FieldValue[]>([]);
     const [saving, setSaving] = useState(false);
     const [translations, setTranslations] = useState<Record<string, Record<string, string>>>({});
@@ -408,7 +404,7 @@ function RegularPageTranslation({
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
-            toast.error(err.message ?? t`Failed to save translations`);
+            toast.error(err.message ?? 'Failed to save translations');
         } finally {
             setSaving(false);
         }
@@ -590,7 +586,7 @@ function CollectionEntryCard({
             await Promise.all(promises);
             toast.success(t`Translations saved`);
         } catch (err: any) {
-            toast.error(err.message ?? t`Failed to save translations`);
+            toast.error(err.message ?? 'Failed to save translations');
         } finally {
             setSaving(false);
         }
