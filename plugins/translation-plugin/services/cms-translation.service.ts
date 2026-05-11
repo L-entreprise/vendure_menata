@@ -95,6 +95,9 @@ export class CmsTranslationService {
             const defaultEntries = await this.getDefaultContent(ctx, pageId);
             const asEntries = defaultEntries.map(e =>
                 new CmsTranslationEntry({
+                    // Synthetic id so the non-null GraphQL `id: ID!` resolves.
+                    // These rows are not persisted; the prefix marks them as read-only.
+                    id: `default:${pageId}:${e.contentBlockId ?? 'page'}:${e.fieldName}` as unknown as ID,
                     languageCode: defaultCode,
                     pageId,
                     contentBlockId: e.contentBlockId,
@@ -427,6 +430,7 @@ export class CmsTranslationService {
             const defaultEntries = await this.getCollectionEntryDefaultContent(ctx, pageId, entryId);
             const asEntries = defaultEntries.map(e =>
                 new CmsTranslationEntry({
+                    id: `default:${pageId}:${entryId}:${e.contentBlockId ?? 'page'}:${e.fieldName}` as unknown as ID,
                     languageCode: defaultCode,
                     pageId,
                     entryId,
