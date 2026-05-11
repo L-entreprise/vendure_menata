@@ -342,3 +342,9 @@ msgstr "Pages"
 
 msgid "Entry"
 msgstr "Entry"
+
+msgid "Sidebar Order"
+msgstr "Sidebar Order"
+
+msgid "Submission Details"
+msgstr "Submission Details"
