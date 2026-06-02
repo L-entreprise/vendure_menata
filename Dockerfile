@@ -19,11 +19,22 @@ COPY . .
 # Reproducible install of the full workspace (dev deps included: the app is
 # started with ts-node at runtime, so ts-node/tsconfig-paths/typescript stay).
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --include=dev
+    npm ci --include=dev --no-audit --no-fund
 
-# Build all @vendure/* packages (lerna), then the React dashboard SPA into
-# packages/dev-server/dist (DashboardPlugin appDir).
-RUN npm run build \
+# Build ONLY the packages the server actually loads (+ their deps). Skips
+# admin-ui (Angular), cli, create, harden, payments, stellate, ui-devkit,
+# testing, admin-ui-plugin — none are used at runtime. Cuts build time ~50%+.
+RUN npx lerna run build \
+        --scope @vendure/common \
+        --scope @vendure/core \
+        --scope @vendure/asset-server-plugin \
+        --scope @vendure/email-plugin \
+        --scope @vendure/job-queue-plugin \
+        --scope @vendure/graphiql-plugin \
+        --scope @vendure/sentry-plugin \
+        --scope @vendure/telemetry-plugin \
+        --scope @vendure/dashboard \
+        --include-dependencies \
     && cd packages/dev-server \
     && npx vite build
 
