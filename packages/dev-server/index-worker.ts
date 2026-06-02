@@ -1,8 +1,9 @@
 import { bootstrapWorker } from '@vendure/core';
 
-import { devConfig } from './dev-config';
+import { getDevConfig } from './dev-config';
 
-bootstrapWorker(devConfig)
+getDevConfig()
+    .then(config => bootstrapWorker(config))
     .then(worker => worker.startJobQueue())
     // .then(worker => worker.startHealthCheckServer({ port: 3001 }))
     .catch(err => {

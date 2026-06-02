@@ -8,15 +8,18 @@ import {
     DefaultSearchPlugin,
     dummyPaymentHandler,
     LogLevel,
+    RedisCachePlugin,
     SettingsStoreScopes,
     VendureConfig,
 } from '@vendure/core';
 import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import { defaultEmailHandlers, EmailPlugin, FileBasedTemplateLoader } from '@vendure/email-plugin';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
+import { BullMQJobQueuePlugin } from '@vendure/job-queue-plugin/package/bullmq';
 import { SentryPlugin } from '@vendure/sentry-plugin';
 import { TelemetryPlugin } from '@vendure/telemetry-plugin';
 import 'dotenv/config';
+import { Redis, RedisOptions } from 'ioredis';
 import path from 'path';
 import { DataSourceOptions } from 'typeorm';
 import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
@@ -81,7 +84,15 @@ export const devConfig: VendureConfig = {
     importExportOptions: {
         importAssetsDir: path.join(__dirname, 'import-assets'),
     },
-    plugins: [
+    plugins: getPlugins(false),
+};
+
+/**
+ * Builds the plugin list. When `useRedis` is true, the Redis-backed BullMQ job queue and
+ * Redis cache are used in place of the DB-polling job queue and in-memory cache.
+ */
+function getPlugins(useRedis: boolean): VendureConfig['plugins'] {
+    return [
         // MultivendorPlugin.init({
         //     platformFeePercent: 10,
         //     platformFeeSKU: 'FEE',
@@ -101,9 +112,13 @@ export const devConfig: VendureConfig = {
             assetUploadDir: path.join(__dirname, 'assets'),
         }),
         DefaultSearchPlugin.init({ bufferUpdates: false, indexStockStatus: false }),
-        // Enable if you need to debug the job queue
-        // BullMQJobQueuePlugin.init({}),
-        DefaultJobQueuePlugin.init({}),
+        // Use Redis (BullMQ job queue + Redis cache) when reachable, else fall back to DB/in-memory.
+        ...(useRedis
+            ? [
+                  BullMQJobQueuePlugin.init({ connection: getRedisConnectionOptions() }),
+                  RedisCachePlugin.init({ redisOptions: getRedisConnectionOptions() }),
+              ]
+            : [DefaultJobQueuePlugin.init({})]),
         // JobQueueTestPlugin.init({ queueCount: 10 }),
         // ElasticsearchPlugin.init({
         //     host: 'http://localhost',
@@ -135,8 +150,61 @@ export const devConfig: VendureConfig = {
             route: 'dashboard',
             appDir: path.join(__dirname, './dist'),
         }),
-    ],
-};
+    ];
+}
+
+/**
+ * Reads Redis connection options from the environment, defaulting to a local Redis instance.
+ */
+function getRedisConnectionOptions(): RedisOptions {
+    return {
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: Number(process.env.REDIS_PORT) || 6379,
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: Number(process.env.REDIS_DB) || 0,
+    };
+}
+
+/**
+ * Probes Redis with a short timeout so the server can auto-detect it on startup.
+ * Returns false (rather than throwing) when Redis is unreachable.
+ */
+async function isRedisAvailable(options: RedisOptions = getRedisConnectionOptions()): Promise<boolean> {
+    const client = new Redis({
+        ...options,
+        lazyConnect: true,
+        connectTimeout: 1000,
+        maxRetriesPerRequest: 0,
+        retryStrategy: () => null,
+        reconnectOnError: () => false,
+    });
+    // Swallow connection errors so an unreachable Redis does not spam "Unhandled error event".
+    client.on('error', () => undefined);
+    try {
+        await client.connect();
+        await client.ping();
+        return true;
+    } catch {
+        return false;
+    } finally {
+        client.disconnect();
+    }
+}
+
+/**
+ * Resolves the dev config, switching to Redis-backed job queue + cache when Redis is reachable.
+ * Use this from the server/worker entrypoints; the static {@link devConfig} keeps the DB defaults
+ * for tooling (migrations, populate) that does not require Redis.
+ */
+export async function getDevConfig(): Promise<VendureConfig> {
+    const useRedis = await isRedisAvailable();
+    console.log(
+        useRedis
+            ? 'Redis detected: using BullMQ job queue + Redis cache'
+            : 'Redis not available: using DB job queue + in-memory cache',
+    );
+    return { ...devConfig, plugins: getPlugins(useRedis) };
+}
 
 function getDbConfig(): DataSourceOptions {
     const dbType = process.env.DB || 'mysql';
