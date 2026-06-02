@@ -1,0 +1,41 @@
+# --- VCS / tooling ---
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+.superpowers
+*.log
+
+# --- Dependencies & build outputs (regenerated inside the image) ---
+node_modules
+**/node_modules
+packages/*/lib
+packages/*/dist
+packages/*/package
+packages/dashboard/build
+packages/dev-server/dist
+packages/dev-server/.vite
+
+# --- E2E seed caches & test artifacts ---
+**/e2e/__data__
+**/*.e2e-spec.ts
+**/*.spec.ts
+**/__snapshots__
+coverage
+
+# --- Docs / local scratch (not needed to run the app) ---
+docs
+license
+dump.txt
+task.txt
+image.png
+*.md
+!packages/dev-server/**/*.md
+
+# --- Local env (inject via Coolify env vars, never bake into image) ---
+.env
+.env.*
+**/.env
+**/.env.*
