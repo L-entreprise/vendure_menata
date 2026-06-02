@@ -1,0 +1,80 @@
+name: Deploy Menata (build image -> GHCR -> Coolify)
+
+# Builds the Docker image in CI (full logs, no host build), pushes it to
+# GHCR, then triggers Coolify to pull + redeploy. The prod host never builds.
+
+on:
+  push:
+    branches:
+      - menata_branding
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-menata-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # GHCR requires a lowercase image path; the org has an uppercase letter.
+      - name: Compute lowercase image name
+        id: img
+        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.img.outputs.name }}:latest
+            ${{ steps.img.outputs.name }}:${{ github.sha }}
+          # Persist the BuildKit layer cache between runs so npm ci / lerna
+          # build only re-run when their inputs change.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  trigger-coolify:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify redeploy
+        # Coolify deploy webhook. Add these repo secrets:
+        #   COOLIFY_WEBHOOK -> the app's deploy webhook URL (or
+        #     https://<coolify-host>/api/v1/deploy?uuid=<resource-uuid>)
+        #   COOLIFY_TOKEN   -> a Coolify API token (Bearer)
+        # If you run separate API + worker services, set COOLIFY_WEBHOOK to a
+        # comma-separated list of both URLs.
+        run: |
+          if [ -z "${{ secrets.COOLIFY_WEBHOOK }}" ]; then
+            echo "No COOLIFY_WEBHOOK secret set — skipping auto-trigger."
+            echo "Image is pushed; click Redeploy in Coolify to ship it."
+            exit 0
+          fi
+          IFS=',' read -ra HOOKS <<< "${{ secrets.COOLIFY_WEBHOOK }}"
+          for url in "${HOOKS[@]}"; do
+            echo "Triggering: ${url%%\?*}"
+            code=$(curl -s -o /tmp/out -w '%{http_code}' -X GET \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+              "$url")
+            echo "HTTP $code"; cat /tmp/out; echo
+            [ "$code" -ge 200 ] && [ "$code" -lt 300 ] || { echo "Coolify trigger failed"; exit 1; }
+          done
