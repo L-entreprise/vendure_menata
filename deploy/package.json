@@ -1,0 +1,46 @@
+{
+    "name": "menata-vendure-deploy",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Minimal production deployment for the Menata Vendure store. Consumes @vendure/* from npm (precompiled) instead of building the monorepo fork. Plugins are shared from ../plugins (single source).",
+    "engines": {
+        "node": ">= 20"
+    },
+    "scripts": {
+        "build:dashboard": "vite build",
+        "start:server": "node -r ts-node/register/transpile-only -r dotenv/config index.ts",
+        "start:worker": "node -r ts-node/register/transpile-only -r dotenv/config index-worker.ts"
+    },
+    "//": "Version ranges (~3.5.0) auto-track upstream patch/minor so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.6.0) only on a major upstream jump.",
+    "dependencies": {
+        "@vendure/asset-server-plugin": "~3.5.0",
+        "@vendure/common": "~3.5.0",
+        "@vendure/core": "~3.5.0",
+        "@vendure/dashboard": "~3.5.0",
+        "@vendure/email-plugin": "~3.5.0",
+        "@vendure/graphiql-plugin": "~3.5.0",
+        "@vendure/job-queue-plugin": "~3.5.0",
+        "@vendure/sentry-plugin": "~3.5.0",
+        "bullmq": "^5.4.2",
+        "dotenv": "^16.6.1",
+        "ioredis": "^5.9.1",
+        "mysql2": "^3.11.0",
+        "sanitize-html": "^2.17.0"
+    },
+    "devDependencies": {
+        "ts-node": "^10.9.2",
+        "typescript": "5.8.2",
+        "vite": "^6.3.6"
+    },
+    "//overrides": "Pin the TanStack Router family to the versions the monorepo resolves (1.157.16). Newer releases tighten route-id parsing and break the dashboard's bundled routes. The committed package-lock.json freezes the rest.",
+    "overrides": {
+        "@tanstack/react-router": "1.157.16",
+        "@tanstack/react-router-devtools": "1.157.16",
+        "@tanstack/router-core": "1.157.16",
+        "@tanstack/router-generator": "1.157.16",
+        "@tanstack/router-plugin": "1.157.16",
+        "@tanstack/router-utils": "1.154.7",
+        "@tanstack/virtual-file-routes": "1.154.7",
+        "@tanstack/history": "1.154.14"
+    }
+}

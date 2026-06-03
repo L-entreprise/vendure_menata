@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "target": "es2017",
+        "lib": ["es2019", "esnext.asynciterable"],
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "strict": true,
+        "strictPropertyInitialization": false,
+        "sourceMap": true,
+        "newLine": "LF"
+    },
+    "ts-node": {
+        "transpileOnly": true
+    },
+    "include": ["**/*.ts", "../plugins/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}
