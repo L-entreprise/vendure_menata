@@ -93,8 +93,9 @@ export const config: VendureConfig = {
         },
     },
     dbConnectionOptions: {
-        // Never auto-sync in production by default — opt in for the very first boot only.
-        synchronize: process.env.DB_SYNCHRONIZE === 'true',
+        // Testing ground: schema auto-syncs by default. Set DB_SYNCHRONIZE=false to
+        // disable once you switch to generated migrations.
+        synchronize: process.env.DB_SYNCHRONIZE !== 'false',
         logging: false,
         migrations: [path.join(__dirname, 'migrations/*.ts')],
         ...getDbConfig(),
@@ -125,7 +126,11 @@ export const config: VendureConfig = {
         // Redis-backed job queue + cache when REDIS_HOST is set, else DB queue + in-memory cache.
         ...(useRedis
             ? [
-                  BullMQJobQueuePlugin.init({ connection: getRedisConnectionOptions() }),
+                  // BullMQ requires `maxRetriesPerRequest: null` on its (blocking) connection;
+                  // ioredis defaults to 20, which makes BullMQ throw on init.
+                  BullMQJobQueuePlugin.init({
+                      connection: { ...getRedisConnectionOptions(), maxRetriesPerRequest: null },
+                  }),
                   RedisCachePlugin.init({ redisOptions: getRedisConnectionOptions() }),
               ]
             : [DefaultJobQueuePlugin.init({})]),
