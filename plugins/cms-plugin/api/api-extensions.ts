@@ -117,6 +117,9 @@ export const shopApiExtensions = gql`
         cmsPages(options: CmsPageListOptions): CmsPageList!
         collectionEntries(pageKey: String!, options: FormSubmissionListOptions): FormSubmissionList!
         collectionEntry(pageKey: String!, entryId: ID!): FormSubmission
+        # Resolve image asset IDs (from collection-entry data or IMAGE translation
+        # values) into full asset objects, incl. the public 'preview'/'source' URLs.
+        cmsAssets(ids: [ID!]!): [Asset!]!
     }
 
     extend type Mutation {
