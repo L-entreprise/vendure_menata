@@ -89,6 +89,90 @@ const updateCollectionEntryDocument = graphql(`
     }
 `);
 
+/**
+ * Formats a stored value (ISO string / Date) into the `YYYY-MM-DDTHH:mm` shape a
+ * `datetime-local` input expects, using LOCAL time. Using `toISOString()` here
+ * (UTC) shifts the displayed time by the timezone offset, which made editing the
+ * minutes appear to change the hour.
+ */
+function toDatetimeLocalValue(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Per-entry "Options List" editor: each collection entry builds its OWN list of
+ * options (option1, option2, …). Type an option and press Enter (or click Add) to
+ * append it; click the × on a chip to remove it. Stored as a string[] on the entry.
+ * Accepts a legacy string value (newline/comma separated) for backwards compat.
+ */
+function OptionsListField({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: any;
+    onChange: (options: string[]) => void;
+}) {
+    const { t } = useLingui();
+    const options: string[] = Array.isArray(value)
+        ? value
+        : typeof value === 'string' && value
+          ? value.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean)
+          : [];
+    const [draft, setDraft] = useState('');
+
+    const addOption = () => {
+        const next = draft.trim();
+        if (!next) return;
+        onChange([...options, next]);
+        setDraft('');
+    };
+    const removeOption = (index: number) => onChange(options.filter((_, i) => i !== index));
+
+    return (
+        <div>
+            <label className="text-sm font-medium">{label}</label>
+            <div className="flex gap-2 mt-1">
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addOption();
+                        }
+                    }}
+                    placeholder={t`Add an option and press Enter`}
+                />
+                <Button type="button" variant="outline" onClick={addOption}>
+                    <Trans>Add</Trans>
+                </Button>
+            </div>
+            {options.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mt-2">
+                    {options.map((opt, i) => (
+                        <Badge key={i} variant="secondary" className="flex items-center gap-1">
+                            {opt}
+                            <button
+                                type="button"
+                                onClick={() => removeOption(i)}
+                                className="ml-0.5 text-muted-foreground hover:text-foreground"
+                            >
+                                <XIcon className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function CollectionEntryPage({ route }: { route: any }) {
     const params = route.useParams();
     const { pageId, entryId } = params;
@@ -257,30 +341,21 @@ function CollectionEntryPage({ route }: { route: any }) {
                         <label className="text-sm font-medium">{fieldLabel}</label>
                         <Input
                             type="datetime-local"
-                            value={value ? new Date(value).toISOString().slice(0, 16) : ''}
+                            value={toDatetimeLocalValue(value)}
                             onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value ? new Date(e.target.value).toISOString() : null }))}
                             className="mt-1"
                         />
                     </div>
                 );
-            case 'ENUM': {
-                const options = (block.translations?.[0]?.textContent ?? '').split('\n').filter((l: string) => l.trim());
+            case 'ENUM':
                 return (
-                    <div key={block.key}>
-                        <label className="text-sm font-medium">{fieldLabel}</label>
-                        <select
-                            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            value={String(value)}
-                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value }))}
-                        >
-                            <option value="">{t`Select...`}</option>
-                            {options.map((opt: string, i: number) => (
-                                <option key={i} value={opt.trim()}>{opt.trim()}</option>
-                            ))}
-                        </select>
-                    </div>
+                    <OptionsListField
+                        key={block.key}
+                        label={fieldLabel}
+                        value={formData[block.key]}
+                        onChange={opts => setFormData(prev => ({ ...prev, [block.key]: opts }))}
+                    />
                 );
-            }
             case 'IMAGE': {
                 const assetId = formData[block.key];
                 const preview = assetId ? assetPreviews.get(assetId) : undefined;

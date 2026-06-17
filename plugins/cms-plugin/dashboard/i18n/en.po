@@ -348,3 +348,9 @@ msgstr "Sidebar Order"
 
 msgid "Submission Details"
 msgstr "Submission Details"
+
+msgid "Add"
+msgstr "Add"
+
+msgid "Add an option and press Enter"
+msgstr "Add an option and press Enter"
