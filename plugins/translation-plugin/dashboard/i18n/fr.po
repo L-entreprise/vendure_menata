@@ -116,3 +116,9 @@ msgstr "Traduire les produits, collections et facettes"
 
 msgid "For products, collections, facets and other built-in Vendure entities, switch the content language using the language selector at the top of the dashboard, then open the entity and edit its name, slug or description directly. Saving will store the translation for the selected language."
 msgstr "Pour les produits, collections, facettes et autres entités natives de Vendure, changez la langue de contenu via le sélecteur de langue en haut du tableau de bord, puis ouvrez l'entité et modifiez directement son nom, son slug ou sa description. L'enregistrement stockera la traduction pour la langue sélectionnée."
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Add an option and press Enter"
+msgstr "Ajoutez une option et appuyez sur Entrée"
