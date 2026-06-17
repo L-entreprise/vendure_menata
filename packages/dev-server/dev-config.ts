@@ -24,6 +24,7 @@ import path from 'path';
 import { DataSourceOptions } from 'typeorm';
 import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
+import { DiagnosticsPlugin } from '../../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
 import { TranslationPlugin } from '../../plugins/translation-plugin/translation.plugin';
 
@@ -107,6 +108,20 @@ function getPlugins(useRedis: boolean): VendureConfig['plugins'] {
             ],
         }),
         GraphiqlPlugin.init(),
+        // Diagnostics: enabled when a Menata per-client key is present in the env.
+        ...(process.env.MENATA_DIAGNOSTIC_API_KEY
+            ? [
+                  DiagnosticsPlugin.init({
+                      apiBaseUrl: process.env.MENATA_API_BASE_URL ?? 'https://menata.fr',
+                      apiKey: process.env.MENATA_DIAGNOSTIC_API_KEY,
+                      clientId: process.env.MENATA_CLIENT_ID ?? '',
+                      ctaUrl: process.env.DIAGNOSTICS_CTA_URL,
+                      cacheTtlMs: process.env.DIAGNOSTICS_CACHE_TTL_MS
+                          ? Number(process.env.DIAGNOSTICS_CACHE_TTL_MS)
+                          : undefined,
+                  }),
+              ]
+            : []),
         AssetServerPlugin.init({
             route: 'assets',
             assetUploadDir: path.join(__dirname, 'assets'),

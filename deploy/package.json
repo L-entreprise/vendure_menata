@@ -9,7 +9,10 @@
     "scripts": {
         "build:dashboard": "vite build",
         "start:server": "node -r ts-node/register/transpile-only -r dotenv/config index.ts",
-        "start:worker": "node -r ts-node/register/transpile-only -r dotenv/config index-worker.ts"
+        "start:worker": "node -r ts-node/register/transpile-only -r dotenv/config index-worker.ts",
+        "migration:generate": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts generate",
+        "migration:run": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts run",
+        "migration:revert": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts revert"
     },
     "//": "Version ranges (~3.5.0) auto-track upstream patch/minor so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.6.0) only on a major upstream jump.",
     "dependencies": {
