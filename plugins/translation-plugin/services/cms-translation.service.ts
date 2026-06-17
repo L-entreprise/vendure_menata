@@ -402,8 +402,16 @@ export class CmsTranslationService {
 
         for (const block of blocks) {
             if (!TRANSLATABLE_BLOCK_FIELDS[block.type]) continue;
-            const value = entry.data[block.key];
-            if (value != null && typeof value === 'string') {
+            const raw = entry.data[block.key];
+            let value: string | null = null;
+            if (typeof raw === 'string') {
+                value = raw;
+            } else if (Array.isArray(raw)) {
+                // Options List (ENUM) stores a string[]; serialise it so the default
+                // language column seeds and round-trips through the list editor.
+                value = JSON.stringify(raw);
+            }
+            if (value != null) {
                 entries.push({
                     languageCode: defaultCode,
                     pageId,

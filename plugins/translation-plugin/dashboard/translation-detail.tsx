@@ -203,12 +203,105 @@ function FieldInput({
     if (blockType === 'IMAGE') {
         return <ImageFieldInput value={value} onChange={onChange} disabled={disabled} />;
     }
+    if (blockType === 'ENUM') {
+        return <OptionsListTranslationInput value={value} onChange={onChange} disabled={disabled} />;
+    }
     return (
         <Input
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
         />
+    );
+}
+
+/**
+ * Parses an Options List value that may be stored as a JSON array (collection
+ * entries / translated lists) or as a newline/comma string (regular-page ENUM
+ * textContent), returning a plain string[].
+ */
+function parseOptionsValue(value: string): string[] {
+    if (!value) return [];
+    const trimmed = value.trim();
+    if (trimmed.startsWith('[')) {
+        try {
+            const arr = JSON.parse(trimmed);
+            if (Array.isArray(arr)) return arr.map((x: any) => String(x));
+        } catch {
+            // fall through to line/comma split
+        }
+    }
+    return trimmed.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Per-language Options List editor for translations. Renders the list as chips,
+ * lets you add/remove options, and stores the result as a JSON array string so it
+ * round-trips regardless of the source format. Read-only for the default language.
+ */
+function OptionsListTranslationInput({
+    value,
+    onChange,
+    disabled,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    disabled?: boolean;
+}) {
+    const { t } = useLingui();
+    const options = parseOptionsValue(value);
+    const [draft, setDraft] = useState('');
+
+    const commit = (next: string[]) => onChange(JSON.stringify(next));
+    const addOption = () => {
+        const v = draft.trim();
+        if (!v) return;
+        commit([...options, v]);
+        setDraft('');
+    };
+    const removeOption = (i: number) => commit(options.filter((_, idx) => idx !== i));
+
+    return (
+        <div>
+            {!disabled && (
+                <div className="flex gap-2">
+                    <Input
+                        value={draft}
+                        onChange={e => setDraft(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addOption();
+                            }
+                        }}
+                        placeholder={t`Add an option and press Enter`}
+                    />
+                    <Button type="button" variant="outline" onClick={addOption}>
+                        <Trans>Add</Trans>
+                    </Button>
+                </div>
+            )}
+            {options.length > 0 ? (
+                <div className="flex gap-1.5 flex-wrap mt-2">
+                    {options.map((opt, i) => (
+                        <Badge key={i} variant="secondary" className="flex items-center gap-1">
+                            {opt}
+                            {!disabled && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeOption(i)}
+                                    className="ml-0.5 text-muted-foreground hover:text-foreground"
+                                >
+                                    <XIcon className="h-3 w-3" />
+                                </button>
+                            )}
+                        </Badge>
+                    ))}
+                </div>
+            ) : (
+                disabled && <span className="text-sm text-muted-foreground">—</span>
+            )}
+        </div>
     );
 }
 
