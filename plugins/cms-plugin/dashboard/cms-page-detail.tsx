@@ -207,6 +207,19 @@ function getBlockTypeIcon(type: string) {
     return getBlockTypeInfo(type)?.icon ?? TextIcon;
 }
 
+/**
+ * Formats a stored value (ISO string / Date) into the `YYYY-MM-DDTHH:mm` shape a
+ * `datetime-local` input expects, using LOCAL time. `toISOString()` (UTC) shifts
+ * the displayed time by the timezone offset, making minute edits move the hour.
+ */
+function toDatetimeLocalValue(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function prepareBlocksForMutation(blocks: any[]): any[] {
     return (blocks || [])
         .filter((b: any) => b.type)
@@ -729,7 +742,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                     <Trans>Add Section</Trans>
                                 </Button>
                                 {addMenuOpen && (
-                                    <div className="absolute z-10 mt-2 w-full bg-popover border rounded-lg shadow-lg p-5">
+                                    <div className="mt-2 w-full max-h-[70vh] overflow-y-auto bg-popover border rounded-lg shadow-lg p-5">
                                         {BLOCK_TYPE_GROUPS.map(group => {
                                             const groupTypes = BLOCK_TYPES.filter(bt => bt.group === group.key);
                                             return (
@@ -1268,7 +1281,7 @@ function BlockValueEditor({
                     <label className="text-sm font-medium"><Trans>Date</Trans></label>
                     <Input
                         type="datetime-local"
-                        value={block.dateValue ? new Date(block.dateValue).toISOString().slice(0, 16) : ''}
+                        value={toDatetimeLocalValue(block.dateValue)}
                         onChange={e =>
                             onFieldChange(
                                 index,

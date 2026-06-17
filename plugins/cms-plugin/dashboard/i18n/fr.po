@@ -362,3 +362,9 @@ msgstr "Ordre dans la barre latérale"
 
 msgid "Submission Details"
 msgstr "Détails de la soumission"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Add an option and press Enter"
+msgstr "Ajoutez une option et appuyez sur Entrée"
