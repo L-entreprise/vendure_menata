@@ -390,3 +390,13 @@ Network Trash Folder
 Temporary Items
 .apdisk
 __admin-ui/
+
+# ── Local agent tooling & scratch (kept locally, never committed) ──
+.superpowers/
+docs/superpowers/
+.claude/skills/
+# session scratch / handoffs / dumps
+handoff*.md
+*dump.txt
+task.txt
+image.png
