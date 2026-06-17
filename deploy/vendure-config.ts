@@ -21,6 +21,7 @@ import { DataSourceOptions } from 'typeorm';
 
 import { AuditLogPlugin } from '../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../plugins/cms-plugin/cms.plugin';
+import { DiagnosticsPlugin } from '../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../plugins/menata-branding/menata-branding.plugin';
 import { TranslationPlugin } from '../plugins/translation-plugin/translation.plugin';
 
@@ -121,6 +122,21 @@ export const config: VendureConfig = {
             // Set ASSET_URL_PREFIX to your public asset URL (e.g. https://shop.menata.fr/assets/).
             ...(process.env.ASSET_URL_PREFIX ? { assetUrlPrefix: process.env.ASSET_URL_PREFIX } : {}),
         }),
+        // Diagnostics: only enabled when this instance has a Menata per-client key.
+        // Proxies the client's frozen web-diagnostic from menata.fr server-to-server.
+        ...(process.env.MENATA_DIAGNOSTIC_API_KEY
+            ? [
+                  DiagnosticsPlugin.init({
+                      apiBaseUrl: requireEnv('MENATA_API_BASE_URL'),
+                      apiKey: requireEnv('MENATA_DIAGNOSTIC_API_KEY'),
+                      clientId: requireEnv('MENATA_CLIENT_ID'),
+                      ctaUrl: process.env.DIAGNOSTICS_CTA_URL,
+                      cacheTtlMs: process.env.DIAGNOSTICS_CACHE_TTL_MS
+                          ? Number(process.env.DIAGNOSTICS_CACHE_TTL_MS)
+                          : undefined,
+                  }),
+              ]
+            : []),
         DefaultSearchPlugin.init({ bufferUpdates: false, indexStockStatus: false }),
         DefaultSchedulerPlugin.init({}),
         // Redis-backed job queue + cache when REDIS_HOST is set, else DB queue + in-memory cache.
