@@ -316,6 +316,21 @@ msgstr "Images"
 msgid "Click + to add images"
 msgstr "Click + to add images"
 
+msgid "Description"
+msgstr "Description"
+
+msgid "Short text for screen readers / SEO"
+msgstr "Short text for screen readers / SEO"
+
+msgid "Visible caption shown next to the image"
+msgstr "Visible caption shown next to the image"
+
+msgid "Alt text (screen readers / SEO)"
+msgstr "Alt text (screen readers / SEO)"
+
+msgid "Description / caption"
+msgstr "Description / caption"
+
 msgid "Schema Fields"
 msgstr "Schema Fields"
 

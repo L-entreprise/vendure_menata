@@ -3,6 +3,7 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
     ArrowLeftIcon,
+    PlusIcon,
     XIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -185,6 +186,7 @@ function CollectionEntryPage({ route }: { route: any }) {
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [pickerOpen, setPickerOpen] = useState<string | null>(null);
+    const [galleryPicker, setGalleryPicker] = useState<string | null>(null);
     const [assetPreviews, setAssetPreviews] = useState<Map<string, string>>(new Map());
 
     const loadAssetPreview = useCallback(async (assetId: string) => {
@@ -213,7 +215,12 @@ function CollectionEntryPage({ route }: { route: any }) {
                 const defaults: Record<string, any> = {};
                 for (const block of blocks) {
                     if (block.key) {
-                        defaults[block.key] = block.type === 'BOOLEAN' ? false : '';
+                        defaults[block.key] =
+                            block.type === 'BOOLEAN'
+                                ? false
+                                : block.type === 'IMAGE_GALLERY'
+                                  ? []
+                                  : '';
                     }
                 }
                 setFormData(defaults);
@@ -226,17 +233,22 @@ function CollectionEntryPage({ route }: { route: any }) {
                 if (entry) {
                     const data = { ...(entry.data as Record<string, any>) };
                     setFormData(data);
-                    // Resolve asset previews for IMAGE fields
-                    const imageBlocks = blocks.filter(b => b.type === 'IMAGE' && data[b.key]);
-                    for (const block of imageBlocks) {
-                        const assetId = data[block.key];
-                        if (assetId) {
-                            api.query(getAssetDocument, { id: assetId }).then(r => {
-                                if (r.asset?.preview) {
-                                    setAssetPreviews(prev => new Map(prev).set(assetId, r.asset!.preview));
-                                }
-                            }).catch(() => {});
+                    // Resolve asset previews for IMAGE (single id) and IMAGE_GALLERY
+                    // (array of ids) fields.
+                    const assetIdsToLoad: string[] = [];
+                    for (const block of blocks) {
+                        if (block.type === 'IMAGE' && data[block.key]) {
+                            assetIdsToLoad.push(String(data[block.key]));
+                        } else if (block.type === 'IMAGE_GALLERY' && Array.isArray(data[block.key])) {
+                            assetIdsToLoad.push(...(data[block.key] as string[]).map(String));
                         }
+                    }
+                    for (const assetId of [...new Set(assetIdsToLoad)]) {
+                        api.query(getAssetDocument, { id: assetId }).then(r => {
+                            if (r.asset?.preview) {
+                                setAssetPreviews(prev => new Map(prev).set(assetId, r.asset!.preview));
+                            }
+                        }).catch(() => {});
                     }
                 }
             }
@@ -359,6 +371,10 @@ function CollectionEntryPage({ route }: { route: any }) {
             case 'IMAGE': {
                 const assetId = formData[block.key];
                 const preview = assetId ? assetPreviews.get(assetId) : undefined;
+                // Per-entry image metadata lives alongside the asset id in the entry
+                // data JSON, keyed by `<fieldKey>__alt` / `<fieldKey>__description`.
+                const altKey = `${block.key}__alt`;
+                const descKey = `${block.key}__description`;
                 return (
                     <div key={block.key}>
                         <label className="text-sm font-medium">{fieldLabel}</label>
@@ -377,6 +393,21 @@ function CollectionEntryPage({ route }: { route: any }) {
                                 </Button>
                             )}
                         </div>
+                        {assetId && (
+                            <div className="mt-2 space-y-2">
+                                <Input
+                                    value={String(formData[altKey] ?? '')}
+                                    onChange={e => setFormData(prev => ({ ...prev, [altKey]: e.target.value }))}
+                                    placeholder={t`Alt text (screen readers / SEO)`}
+                                />
+                                <Textarea
+                                    value={String(formData[descKey] ?? '')}
+                                    onChange={e => setFormData(prev => ({ ...prev, [descKey]: e.target.value }))}
+                                    placeholder={t`Description / caption`}
+                                    rows={2}
+                                />
+                            </div>
+                        )}
                         {pickerOpen === block.key && (
                             <AssetPickerDialog
                                 open={true}
@@ -389,6 +420,102 @@ function CollectionEntryPage({ route }: { route: any }) {
                                         if (asset.preview) {
                                             setAssetPreviews(prev => new Map(prev).set(asset.id, asset.preview));
                                         }
+                                    }
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            }
+            case 'IMAGE_GALLERY': {
+                const assetIds: string[] = Array.isArray(formData[block.key]) ? formData[block.key] : [];
+                // Per-image alt/description for an entry gallery, keyed by asset id,
+                // stored under `<fieldKey>__imageMeta`.
+                const metaKey = `${block.key}__imageMeta`;
+                const imageMeta: Record<string, { alt?: string; description?: string }> =
+                    formData[metaKey] ?? {};
+
+                const updateMeta = (assetId: string, field: 'alt' | 'description', val: string) =>
+                    setFormData(prev => {
+                        const prevMeta = (prev[metaKey] as Record<string, any>) || {};
+                        return {
+                            ...prev,
+                            [metaKey]: {
+                                ...prevMeta,
+                                [assetId]: { ...(prevMeta[assetId] || {}), [field]: val },
+                            },
+                        };
+                    });
+                const removeImage = (assetId: string) =>
+                    setFormData(prev => {
+                        const ids = ((prev[block.key] as string[]) || []).filter(id => id !== assetId);
+                        const { [assetId]: _removed, ...restMeta } = (prev[metaKey] as Record<string, any>) || {};
+                        return { ...prev, [block.key]: ids, [metaKey]: restMeta };
+                    });
+
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <div className="space-y-3 mt-2">
+                            {assetIds.map(assetId => {
+                                const preview = assetPreviews.get(assetId);
+                                return (
+                                    <div key={assetId} className="flex gap-3 items-start border rounded-md p-2">
+                                        <div className="relative group shrink-0">
+                                            {preview ? (
+                                                <img src={`${preview}?preset=thumb`} alt="" className="h-20 w-20 rounded object-cover border" />
+                                            ) : (
+                                                <Badge variant="secondary" className="h-20 w-20 flex items-center justify-center">{t`Image`}</Badge>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => removeImage(assetId)}
+                                            >
+                                                <XIcon className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <Input
+                                                value={imageMeta[assetId]?.alt ?? ''}
+                                                onChange={e => updateMeta(assetId, 'alt', e.target.value)}
+                                                placeholder={t`Alt text (screen readers / SEO)`}
+                                            />
+                                            <Textarea
+                                                value={imageMeta[assetId]?.description ?? ''}
+                                                onChange={e => updateMeta(assetId, 'description', e.target.value)}
+                                                placeholder={t`Description / caption`}
+                                                rows={2}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                className="w-20 h-20 border border-dashed rounded-md flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                                onClick={() => setGalleryPicker(block.key)}
+                            >
+                                <PlusIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        {assetIds.length === 0 && (
+                            <p className="text-xs text-muted-foreground mt-1"><Trans>Click + to add images</Trans></p>
+                        )}
+                        {galleryPicker === block.key && (
+                            <AssetPickerDialog
+                                open={true}
+                                onClose={() => setGalleryPicker(null)}
+                                multiSelect={true}
+                                onSelect={assets => {
+                                    if (assets.length > 0) {
+                                        const newIds = [...assetIds, ...assets.map(a => a.id)];
+                                        setFormData(prev => ({ ...prev, [block.key]: newIds }));
+                                        assets.forEach(a => {
+                                            if (a.preview) {
+                                                setAssetPreviews(prev => new Map(prev).set(a.id, a.preview));
+                                            }
+                                        });
                                     }
                                 }}
                             />

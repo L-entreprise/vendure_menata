@@ -292,7 +292,7 @@ function getDefaultMetadata(type: string): Record<string, unknown> | null {
         case 'BOOLEAN':
             return { trueLabel: 'Yes', falseLabel: 'No' };
         case 'IMAGE_GALLERY':
-            return { assetIds: [], assetPreviews: [] };
+            return { assetIds: [], assetPreviews: [], imageMeta: {} };
         default:
             return null;
     }
@@ -1516,7 +1516,21 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
                         <Input
                             value={block.translations?.[0]?.altText ?? ''}
                             onChange={e => onTranslationChange(index, 'altText', e.target.value)}
-                            placeholder={t`Image description`}
+                            placeholder={t`Short text for screen readers / SEO`}
+                            className="mt-1"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium"><Trans>Description</Trans></label>
+                        <Textarea
+                            value={String(block.metadata?.description ?? '')}
+                            onChange={e =>
+                                onFieldsChange(index, {
+                                    metadata: { ...(block.metadata || {}), description: e.target.value },
+                                })
+                            }
+                            placeholder={t`Visible caption shown next to the image`}
+                            rows={2}
                             className="mt-1"
                         />
                     </div>
@@ -1548,36 +1562,74 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
     const [pickerOpen, setPickerOpen] = useState(false);
     const assetIds: string[] = block.metadata?.assetIds ?? [];
     const assetPreviews: string[] = block.metadata?.assetPreviews ?? [];
+    // Per-image alt/description keyed by asset id (default language). Survives
+    // reorder/removal because it is keyed by id, not array index.
+    const imageMeta: Record<string, { alt?: string; description?: string }> =
+        block.metadata?.imageMeta ?? {};
 
-    const updateGalleryMetadata = (newIds: string[], newPreviews: string[]) => {
-        const newMetadata = { ...(block.metadata || {}), assetIds: newIds, assetPreviews: newPreviews };
+    const updateGallery = (
+        newIds: string[],
+        newPreviews: string[],
+        newImageMeta: Record<string, { alt?: string; description?: string }> = imageMeta,
+    ) => {
+        const newMetadata = {
+            ...(block.metadata || {}),
+            assetIds: newIds,
+            assetPreviews: newPreviews,
+            imageMeta: newImageMeta,
+        };
         onFieldChange(index, 'metadata', newMetadata);
     };
 
     const removeAsset = (assetIndex: number) => {
+        const removedId = assetIds[assetIndex];
         const newIds = assetIds.filter((_, i) => i !== assetIndex);
         const newPreviews = assetPreviews.filter((_, i) => i !== assetIndex);
-        updateGalleryMetadata(newIds, newPreviews);
+        const { [removedId]: _removed, ...restMeta } = imageMeta;
+        updateGallery(newIds, newPreviews, restMeta);
+    };
+
+    const updateImageMeta = (assetId: string, field: 'alt' | 'description', value: string) => {
+        const newImageMeta = {
+            ...imageMeta,
+            [assetId]: { ...(imageMeta[assetId] || {}), [field]: value },
+        };
+        updateGallery(assetIds, assetPreviews, newImageMeta);
     };
 
     return (
         <div>
             <label className="text-sm font-medium"><Trans>Images</Trans></label>
-            <div className="flex gap-2 flex-wrap mt-2">
-                {assetPreviews.map((preview, i) => (
-                    <div key={assetIds[i] ?? i} className="relative group">
-                        <img
-                            src={`${preview}?preset=thumb`}
-                            alt=""
-                            className="w-20 h-20 object-cover rounded-md border"
-                        />
-                        <button
-                            type="button"
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => removeAsset(i)}
-                        >
-                            <XIcon className="h-3.5 w-3.5" />
-                        </button>
+            <div className="space-y-3 mt-2">
+                {assetIds.map((assetId, i) => (
+                    <div key={assetId ?? i} className="flex gap-3 items-start border rounded-md p-2">
+                        <div className="relative group shrink-0">
+                            <img
+                                src={`${assetPreviews[i]}?preset=thumb`}
+                                alt=""
+                                className="w-20 h-20 object-cover rounded-md border"
+                            />
+                            <button
+                                type="button"
+                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeAsset(i)}
+                            >
+                                <XIcon className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                            <Input
+                                value={imageMeta[assetId]?.alt ?? ''}
+                                onChange={e => updateImageMeta(assetId, 'alt', e.target.value)}
+                                placeholder={t`Alt text (screen readers / SEO)`}
+                            />
+                            <Textarea
+                                value={imageMeta[assetId]?.description ?? ''}
+                                onChange={e => updateImageMeta(assetId, 'description', e.target.value)}
+                                placeholder={t`Description / caption`}
+                                rows={2}
+                            />
+                        </div>
                     </div>
                 ))}
                 <button
@@ -1600,7 +1652,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
                         if (assets.length > 0) {
                             const newIds = [...assetIds, ...assets.map(a => a.id)];
                             const newPreviews = [...assetPreviews, ...assets.map(a => a.preview)];
-                            updateGalleryMetadata(newIds, newPreviews);
+                            updateGallery(newIds, newPreviews);
                         }
                     }}
                 />

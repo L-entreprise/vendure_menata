@@ -324,6 +324,21 @@ msgstr "Images"
 msgid "Click + to add images"
 msgstr "Cliquez sur + pour ajouter des images"
 
+msgid "Description"
+msgstr "Description"
+
+msgid "Short text for screen readers / SEO"
+msgstr "Texte court pour lecteurs d'écran / SEO"
+
+msgid "Visible caption shown next to the image"
+msgstr "Légende visible affichée à côté de l'image"
+
+msgid "Alt text (screen readers / SEO)"
+msgstr "Texte alternatif (lecteurs d'écran / SEO)"
+
+msgid "Description / caption"
+msgstr "Description / légende"
+
 #. Collection schema view
 msgid "Schema Fields"
 msgstr "Champs du schéma"
