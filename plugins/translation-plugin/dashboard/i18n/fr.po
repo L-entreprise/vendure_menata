@@ -81,6 +81,9 @@ msgstr "Contenu"
 msgid "Alt text"
 msgstr "Texte alternatif"
 
+msgid "Description"
+msgstr "Description"
+
 msgid "Image"
 msgstr "Image"
 

@@ -9,7 +9,14 @@ import {
 
 import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 
-import { PAGE_TRANSLATABLE_FIELDS, TRANSLATABLE_BLOCK_FIELDS } from '../constants';
+import {
+    collectionGalleryFieldName,
+    collectionImageMetaKey,
+    galleryFieldName,
+    GALLERY_IMAGE_FIELDS,
+    PAGE_TRANSLATABLE_FIELDS,
+    TRANSLATABLE_BLOCK_FIELDS,
+} from '../constants';
 import { CmsTranslationEntry } from '../entities/cms-translation-entry.entity';
 import { TranslationLanguage } from '../entities/translation-language.entity';
 
@@ -70,6 +77,23 @@ export class CmsTranslationService {
         for (const block of blocks) {
             const translatableFields = TRANSLATABLE_BLOCK_FIELDS[block.type];
             if (!translatableFields) continue;
+
+            // IMAGE_GALLERY: dynamic fields — one alt + one description per image.
+            if (block.type === 'IMAGE_GALLERY') {
+                const assetIds: string[] = (block.metadata as any)?.assetIds ?? [];
+                for (const assetId of assetIds) {
+                    for (const f of GALLERY_IMAGE_FIELDS) {
+                        fields.push({
+                            contentBlockId: block.id,
+                            fieldName: galleryFieldName(String(assetId), f),
+                            blockKey: block.key,
+                            blockType: block.type,
+                        });
+                    }
+                }
+                continue;
+            }
+
             for (const fieldName of translatableFields) {
                 fields.push({
                     contentBlockId: block.id,
@@ -295,7 +319,8 @@ export class CmsTranslationService {
             const translatableFields = TRANSLATABLE_BLOCK_FIELDS[block.type];
             if (!translatableFields) continue;
 
-            // IMAGE blocks: the translatable value is the asset ID (featuredAssetId)
+            // IMAGE blocks: the image itself (asset id) plus alt text (translation
+            // row) and description (block metadata) are translatable.
             if (block.type === 'IMAGE') {
                 if (block.featuredAssetId) {
                     entries.push({
@@ -305,6 +330,54 @@ export class CmsTranslationService {
                         fieldName: 'image',
                         value: String(block.featuredAssetId),
                     });
+                }
+                const imageTranslations = await this.connection
+                    .getRepository(ctx, ContentBlockTranslation)
+                    .createQueryBuilder('bt')
+                    .where('bt.baseId = :blockId', { blockId: block.id })
+                    .getMany();
+                const altText = imageTranslations[0]?.altText;
+                if (altText) {
+                    entries.push({
+                        languageCode: defaultCode,
+                        pageId,
+                        contentBlockId: block.id,
+                        fieldName: 'altText',
+                        value: String(altText),
+                    });
+                }
+                const description = (block.metadata as any)?.description;
+                if (description) {
+                    entries.push({
+                        languageCode: defaultCode,
+                        pageId,
+                        contentBlockId: block.id,
+                        fieldName: 'description',
+                        value: String(description),
+                    });
+                }
+                continue;
+            }
+
+            // IMAGE_GALLERY: per-image alt/description stored in metadata.imageMeta.
+            if (block.type === 'IMAGE_GALLERY') {
+                const assetIds: string[] = (block.metadata as any)?.assetIds ?? [];
+                const imageMeta: Record<string, { alt?: string; description?: string }> =
+                    (block.metadata as any)?.imageMeta ?? {};
+                for (const assetId of assetIds) {
+                    const meta = imageMeta[String(assetId)] ?? {};
+                    for (const f of GALLERY_IMAGE_FIELDS) {
+                        const value = meta[f];
+                        if (value != null && value !== '') {
+                            entries.push({
+                                languageCode: defaultCode,
+                                pageId,
+                                contentBlockId: block.id,
+                                fieldName: galleryFieldName(String(assetId), f),
+                                value: String(value),
+                            });
+                        }
+                    }
                 }
                 continue;
             }
@@ -353,11 +426,19 @@ export class CmsTranslationService {
 
         const fields: CollectionEntryTranslatableField[] = [];
         for (const block of blocks) {
-            if (TRANSLATABLE_BLOCK_FIELDS[block.type]) {
-                fields.push({
-                    fieldName: block.key,
-                    blockType: block.type,
-                });
+            if (!TRANSLATABLE_BLOCK_FIELDS[block.type]) continue;
+            fields.push({
+                fieldName: block.key,
+                blockType: block.type,
+            });
+            // IMAGE fields also expose translatable alt text + description.
+            if (block.type === 'IMAGE') {
+                for (const f of GALLERY_IMAGE_FIELDS) {
+                    fields.push({
+                        fieldName: collectionImageMetaKey(block.key, f),
+                        blockType: block.type,
+                    });
+                }
             }
         }
         return fields;
@@ -402,6 +483,33 @@ export class CmsTranslationService {
 
         for (const block of blocks) {
             if (!TRANSLATABLE_BLOCK_FIELDS[block.type]) continue;
+
+            // IMAGE_GALLERY: per-image alt/description, keyed by asset id, stored in
+            // `<key>__imageMeta`. The asset id array itself is not translatable text.
+            if (block.type === 'IMAGE_GALLERY') {
+                const assetIds: string[] = Array.isArray(entry.data[block.key])
+                    ? (entry.data[block.key] as string[])
+                    : [];
+                const galleryMeta: Record<string, { alt?: string; description?: string }> =
+                    (entry.data[`${block.key}__imageMeta`] as any) ?? {};
+                for (const assetId of assetIds) {
+                    const meta = galleryMeta[String(assetId)] ?? {};
+                    for (const f of GALLERY_IMAGE_FIELDS) {
+                        const metaValue = meta[f];
+                        if (typeof metaValue === 'string' && metaValue) {
+                            entries.push({
+                                languageCode: defaultCode,
+                                pageId,
+                                contentBlockId: null,
+                                fieldName: collectionGalleryFieldName(block.key, String(assetId), f),
+                                value: metaValue,
+                            });
+                        }
+                    }
+                }
+                continue;
+            }
+
             const raw = entry.data[block.key];
             let value: string | null = null;
             if (typeof raw === 'string') {
@@ -419,6 +527,23 @@ export class CmsTranslationService {
                     fieldName: block.key,
                     value,
                 });
+            }
+
+            // IMAGE fields: seed the per-image alt text + description companions.
+            if (block.type === 'IMAGE') {
+                for (const f of GALLERY_IMAGE_FIELDS) {
+                    const metaKey = collectionImageMetaKey(block.key, f);
+                    const metaValue = entry.data[metaKey];
+                    if (typeof metaValue === 'string' && metaValue) {
+                        entries.push({
+                            languageCode: defaultCode,
+                            pageId,
+                            contentBlockId: null,
+                            fieldName: metaKey,
+                            value: metaValue,
+                        });
+                    }
+                }
             }
         }
 

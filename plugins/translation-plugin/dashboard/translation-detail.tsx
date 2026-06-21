@@ -174,6 +174,33 @@ interface Language {
     isDefault: boolean;
 }
 
+/**
+ * Parses a gallery per-image field name (`gallery:<assetId>:alt|description`).
+ * Mirrors `galleryFieldName` in the plugin constants; inlined here to keep the
+ * dashboard bundle free of server-side imports.
+ */
+function parseGalleryFieldName(
+    fieldName: string,
+): { assetId: string; field: 'alt' | 'description' } | null {
+    const match = /^gallery:(.+):(alt|description)$/.exec(fieldName);
+    if (!match) return null;
+    return { assetId: match[1], field: match[2] as 'alt' | 'description' };
+}
+
+/** Alt-text field across regular IMAGE, gallery and collection image fields. */
+function isAltField(fieldName: string): boolean {
+    return fieldName === 'altText' || fieldName.endsWith(':alt') || fieldName.endsWith('__alt');
+}
+
+/** Description field across regular IMAGE, gallery and collection image fields. */
+function isDescriptionField(fieldName: string): boolean {
+    return (
+        fieldName === 'description' ||
+        fieldName.endsWith(':description') ||
+        fieldName.endsWith('__description')
+    );
+}
+
 function FieldInput({
     blockType,
     fieldName,
@@ -187,6 +214,22 @@ function FieldInput({
     onChange: (value: string) => void;
     disabled?: boolean;
 }) {
+    // Image alt / description are plain text fields. Check these BEFORE the IMAGE
+    // picker branch so an IMAGE block's altText/description (which carry
+    // blockType 'IMAGE') render as text inputs, not an asset picker.
+    if (isAltField(fieldName)) {
+        return <Input value={value} onChange={e => onChange(e.target.value)} disabled={disabled} />;
+    }
+    if (isDescriptionField(fieldName)) {
+        return (
+            <Textarea
+                rows={3}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                disabled={disabled}
+            />
+        );
+    }
     if (blockType === 'RICH_TEXT') {
         return <RichTextEditor value={value} onChange={onChange} disabled={disabled} />;
     }
@@ -200,7 +243,9 @@ function FieldInput({
             />
         );
     }
-    if (blockType === 'IMAGE') {
+    // The image itself (per-language swap): regular page uses fieldName 'image';
+    // collection entries use the block key (blockType 'IMAGE').
+    if (fieldName === 'image' || blockType === 'IMAGE') {
         return <ImageFieldInput value={value} onChange={onChange} disabled={disabled} />;
     }
     if (blockType === 'ENUM') {
@@ -378,22 +423,80 @@ function ImageFieldInput({
     );
 }
 
-const FIELD_SUBTITLES: Record<string, string> = {
-    textContent: 'Content',
-    altText: 'Alt text',
-    image: 'Image',
-    name: 'Name',
-    slug: 'Slug',
-};
-
-function pageFieldLabel(fieldName: string): string {
-    if (fieldName === 'name') return 'Page Name';
-    if (fieldName === 'slug') return 'Page Slug';
-    return fieldName;
+/**
+ * Translated subtitle for a field. `useFieldSubtitle` returns a function bound to
+ * the active language; keep the `t` literals here so Lingui can extract them.
+ */
+function useFieldSubtitle(): (fieldName: string) => string {
+    const { t } = useLingui();
+    return (fieldName: string): string => {
+        if (isAltField(fieldName)) return t`Alt text`;
+        if (isDescriptionField(fieldName)) return t`Description`;
+        switch (fieldName) {
+            case 'textContent':
+                return t`Content`;
+            case 'image':
+                return t`Image`;
+            case 'name':
+                return t`Name`;
+            case 'slug':
+                return t`Slug`;
+            default:
+                return fieldName;
+        }
+    };
 }
 
-function fieldSubtitle(fieldName: string): string {
-    return FIELD_SUBTITLES[fieldName] ?? fieldName;
+/** Small asset thumbnail resolved from an asset id, used in gallery field labels. */
+function AssetThumb({ assetId }: { assetId: string }) {
+    const [preview, setPreview] = useState<string | null>(null);
+    useEffect(() => {
+        let active = true;
+        api.query(getAssetDocument, { id: assetId })
+            .then(r => {
+                if (active && r.asset?.preview) setPreview(r.asset.preview);
+            })
+            .catch(() => {});
+        return () => {
+            active = false;
+        };
+    }, [assetId]);
+    if (!preview) return null;
+    return (
+        <img
+            src={`${preview}?preset=thumb`}
+            alt=""
+            className="h-8 w-8 rounded object-cover border shrink-0"
+        />
+    );
+}
+
+/**
+ * Renders the label cell for a translatable field. Gallery per-image fields
+ * (`gallery:<assetId>:alt|description`) get a thumbnail + subtitle so the editor
+ * can tell which image each row belongs to. Page-level fields (name/slug) use a
+ * "Page …" prefix.
+ */
+function FieldLabel({ fieldName, isPage }: { fieldName: string; isPage?: boolean }) {
+    const { t } = useLingui();
+    const subtitle = useFieldSubtitle();
+
+    if (isPage) {
+        if (fieldName === 'name') return <>{t`Page Name`}</>;
+        if (fieldName === 'slug') return <>{t`Page Slug`}</>;
+        return <>{fieldName}</>;
+    }
+
+    const gallery = parseGalleryFieldName(fieldName);
+    if (gallery) {
+        return (
+            <div className="flex items-center gap-2">
+                <AssetThumb assetId={gallery.assetId} />
+                <span>{gallery.field === 'alt' ? t`Alt text` : t`Description`}</span>
+            </div>
+        );
+    }
+    return <>{subtitle(fieldName)}</>;
 }
 
 interface BlockInfo {
@@ -551,9 +654,6 @@ function RegularPageTranslation({
                                 }
                                 for (const field of groupFields) {
                                     const fieldKey = `${field.contentBlockId ?? 'page'}|${field.fieldName}`;
-                                    const label = isPage
-                                        ? pageFieldLabel(field.fieldName)
-                                        : fieldSubtitle(field.fieldName);
                                     rendered.push(
                                         <div
                                             key={fieldKey}
@@ -561,7 +661,7 @@ function RegularPageTranslation({
                                             style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                                         >
                                             <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-card z-10">
-                                                {label}
+                                                <FieldLabel fieldName={field.fieldName} isPage={isPage} />
                                             </div>
                                             {languages.map(lang => (
                                                 <FieldInput
@@ -716,31 +816,78 @@ function CollectionEntryCard({
                             </div>
                             <LanguageHeaders languages={languages} />
                         </div>
-                        {fields.map(field => {
-                            const block = blockByKey.get(field.fieldName);
-                            const label = block?.name ?? field.fieldName;
-                            return (
+                        {(() => {
+                            const sub = (suffix: 'alt' | 'description') =>
+                                suffix === 'alt' ? t`Alt text` : t`Description`;
+
+                            interface Row {
+                                fieldName: string;
+                                label: ReactNode;
+                                blockType: string | null;
+                            }
+                            const rows: Row[] = [];
+
+                            for (const field of fields) {
+                                // IMAGE_GALLERY: per-image fields are per-entry (the
+                                // asset ids live in this row's data), so expand them
+                                // from the entry data rather than the page schema.
+                                if (field.blockType === 'IMAGE_GALLERY') {
+                                    const baseName = blockByKey.get(field.fieldName)?.name ?? field.fieldName;
+                                    const ids = Array.isArray(entry.data[field.fieldName])
+                                        ? (entry.data[field.fieldName] as string[])
+                                        : [];
+                                    for (const assetId of ids) {
+                                        for (const f of ['alt', 'description'] as const) {
+                                            rows.push({
+                                                fieldName: `${field.fieldName}__${assetId}__${f}`,
+                                                blockType: null,
+                                                label: (
+                                                    <div className="flex items-center gap-2">
+                                                        <AssetThumb assetId={String(assetId)} />
+                                                        <span>{baseName} — {sub(f)}</span>
+                                                    </div>
+                                                ),
+                                            });
+                                        }
+                                    }
+                                    continue;
+                                }
+
+                                // Collection image meta fields are `<key>__alt` / `<key>__description`.
+                                const metaMatch = /^(.+)__(alt|description)$/.exec(field.fieldName);
+                                const baseKey = metaMatch ? metaMatch[1] : field.fieldName;
+                                const baseName = blockByKey.get(baseKey)?.name ?? baseKey;
+                                rows.push({
+                                    fieldName: field.fieldName,
+                                    blockType: field.blockType,
+                                    label: metaMatch
+                                        ? `${baseName} — ${sub(metaMatch[2] as 'alt' | 'description')}`
+                                        : baseName,
+                                });
+                            }
+
+                            return rows.map(row => (
                                 <div
-                                    key={field.fieldName}
+                                    key={row.fieldName}
                                     className="grid gap-4 mb-4 items-start"
                                     style={{ gridTemplateColumns: `minmax(220px, 220px) repeat(${languages.length}, minmax(220px, 1fr))` }}
                                 >
                                     <div className="pt-2 text-sm font-medium text-muted-foreground truncate sticky left-0 bg-card z-10">
-                                        {label}
+                                        {row.label}
                                     </div>
                                     {languages.map(lang => (
                                         <FieldInput
                                             key={lang.code}
-                                            blockType={field.blockType}
-                                            fieldName={field.fieldName}
-                                            value={translations[lang.code]?.[field.fieldName] ?? ''}
-                                            onChange={v => updateValue(lang.code, field.fieldName, v)}
+                                            blockType={row.blockType}
+                                            fieldName={row.fieldName}
+                                            value={translations[lang.code]?.[row.fieldName] ?? ''}
+                                            onChange={v => updateValue(lang.code, row.fieldName, v)}
                                             disabled={lang.isDefault}
                                         />
                                     ))}
                                 </div>
-                            );
-                        })}
+                            ));
+                        })()}
                     </div>
                 </CardContent>
             )}
