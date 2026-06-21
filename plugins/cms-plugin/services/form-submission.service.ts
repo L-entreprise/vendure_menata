@@ -281,8 +281,27 @@ export class FormSubmissionService {
             throw new UserInputError('Entry data must be a JSON object');
         }
         const blockKeys = new Set(blocks.map(b => b.key).filter(Boolean));
+        // IMAGE / IMAGE_GALLERY fields persist extra companion keys alongside the
+        // asset id(s): per-image alt/description and the gallery's imageMeta map.
+        const isImageCompanion = (key: string): boolean => {
+            for (const b of blocks) {
+                if (!b.key) continue;
+                if (b.type === 'IMAGE') {
+                    if (key === `${b.key}__alt` || key === `${b.key}__description`) return true;
+                } else if (b.type === 'IMAGE_GALLERY') {
+                    if (key === `${b.key}__imageMeta`) return true;
+                    if (
+                        key.startsWith(`${b.key}__`) &&
+                        (key.endsWith('__alt') || key.endsWith('__description'))
+                    ) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
         for (const key of Object.keys(data)) {
-            if (!blockKeys.has(key)) {
+            if (!blockKeys.has(key) && !isImageCompanion(key)) {
                 throw new UserInputError(`Unknown field: ${key}`);
             }
             const value = data[key];
