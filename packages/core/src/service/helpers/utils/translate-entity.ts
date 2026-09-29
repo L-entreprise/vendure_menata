@@ -41,6 +41,7 @@ export function translateEntity<T extends Translatable & VendureEntity>(
     languageCode: LanguageCode | [LanguageCode, ...LanguageCode[]],
 ): Translated<T> {
     let translation: Translation<VendureEntity> | undefined;
+    let defaultTranslation: Translation<VendureEntity> | undefined;
     if (translatable.translations) {
         if (Array.isArray(languageCode)) {
             for (const lc of languageCode) {
@@ -52,7 +53,10 @@ export function translateEntity<T extends Translatable & VendureEntity>(
         }
 
         if (!translation && languageCode !== DEFAULT_LANGUAGE_CODE) {
-            translation = translatable.translations.find(t => t.languageCode === DEFAULT_LANGUAGE_CODE);
+            defaultTranslation = translatable.translations.find(
+                t => t.languageCode === DEFAULT_LANGUAGE_CODE,
+            );
+            translation = defaultTranslation;
         }
         if (!translation) {
             // If we cannot find any suitable translation, just return the first one to at least
@@ -68,6 +72,10 @@ export function translateEntity<T extends Translatable & VendureEntity>(
         });
     }
 
+    // Lazily-built fallback chain for field-level empty value resolution.
+    // Only constructed when an empty field is actually encountered.
+    let fallbackTranslations: Array<Translation<VendureEntity>> | undefined;
+
     const translated = Object.create(
         Object.getPrototypeOf(translatable),
         Object.getOwnPropertyDescriptors(translatable),
@@ -78,12 +86,106 @@ export function translateEntity<T extends Translatable & VendureEntity>(
             if (!translated.customFields) {
                 translated.customFields = {};
             }
-            Object.assign(translated.customFields, value);
+            const customFields = value as Record<string, any>;
+            let needsFallback = false;
+            for (const cfValue of Object.values(customFields)) {
+                if (cfValue === '' || cfValue == null) {
+                    needsFallback = true;
+                    break;
+                }
+            }
+            if (needsFallback) {
+                if (fallbackTranslations === undefined) {
+                    fallbackTranslations = buildFieldFallbackChain(
+                        translatable.translations,
+                        translation,
+                        languageCode,
+                        defaultTranslation,
+                    );
+                }
+                const mergedCustomFields: Record<string, any> = { ...customFields };
+                for (const [cfKey, cfValue] of Object.entries(mergedCustomFields)) {
+                    if (cfValue === '' || cfValue == null) {
+                        for (const fallback of fallbackTranslations) {
+                            const fallbackCf = (fallback as any).customFields;
+                            if (fallbackCf && fallbackCf[cfKey] !== '' && fallbackCf[cfKey] != null) {
+                                mergedCustomFields[cfKey] = fallbackCf[cfKey];
+                                break;
+                            }
+                        }
+                    }
+                }
+                Object.assign(translated.customFields, mergedCustomFields);
+            } else {
+                Object.assign(translated.customFields, customFields);
+            }
         } else if (key !== 'base' && key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
-            translated[key] = value ?? '';
+            if (key !== 'languageCode' && (value == null || value === '')) {
+                if (fallbackTranslations === undefined) {
+                    fallbackTranslations = buildFieldFallbackChain(
+                        translatable.translations,
+                        translation,
+                        languageCode,
+                        defaultTranslation,
+                    );
+                }
+                let fallbackValue = '';
+                for (const fallback of fallbackTranslations) {
+                    const fbVal = (fallback as any)[key];
+                    if (fbVal != null && fbVal !== '') {
+                        fallbackValue = fbVal;
+                        break;
+                    }
+                }
+                translated[key] = fallbackValue;
+            } else {
+                translated[key] = value ?? '';
+            }
         }
     }
     return translated;
+}
+
+/**
+ * Builds an ordered list of fallback translations for field-level resolution.
+ * When `languageCode` is an array (as from TranslatorService: [requested, channelDefault, systemDefault]),
+ * the array priority is respected. Otherwise falls back to the system default, then first available.
+ */
+function buildFieldFallbackChain(
+    translations: Array<Translation<VendureEntity>>,
+    selectedTranslation: Translation<VendureEntity>,
+    languageCode: LanguageCode | [LanguageCode, ...LanguageCode[]],
+    cachedDefaultTranslation: Translation<VendureEntity> | undefined,
+): Array<Translation<VendureEntity>> {
+    const fallbacks: Array<Translation<VendureEntity>> = [];
+
+    const addIfNew = (t: Translation<VendureEntity> | undefined) => {
+        if (t && t !== selectedTranslation && !fallbacks.includes(t)) {
+            fallbacks.push(t);
+        }
+    };
+
+    // When languageCode is an array, it encodes the full priority chain
+    // (e.g. [requestedLang, channelDefault, systemDefault] from TranslatorService).
+    // Use remaining entries as field-level fallbacks in priority order.
+    if (Array.isArray(languageCode)) {
+        for (const lc of languageCode) {
+            addIfNew(translations.find(t => t.languageCode === lc));
+        }
+    }
+
+    // System default language (reuse cached lookup when available)
+    const defaultTrans =
+        cachedDefaultTranslation ??
+        (selectedTranslation.languageCode === DEFAULT_LANGUAGE_CODE
+            ? undefined
+            : translations.find(t => t.languageCode === DEFAULT_LANGUAGE_CODE));
+    addIfNew(defaultTrans);
+
+    // Last resort: first available translation
+    addIfNew(translations[0]);
+
+    return fallbacks;
 }
 
 /**
@@ -113,8 +215,21 @@ export function translateDeep<T extends Translatable & VendureEntity>(
             if (Array.isArray(valueLevel0)) {
                 valueLevel0.forEach((nested1, index) => {
                     object = (translatedEntity as any)[path0][index];
+                    // An array-valued relation can contain `null`/`undefined` entries, so there
+                    // may be no entity here to assign to.
+                    if (object == null) {
+                        return;
+                    }
                     property = path1;
-                    object[property] = translateLeaf(object, property, languageCode);
+                    const translated = translateLeaf(object, property, languageCode);
+                    // translateLeaf() returns undefined when the relation is null. Assigning that
+                    // unconditionally would rewrite a relation that is null in the database into
+                    // one that looks like it was never fetched — a distinction
+                    // getMissingRelations() relies on, so hydrate() would stop being idempotent
+                    // and re-query the relation on every subsequent call.
+                    if (translated !== undefined) {
+                        object[property] = translated;
+                    }
                 });
                 property = '';
                 object = null;
@@ -129,7 +244,9 @@ export function translateDeep<T extends Translatable & VendureEntity>(
             value = translateLeaf(object, property, languageCode);
         }
 
-        if (object && property) {
+        // Shared by the non-array branches above: skip the assignment when there is nothing
+        // to translate, preserving null relations for the same reason as in the array branch.
+        if (object && property && value !== undefined) {
             object[property] = value;
         }
     }
@@ -144,9 +261,33 @@ function translateLeaf(
 ): any {
     if (object && object[property]) {
         if (Array.isArray(object[property])) {
-            return object[property].map((nested2: any) => translateEntity(nested2, languageCode));
+            return object[property].map((nested2: any) => {
+                // A relation array can contain `null`/`undefined` entries: an element that was
+                // never fetched, or a relation that is null on that element. translateEntity()
+                // dereferences `.translations`, so a hole throws a TypeError — which would be
+                // re-thrown below rather than swallowed like InternalServerError. Leave holes
+                // untouched.
+                if (nested2 == null) {
+                    return nested2;
+                }
+                try {
+                    return translateEntity(nested2, languageCode);
+                } catch (e: any) {
+                    if (e instanceof InternalServerError) {
+                        return nested2;
+                    }
+                    throw e;
+                }
+            });
         } else if (object[property]) {
-            return translateEntity(object[property], languageCode);
+            try {
+                return translateEntity(object[property], languageCode);
+            } catch (e: any) {
+                if (e instanceof InternalServerError) {
+                    return object[property];
+                }
+                throw e;
+            }
         }
     }
 }

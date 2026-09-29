@@ -1,3 +1,5 @@
+import type { StorefrontId } from './storefront-starters';
+
 export type DbType = 'mysql' | 'mariadb' | 'postgres' | 'sqlite';
 
 export interface FileSources {
@@ -11,6 +13,7 @@ export interface FileSources {
     dockerComposeSource: string;
     tsconfigDashboardSource: string;
     viteConfigSource: string;
+    agentsSource: string;
 }
 
 export interface UserResponses extends FileSources {
@@ -18,9 +21,9 @@ export interface UserResponses extends FileSources {
     populateProducts: boolean;
     superadminIdentifier: string;
     superadminPassword: string;
-    includeStorefront: boolean;
+    storefront?: StorefrontId;
 }
 
-export type PackageManager = 'npm';
+export type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun';
 
 export type CliLogLevel = 'silent' | 'info' | 'verbose';

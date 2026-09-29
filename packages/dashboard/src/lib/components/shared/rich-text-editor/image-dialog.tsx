@@ -4,7 +4,7 @@ import { Editor } from '@tiptap/react';
 import { ImageIcon, PaperclipIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../../ui/button.js';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog.js';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog.js';
 import { Input } from '../../ui/input.js';
 import { Label } from '../../ui/label.js';
 import { Asset } from '../asset/asset-gallery.js';
@@ -57,10 +57,10 @@ export function ImageDialog({ editor, isOpen, onClose }: Readonly<ImageDialogPro
         };
 
         // Only add width/height if they are valid numbers
-        if (width && !isNaN(Number(width))) {
+        if (width && !Number.isNaN(Number(width))) {
             attrs.width = Number(width);
         }
-        if (height && !isNaN(Number(height))) {
+        if (height && !Number.isNaN(Number(height))) {
             attrs.height = Number(height);
         }
 
@@ -105,6 +105,9 @@ export function ImageDialog({ editor, isOpen, onClose }: Readonly<ImageDialogPro
                         <DialogTitle>
                             {isEditing ? <Trans>Edit image</Trans> : <Trans>Insert image</Trans>}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            {isEditing ? <Trans>Edit the selected image properties</Trans> : <Trans>Insert a new image with source, title, and dimensions</Trans>}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="flex items-center justify-center">

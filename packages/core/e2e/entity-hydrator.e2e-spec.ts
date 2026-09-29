@@ -1,3 +1,4 @@
+// @ts-nocheck -- file relies on queries that are defined at runtime
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
     ActiveOrderService,
@@ -15,8 +16,7 @@ import {
     TransactionalConnection,
 } from '@vendure/core';
 import { createErrorResultGuard, createTestEnvironment, ErrorResultGuard } from '@vendure/testing';
-import gql from 'graphql-tag';
-import path from 'path';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { initialData } from '../../../e2e-common/e2e-initial-data';
@@ -27,15 +27,11 @@ import {
     HydrationTestPlugin,
     TreeEntity,
 } from './fixtures/test-plugins/hydration-test-plugin';
-import { UpdateChannelMutation, UpdateChannelMutationVariables } from './graphql/generated-e2e-admin-types';
-import {
-    AddItemToOrderDocument,
-    AddItemToOrderMutation,
-    AddItemToOrderMutationVariables,
-    UpdatedOrderFragment,
-} from './graphql/generated-e2e-shop-types';
-import { UPDATE_CHANNEL } from './graphql/shared-definitions';
-import { ADD_ITEM_TO_ORDER } from './graphql/shop-definitions';
+import { FragmentOf, graphql } from './graphql/graphql-shop';
+import { updateChannelDocument } from './graphql/shared-definitions';
+import { addItemToOrderDocument, updatedOrderFragment } from './graphql/shop-definitions';
+
+type UpdatedOrderFragment = FragmentOf<typeof updatedOrderFragment>;
 
 const orderResultGuard: ErrorResultGuard<UpdatedOrderFragment> = createErrorResultGuard(
     input => !!input.lines,
@@ -45,6 +41,10 @@ describe('Entity hydration', () => {
     const { server, adminClient, shopClient } = createTestEnvironment(
         mergeConfig(testConfig(), {
             plugins: [HydrationTestPlugin],
+            customFields: {
+                // Allows two OrderLines to reference the same variant (see #4935 test below).
+                OrderLine: [{ name: 'customization', type: 'string', nullable: true }],
+            },
         }),
     );
 
@@ -76,7 +76,7 @@ describe('Entity hydration', () => {
     });
 
     it('includes existing relations', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -85,7 +85,7 @@ describe('Entity hydration', () => {
     });
 
     it('hydrates top-level single relation', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -93,7 +93,7 @@ describe('Entity hydration', () => {
     });
 
     it('hydrates top-level array relation', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -102,7 +102,7 @@ describe('Entity hydration', () => {
     });
 
     it('hydrates nested single relation', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -110,7 +110,7 @@ describe('Entity hydration', () => {
     });
 
     it('hydrates nested array relation', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -118,7 +118,7 @@ describe('Entity hydration', () => {
     });
 
     it('translates top-level translatable', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -131,7 +131,7 @@ describe('Entity hydration', () => {
     });
 
     it('translates nested translatable', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -143,7 +143,7 @@ describe('Entity hydration', () => {
     });
 
     it('translates nested translatable 2', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -151,7 +151,7 @@ describe('Entity hydration', () => {
     });
 
     it('populates ProductVariant price data', async () => {
-        const { hydrateProduct } = await adminClient.query<HydrateProductQuery>(GET_HYDRATED_PRODUCT, {
+        const { hydrateProduct } = await adminClient.query(getHydratedProductDocument, {
             id: 'T_1',
         });
 
@@ -168,31 +168,23 @@ describe('Entity hydration', () => {
     // https://github.com/vendurehq/vendure/issues/1153
     it('correctly handles empty array relations', async () => {
         // Product T_5 has no asset defined
-        const { hydrateProductAsset } = await adminClient.query<{ hydrateProductAsset: Product }>(
-            GET_HYDRATED_PRODUCT_ASSET,
-            {
-                id: 'T_5',
-            },
-        );
+        const { hydrateProductAsset } = await adminClient.query(getHydratedProductAssetDocument, {
+            id: 'T_5',
+        });
 
         expect(hydrateProductAsset.assets).toEqual([]);
     });
 
     // https://github.com/vendurehq/vendure/issues/1324
     it('correctly handles empty nested array relations', async () => {
-        const { hydrateProductWithNoFacets } = await adminClient.query<{
-            hydrateProductWithNoFacets: Product;
-        }>(GET_HYDRATED_PRODUCT_NO_FACETS);
+        const { hydrateProductWithNoFacets } = await adminClient.query(getHydratedProductNoFacetsDocument);
 
         expect(hydrateProductWithNoFacets.facetValues).toEqual([]);
     });
 
     // https://github.com/vendurehq/vendure/issues/1161
     it('correctly expands missing relations', async () => {
-        const { hydrateProductVariant } = await adminClient.query<{ hydrateProductVariant: ProductVariant }>(
-            GET_HYDRATED_VARIANT,
-            { id: 'T_1' },
-        );
+        const { hydrateProductVariant } = await adminClient.query(getHydratedVariantDocument, { id: 'T_1' });
 
         expect(hydrateProductVariant.product.id).toBe('T_1');
         expect(hydrateProductVariant.product.facetValues.map(fv => fv.id).sort()).toEqual(['T_1', 'T_2']);
@@ -200,16 +192,13 @@ describe('Entity hydration', () => {
 
     // https://github.com/vendurehq/vendure/issues/1172
     it('can hydrate entity with getters (Order)', async () => {
-        const { addItemToOrder } = await shopClient.query<
-            AddItemToOrderMutation,
-            AddItemToOrderMutationVariables
-        >(ADD_ITEM_TO_ORDER, {
+        const { addItemToOrder } = await shopClient.query(addItemToOrderDocument, {
             productVariantId: 'T_1',
             quantity: 1,
         });
         orderResultGuard.assertSuccess(addItemToOrder);
 
-        const { hydrateOrder } = await adminClient.query<{ hydrateOrder: Order }>(GET_HYDRATED_ORDER, {
+        const { hydrateOrder } = await adminClient.query(getHydratedOrderDocument, {
             id: addItemToOrder.id,
         });
 
@@ -220,18 +209,13 @@ describe('Entity hydration', () => {
     // https://github.com/vendurehq/vendure/issues/1229
     it('deep merges existing properties', async () => {
         await shopClient.asAnonymousUser();
-        const { addItemToOrder } = await shopClient.query<
-            AddItemToOrderMutation,
-            AddItemToOrderMutationVariables
-        >(ADD_ITEM_TO_ORDER, {
+        const { addItemToOrder } = await shopClient.query(addItemToOrderDocument, {
             productVariantId: 'T_1',
             quantity: 2,
         });
         orderResultGuard.assertSuccess(addItemToOrder);
 
-        const { hydrateOrderReturnQuantities } = await adminClient.query<{
-            hydrateOrderReturnQuantities: number[];
-        }>(GET_HYDRATED_ORDER_QUANTITIES, {
+        const { hydrateOrderReturnQuantities } = await adminClient.query(getHydratedOrderQuantitiesDocument, {
             id: addItemToOrder.id,
         });
 
@@ -240,7 +224,7 @@ describe('Entity hydration', () => {
 
     // https://github.com/vendurehq/vendure/issues/1284
     it('hydrates custom field relations', async () => {
-        await adminClient.query<UpdateChannelMutation, UpdateChannelMutationVariables>(UPDATE_CHANNEL, {
+        await adminClient.query(updateChannelDocument, {
             input: {
                 id: 'T_1',
                 customFields: {
@@ -249,9 +233,7 @@ describe('Entity hydration', () => {
             },
         });
 
-        const { hydrateChannel } = await adminClient.query<{
-            hydrateChannel: any;
-        }>(GET_HYDRATED_CHANNEL, {
+        const { hydrateChannel } = await adminClient.query(getHydratedChannelDocument, {
             id: 'T_1',
         });
 
@@ -260,7 +242,7 @@ describe('Entity hydration', () => {
     });
 
     it('hydrates a nested custom field', async () => {
-        await adminClient.query<UpdateChannelMutation, UpdateChannelMutationVariables>(UPDATE_CHANNEL, {
+        await adminClient.query(updateChannelDocument, {
             input: {
                 id: 'T_1',
                 customFields: {
@@ -269,18 +251,19 @@ describe('Entity hydration', () => {
             },
         });
 
-        const { hydrateChannelWithNestedRelation } = await adminClient.query<{
-            hydrateChannelWithNestedRelation: any;
-        }>(GET_HYDRATED_CHANNEL_NESTED, {
-            id: 'T_1',
-        });
+        const { hydrateChannelWithNestedRelation } = await adminClient.query(
+            getHydratedChannelNestedDocument,
+            {
+                id: 'T_1',
+            },
+        );
 
         expect(hydrateChannelWithNestedRelation.customFields.additionalConfig).toBeDefined();
     });
 
     // https://github.com/vendurehq/vendure/issues/2682
     it('hydrates a nested custom field where the first level is null', async () => {
-        await adminClient.query<UpdateChannelMutation, UpdateChannelMutationVariables>(UPDATE_CHANNEL, {
+        await adminClient.query(updateChannelDocument, {
             input: {
                 id: 'T_1',
                 customFields: {
@@ -289,11 +272,12 @@ describe('Entity hydration', () => {
             },
         });
 
-        const { hydrateChannelWithNestedRelation } = await adminClient.query<{
-            hydrateChannelWithNestedRelation: any;
-        }>(GET_HYDRATED_CHANNEL_NESTED, {
-            id: 'T_1',
-        });
+        const { hydrateChannelWithNestedRelation } = await adminClient.query(
+            getHydratedChannelNestedDocument,
+            {
+                id: 'T_1',
+            },
+        );
 
         expect(hydrateChannelWithNestedRelation.customFields.additionalConfig).toBeNull();
     });
@@ -304,15 +288,15 @@ describe('Entity hydration', () => {
 
         it('Create order with 3 items', async () => {
             await shopClient.asUserWithCredentials('hayden.zieme12@hotmail.com', 'test');
-            await shopClient.query(AddItemToOrderDocument, {
+            await shopClient.query(addItemToOrderDocument, {
                 productVariantId: '1',
                 quantity: 1,
             });
-            await shopClient.query(AddItemToOrderDocument, {
+            await shopClient.query(addItemToOrderDocument, {
                 productVariantId: '2',
                 quantity: 1,
             });
-            const { addItemToOrder } = await shopClient.query(AddItemToOrderDocument, {
+            const { addItemToOrder } = await shopClient.query(addItemToOrderDocument, {
                 productVariantId: '3',
                 quantity: 1,
             });
@@ -353,14 +337,132 @@ describe('Entity hydration', () => {
         });
     });
 
+    // https://github.com/vendurehq/vendure/issues/4935
+    // Two OrderLines referencing the same ProductVariant (possible when they carry
+    // different OrderLine custom fields) share a single ProductVariant instance once
+    // the order is loaded with the 'query' relation strategy. Hydrating a relation onto
+    // that shared variant must populate BOTH lines, not just the first.
+    it('hydrates a relation shared by two order lines with the same variant', async () => {
+        const addItemWithCustomFieldsDocument = graphql(`
+            mutation AddItemWithCustomFields(
+                $productVariantId: ID!
+                $quantity: Int!
+                $customFields: OrderLineCustomFieldsInput
+            ) {
+                addItemToOrder(
+                    productVariantId: $productVariantId
+                    quantity: $quantity
+                    customFields: $customFields
+                ) {
+                    ... on Order {
+                        id
+                        lines {
+                            id
+                        }
+                    }
+                    ... on ErrorResult {
+                        errorCode
+                        message
+                    }
+                }
+            }
+        `);
+
+        // Fresh anonymous order so we're not appending to another test's active order.
+        await shopClient.asAnonymousUser();
+        await shopClient.query(addItemWithCustomFieldsDocument, {
+            productVariantId: 'T_1',
+            quantity: 1,
+            customFields: { customization: 'engraving-A' },
+        });
+        const { addItemToOrder } = await shopClient.query(addItemWithCustomFieldsDocument, {
+            productVariantId: 'T_1',
+            quantity: 1,
+            customFields: { customization: 'engraving-B' },
+        });
+        // Same variant + different custom fields => two separate lines.
+        expect(addItemToOrder.lines.length).toBe(2);
+
+        const internalOrderId = +addItemToOrder.id.replace(/^\D+/g, '');
+        const ctx = await server.app.get(RequestContextService).create({ apiType: 'admin' });
+        const order = await server.app
+            .get(OrderService)
+            .findOne(ctx, internalOrderId, ['lines.productVariant']);
+
+        await server.app.get(EntityHydrator).hydrate(ctx, order!, {
+            relations: ['lines.productVariant.product.facetValues.facet'],
+        });
+
+        // Before the fix, the second line's variant (the same shared instance) was
+        // skipped, so its product's facetValues were never populated. T_1's product has
+        // exactly 2 facetValues, and both lines must see the same set (they share one
+        // variant instance), not a partial or wrong-product result.
+        expect(order!.lines.length).toBe(2);
+        const line0FacetIds = order!.lines[0].productVariant.product.facetValues.map(fv => fv.id);
+        const line1FacetIds = order!.lines[1].productVariant.product.facetValues.map(fv => fv.id);
+        expect(line0FacetIds.length).toBe(2);
+        expect(line1FacetIds.length).toBe(2);
+        expect(line1FacetIds).toEqual(line0FacetIds);
+        expect(order!.lines[1].productVariant.product.facetValues[0].facet).toBeDefined();
+    });
+
+    // https://github.com/vendurehq/vendure/issues/4537
+    // A relation can be present on some elements of an array relation but not others. This is
+    // reachable through the public API: plugin code (e.g. an OrderInterceptor, see
+    // order-interceptor.ts:168) hydrates a relation onto a *single* line's variant, leaving the
+    // array unevenly loaded as [present, missing] — exactly what the reporter described. Hydrating
+    // the whole array must then populate every element, not just sample the first. Producing the
+    // uneven state through a real hydrate() call (rather than editing the entity by hand) verifies
+    // the fix against a shape a real code path actually generates.
+    it("hydrates lines after a plugin hydrated one line's variant", async () => {
+        // Fresh anonymous order so we're not appending to another test's active order.
+        await shopClient.asAnonymousUser();
+        // Two variants belonging to different products (T_1 = Laptop, T_5 = Curvy Monitor),
+        // so each line has its own ProductVariant and Product instance.
+        await shopClient.query(addItemToOrderDocument, { productVariantId: 'T_1', quantity: 1 });
+        const { addItemToOrder } = await shopClient.query(addItemToOrderDocument, {
+            productVariantId: 'T_5',
+            quantity: 1,
+        });
+        orderResultGuard.assertSuccess(addItemToOrder);
+
+        const internalOrderId = +addItemToOrder.id.replace(/^\D+/g, '');
+        const ctx = await server.app.get(RequestContextService).create({ apiType: 'admin' });
+        const hydrator = server.app.get(EntityHydrator);
+        const order = await server.app
+            .get(OrderService)
+            .findOne(ctx, internalOrderId, ['lines.productVariant']);
+
+        expect(order!.lines[0].productVariant.product).toBeUndefined();
+        expect(order!.lines[1].productVariant.product).toBeUndefined();
+
+        // A plugin acts on one line and hydrates just that line's variant.
+        await hydrator.hydrate(ctx, order!.lines[0].productVariant, { relations: ['product'] });
+
+        // The array is now unevenly loaded: [present, missing].
+        expect(order!.lines[0].productVariant.product).toBeDefined();
+        expect(order!.lines[1].productVariant.product).toBeUndefined();
+
+        await hydrator.hydrate(ctx, order!, { relations: ['lines.productVariant.product'] });
+
+        // Before the fix, only lines[0] was sampled, so the relation was considered present for
+        // the whole array and nothing was fetched, leaving lines[1]'s product undefined.
+        expect(order!.lines[0].productVariant.product).toBeDefined();
+        expect(order!.lines[1].productVariant.product).toBeDefined();
+        // Assert against each variant's own productId rather than a hardcoded id, so the test
+        // isn't coupled to fixture CSV row order or the id strategy.
+        expect(order!.lines[0].productVariant.product.id).toBe(order!.lines[0].productVariant.productId);
+        expect(order!.lines[1].productVariant.product.id).toBe(order!.lines[1].productVariant.productId);
+    });
+
     // https://github.com/vendurehq/vendure/issues/2546
     it('Preserves ordering when merging arrays of relations', async () => {
         await shopClient.asUserWithCredentials('trevor_donnelly96@hotmail.com', 'test');
-        await shopClient.query(AddItemToOrderDocument, {
+        await shopClient.query(addItemToOrderDocument, {
             productVariantId: '1',
             quantity: 1,
         });
-        const { addItemToOrder } = await shopClient.query(AddItemToOrderDocument, {
+        const { addItemToOrder } = await shopClient.query(addItemToOrderDocument, {
             productVariantId: '2',
             quantity: 2,
         });
@@ -399,7 +501,7 @@ describe('Entity hydration', () => {
      * https://github.com/vendurehq/vendure/issues/2899
      */
     it('Hydrates properties with very long names', async () => {
-        await adminClient.query<UpdateChannelMutation, UpdateChannelMutationVariables>(UPDATE_CHANNEL, {
+        await adminClient.query(updateChannelDocument, {
             input: {
                 id: 'T_1',
                 customFields: {
@@ -408,11 +510,12 @@ describe('Entity hydration', () => {
             },
         });
 
-        const { hydrateChannelWithVeryLongPropertyName } = await adminClient.query<{
-            hydrateChannelWithVeryLongPropertyName: any;
-        }>(GET_HYDRATED_CHANNEL_LONG_ALIAS, {
-            id: 'T_1',
-        });
+        const { hydrateChannelWithVeryLongPropertyName } = await adminClient.query(
+            getHydratedChannelLongAliasDocument,
+            {
+                id: 'T_1',
+            },
+        );
 
         const entity = (
             hydrateChannelWithVeryLongPropertyName.customFields.additionalConfig as AdditionalConfig
@@ -421,59 +524,107 @@ describe('Entity hydration', () => {
         expect(child.image1).toBeDefined();
         expect(child.image2).toBeDefined();
     });
+
+    // Follow-up to #4986: isTranslatable() decided from element [0] whether an entire relation
+    // array was translatable. With a null featuredAsset at [0], nothing in the array was
+    // translated (Asset.name is a LocaleString, so it stayed undefined); with the asset at [0],
+    // translation ran but every other element's null featuredAsset was rewritten to undefined.
+    // The assertions below fail under either ordering, so the test does not depend on DB row
+    // order or on the id strategy.
+    it('translates a relation reached past a null array element', async () => {
+        const ctx = await server.app.get(RequestContextService).create({ apiType: 'admin' });
+        const connection = server.app.get(TransactionalConnection).rawConnection;
+        // The expected name is the known fixture literal (also asserted near the top of this
+        // file), so the expectation is independent of the data the translation path reads
+        const assetName = 'derick-david-409858-unsplash.jpg';
+        const assets = await connection.getRepository(Asset).find();
+        const asset = assets.find(a => a.translations.some(t => t.name === assetName));
+
+        // Raw-connection queries take the numeric DB id; 'T_1' exists only at the API layer
+        const laptop = await connection
+            .getRepository(Product)
+            .findOne({ where: { id: 1 }, relations: ['variants'] });
+        const variantWithAssetId = laptop!.variants[laptop!.variants.length - 1].id;
+        const nullAssetVariantCount = laptop!.variants.length - 1;
+        // Give exactly one of the variants a featuredAsset; the others keep the
+        // featuredAsset that is null in the database.
+        await connection.getRepository(ProductVariant).update(variantWithAssetId, { featuredAsset: asset! });
+        try {
+            const product = await connection
+                .getRepository(Product)
+                .findOne({ where: { id: 1 }, relations: ['variants'] });
+
+            await server.app.get(EntityHydrator).hydrate(ctx, product!, {
+                relations: ['variants.featuredAsset'],
+            });
+
+            const withAsset = product!.variants.filter(v => v.featuredAsset != null);
+            expect(withAsset.length).toBe(1);
+            expect(withAsset[0].featuredAsset.name).toBe(assetName);
+            // The others were null in the database and must still be null, not undefined:
+            // getMissingRelations() treats undefined as never-fetched, so hydrate() would
+            // re-query them on every subsequent call.
+            expect(product!.variants.filter(v => v.featuredAsset === null).length).toBe(
+                nullAssetVariantCount,
+            );
+        } finally {
+            // Restore the shared fixture so tests added after this one do not inherit it
+            await connection
+                .getRepository(ProductVariant)
+                .update(variantWithAssetId, { featuredAsset: null });
+        }
+    });
 });
 
 function getVariantWithName(product: Product, name: string) {
-    return product.variants.find(v => v.name === name)!;
+    return product.variants.find(v => v.name === name);
 }
 
-type HydrateProductQuery = { hydrateProduct: Product };
-
-const GET_HYDRATED_PRODUCT = gql`
+const getHydratedProductDocument = graphql(`
     query GetHydratedProduct($id: ID!) {
         hydrateProduct(id: $id)
     }
-`;
-const GET_HYDRATED_PRODUCT_NO_FACETS = gql`
+`);
+const getHydratedProductNoFacetsDocument = graphql(`
     query GetHydratedProductWithNoFacets {
         hydrateProductWithNoFacets
     }
-`;
-const GET_HYDRATED_PRODUCT_ASSET = gql`
+`);
+const getHydratedProductAssetDocument = graphql(`
     query GetHydratedProductAsset($id: ID!) {
         hydrateProductAsset(id: $id)
     }
-`;
-const GET_HYDRATED_VARIANT = gql`
+`);
+const getHydratedVariantDocument = graphql(`
     query GetHydratedVariant($id: ID!) {
         hydrateProductVariant(id: $id)
     }
-`;
-const GET_HYDRATED_ORDER = gql`
+`);
+const getHydratedOrderDocument = graphql(`
     query GetHydratedOrder($id: ID!) {
         hydrateOrder(id: $id)
     }
-`;
-const GET_HYDRATED_ORDER_QUANTITIES = gql`
+`);
+const getHydratedOrderQuantitiesDocument = graphql(`
     query GetHydratedOrderQuantities($id: ID!) {
         hydrateOrderReturnQuantities(id: $id)
     }
-`;
+`);
 
-const GET_HYDRATED_CHANNEL = gql`
+const getHydratedChannelDocument = graphql(`
     query GetHydratedChannel($id: ID!) {
         hydrateChannel(id: $id)
     }
-`;
+`);
 
-const GET_HYDRATED_CHANNEL_NESTED = gql`
+const getHydratedChannelNestedDocument = graphql(`
     query GetHydratedChannelNested($id: ID!) {
         hydrateChannelWithNestedRelation(id: $id)
     }
-`;
+`);
 
-const GET_HYDRATED_CHANNEL_LONG_ALIAS = gql`
+const getHydratedChannelLongAliasDocument = graphql(`
     query GetHydratedChannelNested($id: ID!) {
         hydrateChannelWithVeryLongPropertyName(id: $id)
     }
-`;
+`);

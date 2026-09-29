@@ -35,8 +35,11 @@ export interface UseModifyOrderReturn {
     removeCouponCode: (params: { couponCode: string }) => void;
     updateShippingAddress: (address: AddressFragment) => void;
     updateBillingAddress: (address: AddressFragment) => void;
+    updateShippingAddressRaw: (input: NonNullable<ModifyOrderInput['updateShippingAddress']>) => void;
+    updateBillingAddressRaw: (input: NonNullable<ModifyOrderInput['updateBillingAddress']>) => void;
     addSurcharge: (surcharge: SurchargeInput) => void;
     setNote: (note: string) => void;
+    setRecalculateShipping: (recalculate: boolean) => void;
     hasModifications: boolean;
 }
 
@@ -148,7 +151,9 @@ export function useModifyOrder(order: Order | null | undefined): UseModifyOrderR
                 setModifyOrderInput(prev => ({
                     ...prev,
                     addItems: (prev.addItems ?? []).map(item =>
-                        item.productVariantId === productVariantId ? { ...item, quantity } : item,
+                        item.productVariantId === productVariantId
+                            ? { ...item, quantity, customFields }
+                            : item,
                     ),
                 }));
             } else {
@@ -162,7 +167,7 @@ export function useModifyOrder(order: Order | null | undefined): UseModifyOrderR
 
                 setModifyOrderInput(prev => {
                     const originalLine = order?.lines.find(l => l.id === lineId);
-                    const isBackToOriginal = originalLine && originalLine.quantity === quantity;
+                    const isBackToOriginal = originalLine?.quantity === quantity;
 
                     const originalCustomFields = (originalLine as any)?.customFields;
                     const customFieldsChanged =
@@ -288,6 +293,28 @@ export function useModifyOrder(order: Order | null | undefined): UseModifyOrderR
         }));
     }, []);
 
+    // Update shipping address from a raw input (e.g. a new ad-hoc address entered inline)
+    const updateShippingAddressRaw = useCallback(
+        (input: NonNullable<ModifyOrderInput['updateShippingAddress']>) => {
+            setModifyOrderInput(prev => ({
+                ...prev,
+                updateShippingAddress: input,
+            }));
+        },
+        [],
+    );
+
+    // Update billing address from a raw input (e.g. a new ad-hoc address entered inline)
+    const updateBillingAddressRaw = useCallback(
+        (input: NonNullable<ModifyOrderInput['updateBillingAddress']>) => {
+            setModifyOrderInput(prev => ({
+                ...prev,
+                updateBillingAddress: input,
+            }));
+        },
+        [],
+    );
+
     // Add surcharge
     const addSurcharge = useCallback((surcharge: SurchargeInput) => {
         setModifyOrderInput(prev => ({
@@ -301,6 +328,17 @@ export function useModifyOrder(order: Order | null | undefined): UseModifyOrderR
         setModifyOrderInput(prev => ({
             ...prev,
             note: note || '',
+        }));
+    }, []);
+
+    // Set recalculate shipping
+    const setRecalculateShipping = useCallback((recalculate: boolean) => {
+        setModifyOrderInput(prev => ({
+            ...prev,
+            options: {
+                ...prev.options,
+                recalculateShipping: recalculate,
+            },
         }));
     }, []);
 
@@ -328,8 +366,11 @@ export function useModifyOrder(order: Order | null | undefined): UseModifyOrderR
         removeCouponCode,
         updateShippingAddress,
         updateBillingAddress,
+        updateShippingAddressRaw,
+        updateBillingAddressRaw,
         addSurcharge,
         setNote,
+        setRecalculateShipping,
         hasModifications,
     };
 }

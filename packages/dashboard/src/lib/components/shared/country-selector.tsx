@@ -11,6 +11,7 @@ import { api } from '@/vdb/graphql/api.js';
 import { graphql } from '@/vdb/graphql/graphql.js';
 import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '@uidotdev/usehooks';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 
@@ -42,23 +43,23 @@ export interface CountrySelectorProps {
 export function CountrySelector(props: CountrySelectorProps) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['countries', searchTerm],
+        queryKey: ['countries', debouncedSearchTerm],
         queryFn: () =>
             api.query(countryListDocument, {
                 options: {
                     sort: { name: 'ASC' },
-                    filter: searchTerm
+                    filter: debouncedSearchTerm
                         ? {
-                              name: { contains: searchTerm },
-                              code: { contains: searchTerm },
+                              name: { contains: debouncedSearchTerm },
+                              code: { contains: debouncedSearchTerm },
                           }
                         : undefined,
-                    filterOperator: searchTerm ? 'OR' : undefined,
+                    filterOperator: debouncedSearchTerm ? 'OR' : undefined,
                 },
             }),
-        staleTime: 1000 * 60 * 60, // 1 hour
     });
 
     const handleSearch = (value: string) => {
@@ -67,11 +68,9 @@ export function CountrySelector(props: CountrySelectorProps) {
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" type="button" disabled={props.readOnly} className="gap-2">
+            <PopoverTrigger render={<Button variant="outline" size="sm" type="button" disabled={props.readOnly} className="gap-2" />}>
                     <Plus className="h-4 w-4" />
                     {props.label ?? <Trans>Select country</Trans>}
-                </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-[350px]" align="start">
                 <Command shouldFilter={false}>

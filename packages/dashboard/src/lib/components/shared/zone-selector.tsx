@@ -31,7 +31,6 @@ export interface ZoneSelectorProps {
 export function ZoneSelector({ value, onChange }: Readonly<ZoneSelectorProps>) {
     const { data, isLoading, isPending } = useQuery({
         queryKey: ['zones'],
-        staleTime: 1000 * 60 * 5,
         queryFn: () =>
             api.query(zonesDocument, {
                 options: {
@@ -45,9 +44,11 @@ export function ZoneSelector({ value, onChange }: Readonly<ZoneSelectorProps>) {
     }
 
     return (
-        <Select value={value} onValueChange={value => value && onChange(value)}>
+        <Select items={data ? Object.fromEntries(data.zones.items.map(z => [z.id, z.name])) : {}} value={value ?? ''} onValueChange={value => value && onChange(value)}>
             <SelectTrigger>
-                <SelectValue placeholder={<Trans>Select a zone</Trans>} />
+                <SelectValue placeholder={<Trans>Select a zone</Trans>}>
+                    {(val: string) => data?.zones.items.find(z => z.id === val)?.name}
+                </SelectValue>
             </SelectTrigger>
             <SelectContent>
                 {data && (

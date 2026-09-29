@@ -12,6 +12,11 @@ for (const file of templateFiles) {
     fs.copyFileSync(file, distPath);
 }
 
+const cliBinPath = path.join(__dirname, 'dist', 'cli.js');
+if (fs.existsSync(cliBinPath)) {
+    fs.chmodSync(cliBinPath, 0o755); // NOSONAR - workspace bin symlinks must remain executable after local builds.
+}
+
 function findFilesWithSuffix(directory: string, suffix: string | string[]): string[] {
     const files: string[] = [];
     const suffixes = Array.isArray(suffix) ? suffix : [suffix];
@@ -25,10 +30,8 @@ function findFilesWithSuffix(directory: string, suffix: string | string[]): stri
 
             if (stats.isDirectory()) {
                 traverseDirectory(itemPath);
-            } else {
-                if (suffixes.some(s => item.endsWith(s))) {
-                    files.push(itemPath);
-                }
+            } else if (suffixes.some(s => item.endsWith(s))) {
+                files.push(itemPath);
             }
         });
     }

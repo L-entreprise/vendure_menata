@@ -1,24 +1,24 @@
 import { ErrorPage } from '@/vdb/components/shared/error-page.js';
 import { FormFieldWrapper } from '@/vdb/components/shared/form-field-wrapper.js';
-import { PermissionGuard } from '@/vdb/components/shared/permission-guard.js';
 import { TranslatableFormFieldWrapper } from '@/vdb/components/shared/translatable-form-field.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
 import { NEW_ENTITY_PATH } from '@/vdb/constants.js';
-import {
-    CustomFieldsPageBlock,
+import {    CustomFieldsPageBlock,
     DetailFormGrid,
     Page,
     PageActionBar,
-    PageActionBarRight,
     PageBlock,
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { ActionBarItem } from '@/vdb/framework/layout-engine/action-bar-item-wrapper.js';
 import { detailPageRouteLoader } from '@/vdb/framework/page/detail-page-route-loader.js';
 import { useDetailPage } from '@/vdb/framework/page/use-detail-page.js';
+import { availableCountriesQueryKey } from '@/vdb/hooks/use-available-countries.js';
 import { Trans, useLingui } from '@lingui/react/macro';
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { countryDetailDocument, createCountryDocument, updateCountryDocument } from './countries.graphql.js';
@@ -43,6 +43,7 @@ function CountryDetailPage() {
     const navigate = useNavigate();
     const creatingNewEntity = params.id === NEW_ENTITY_PATH;
     const { t } = useLingui();
+    const queryClient = useQueryClient();
 
     const { form, submitHandler, entity, isPending, resetForm } = useDetailPage({
         pageId,
@@ -62,6 +63,7 @@ function CountryDetailPage() {
         params: { id: params.id },
         onSuccess: async data => {
             toast(creatingNewEntity ? t`Successfully created country` : t`Successfully updated country`);
+            await queryClient.invalidateQueries({ queryKey: availableCountriesQueryKey });
             form.reset(form.getValues());
             if (creatingNewEntity) {
                 await navigate({ to: `../$id`, params: { id: data.id } });
@@ -78,16 +80,14 @@ function CountryDetailPage() {
         <Page pageId={pageId} form={form} submitHandler={submitHandler} entity={entity}>
             <PageTitle>{creatingNewEntity ? <Trans>New country</Trans> : (entity?.name ?? '')}</PageTitle>
             <PageActionBar>
-                <PageActionBarRight>
-                    <PermissionGuard requires={['UpdateCountry']}>
-                        <Button
-                            type="submit"
-                            disabled={!form.formState.isDirty || !form.formState.isValid || isPending}
-                        >
-                            {creatingNewEntity ? <Trans>Create</Trans> : <Trans>Update</Trans>}
-                        </Button>
-                    </PermissionGuard>
-                </PageActionBarRight>
+                <ActionBarItem itemId="save-button" requiresPermission={['UpdateCountry']}>
+                    <Button
+                        type="submit"
+                        disabled={!form.formState.isDirty || !form.formState.isValid || isPending}
+                    >
+                        {creatingNewEntity ? <Trans>Create</Trans> : <Trans>Update</Trans>}
+                    </Button>
+                </ActionBarItem>
             </PageActionBar>
             <PageLayout>
                 <PageBlock column="side" blockId="enabled">

@@ -80,4 +80,24 @@ export interface PathAdapter {
      * attempt to use these paths when compiling the Vendure config and its imports.
      */
     transformTsConfigPathMappings?: TransformTsConfigPathMappingsFn;
+    /**
+     * @description
+     * The root directory used to compute relative output paths when compiling
+     * TypeScript files. Compiled files preserve their directory structure
+     * relative to this root.
+     *
+     * In monorepos this should typically be set to the workspace root (where
+     * the base `tsconfig.json` lives), so that a config file at
+     * `apps/server/src/vendure-config.ts` outputs to
+     * `{outputPath}/apps/server/src/vendure-config.js`.
+     *
+     * Defaults to the deepest directory containing the `vendureConfigPath`
+     * file and every local file it imports. When every import sits at or
+     * below the config, that is the config's own directory and the compiled
+     * config lands at the output root; an import from above widens the root
+     * so nothing is emitted outside `outputPath`.
+     *
+     * @since 3.6.0
+     */
+    sourceRoot?: string;
 }

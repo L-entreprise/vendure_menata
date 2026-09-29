@@ -116,6 +116,8 @@ export class PaymentMethodService {
     }
 
     async update(ctx: RequestContext, input: UpdatePaymentMethodInput): Promise<PaymentMethod> {
+        // Ensure the entity belongs to the active channel before updating.
+        await this.connection.getEntityOrThrow(ctx, PaymentMethod, input.id, { channelId: ctx.channelId });
         const updatedPaymentMethod = await this.translatableSaver.update({
             ctx,
             input,
@@ -142,8 +144,8 @@ export class PaymentMethodService {
             input,
             updatedPaymentMethod,
         );
-        await this.eventBus.publish(new PaymentMethodEvent(ctx, updatedPaymentMethod, 'updated', input));
         await this.connection.getRepository(ctx, PaymentMethod).save(updatedPaymentMethod, { reload: false });
+        await this.eventBus.publish(new PaymentMethodEvent(ctx, updatedPaymentMethod, 'updated', input));
         return assertFound(this.findOne(ctx, updatedPaymentMethod.id));
     }
 
@@ -207,19 +209,27 @@ export class PaymentMethodService {
         if (!hasPermission) {
             throw new ForbiddenError();
         }
-        for (const paymentMethodId of input.paymentMethodIds) {
-            const paymentMethod = await this.connection.findOneInChannel(
-                ctx,
-                PaymentMethod,
-                paymentMethodId,
-                ctx.channelId,
-            );
-            await this.channelService.assignToChannels(ctx, PaymentMethod, paymentMethodId, [
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const paymentMethods = await this.connection.findByIdsInChannel(
+            ctx,
+            PaymentMethod,
+            input.paymentMethodIds,
+            ctx.channelId,
+            {},
+        );
+        for (const paymentMethod of paymentMethods) {
+            await this.channelService.assignToChannels(ctx, PaymentMethod, paymentMethod.id, [
                 input.channelId,
             ]);
         }
         return this.connection
-            .findByIdsInChannel(ctx, PaymentMethod, input.paymentMethodIds, ctx.channelId, {})
+            .findByIdsInChannel(
+                ctx,
+                PaymentMethod,
+                paymentMethods.map(method => method.id),
+                ctx.channelId,
+                {},
+            )
             .then(methods => methods.map(method => this.translator.translate(method, ctx)));
     }
 
@@ -238,14 +248,27 @@ export class PaymentMethodService {
         if (idsAreEqual(input.channelId, defaultChannel.id)) {
             throw new UserInputError('error.items-cannot-be-removed-from-default-channel');
         }
-        for (const paymentMethodId of input.paymentMethodIds) {
-            const paymentMethod = await this.connection.getEntityOrThrow(ctx, PaymentMethod, paymentMethodId);
-            await this.channelService.removeFromChannels(ctx, PaymentMethod, paymentMethodId, [
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const paymentMethods = await this.connection.findByIdsInChannel(
+            ctx,
+            PaymentMethod,
+            input.paymentMethodIds,
+            ctx.channelId,
+            {},
+        );
+        for (const paymentMethod of paymentMethods) {
+            await this.channelService.removeFromChannels(ctx, PaymentMethod, paymentMethod.id, [
                 input.channelId,
             ]);
         }
         return this.connection
-            .findByIdsInChannel(ctx, PaymentMethod, input.paymentMethodIds, ctx.channelId, {})
+            .findByIdsInChannel(
+                ctx,
+                PaymentMethod,
+                paymentMethods.map(method => method.id),
+                ctx.channelId,
+                {},
+            )
             .then(methods => methods.map(method => this.translator.translate(method, ctx)));
     }
 

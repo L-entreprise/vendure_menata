@@ -11,9 +11,9 @@ import { getFieldsFromDocumentNode } from '@/vdb/framework/document-introspectio
 import { ResultOf } from '@/vdb/graphql/graphql.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { Trans } from '@lingui/react/macro';
-import { JsonEditor } from 'json-edit-react';
+import { JsonViewer } from '@/vdb/components/data-display/json-viewer.js';
 import { EllipsisVertical } from 'lucide-react';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { orderDetailDocument, orderLineFragment } from '../orders.graphql.js';
 import { MoneyGrossNet } from './money-gross-net.js';
 import { OrderTableTotals } from './order-table-totals.js';
@@ -65,13 +65,11 @@ function createCustomizeColumns(currencyCode: string) {
         fulfillmentLines: {
             cell: ({ row }: { row: any }) => (
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <EllipsisVertical />
-                        </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                        <EllipsisVertical />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <JsonEditor data={row.original.fulfillmentLines} viewOnly rootFontSize={12} />
+                        <JsonViewer data={row.original.fulfillmentLines} viewOnly rootFontSize={12} />
                     </DropdownMenuContent>
                 </DropdownMenu>
             ),
@@ -81,34 +79,28 @@ function createCustomizeColumns(currencyCode: string) {
             accessorKey: 'quantity',
         },
         unitPrice: {
-            cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.unitPrice} />
-            ),
+            cell: ({ row }: { row: any }) => <Money currency={currencyCode} value={row.original.unitPrice} />,
         },
         proratedUnitPrice: {
             cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.proratedUnitPrice} />
+                <Money currency={currencyCode} value={row.original.proratedUnitPrice} />
             ),
         },
         proratedUnitPriceWithTax: {
             cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.proratedUnitPriceWithTax} />
+                <Money currency={currencyCode} value={row.original.proratedUnitPriceWithTax} />
             ),
         },
         linePrice: {
-            cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.linePrice} />
-            ),
+            cell: ({ row }: { row: any }) => <Money currency={currencyCode} value={row.original.linePrice} />,
         },
         discountedLinePrice: {
             cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.discountedLinePrice} />
+                <Money currency={currencyCode} value={row.original.discountedLinePrice} />
             ),
         },
         lineTax: {
-            cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.lineTax} />
-            ),
+            cell: ({ row }: { row: any }) => <Money currency={currencyCode} value={row.original.lineTax} />,
         },
         linePriceWithTax: {
             header: () => <Trans>Total</Trans>,
@@ -121,8 +113,29 @@ function createCustomizeColumns(currencyCode: string) {
         },
         discountedLinePriceWithTax: {
             cell: ({ row }: { row: any }) => (
-                <Money currencyCode={currencyCode} value={row.original.discountedLinePriceWithTax} />
+                <Money currency={currencyCode} value={row.original.discountedLinePriceWithTax} />
             ),
+        },
+        discounts: {
+            header: () => <Trans>Discounts</Trans>,
+            cell: ({ row }: { row: any }) => {
+                const discounts = row.original.discounts;
+                if (!discounts?.length) return null;
+                return (
+                    <div className="grid grid-cols-[auto_1fr] items-start gap-x-2 gap-y-1">
+                        {discounts.map((discount: any, index: number) => (
+                            <Fragment key={index}>
+                                <span>{discount.description}</span>
+                                <MoneyGrossNet
+                                    priceWithTax={discount.amountWithTax}
+                                    price={discount.amount}
+                                    currencyCode={currencyCode}
+                                />
+                            </Fragment>
+                        ))}
+                    </div>
+                );
+            },
         },
     };
 }

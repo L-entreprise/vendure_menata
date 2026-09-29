@@ -60,18 +60,30 @@ export class FacetValueService {
         ctxOrLang: RequestContext | LanguageCode,
         lang?: LanguageCode,
     ): Promise<Array<Translated<FacetValue>>> {
-        const [repository, languageCode] =
+        const [repository, languageCode, channelLanguageCode] =
             ctxOrLang instanceof RequestContext
-                ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  [this.connection.getRepository(ctxOrLang, FacetValue), lang!]
-                : [this.connection.rawConnection.getRepository(FacetValue), ctxOrLang];
-        // TODO: Implement usage of channelLanguageCode
+                ? [
+                      this.connection.getRepository(ctxOrLang, FacetValue),
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      lang!,
+                      ctxOrLang.channel.defaultLanguageCode,
+                  ]
+                : [this.connection.rawConnection.getRepository(FacetValue), ctxOrLang, undefined];
+        const globalDefaultLanguageCode = this.configService.defaultLanguageCode;
         return repository
             .find({
                 relations: ['facet'],
             })
             .then(facetValues =>
-                facetValues.map(facetValue => translateDeep(facetValue, languageCode, ['facet'])),
+                facetValues.map(facetValue =>
+                    translateDeep(
+                        facetValue,
+                        channelLanguageCode
+                            ? [languageCode, channelLanguageCode, globalDefaultLanguageCode]
+                            : [languageCode, globalDefaultLanguageCode],
+                        ['facet'],
+                    ),
+                ),
             );
     }
 
@@ -192,6 +204,8 @@ export class FacetValueService {
     }
 
     async update(ctx: RequestContext, input: UpdateFacetValueInput): Promise<Translated<FacetValue>> {
+        // Ensure the entity belongs to the active channel before updating.
+        await this.connection.getEntityOrThrow(ctx, FacetValue, input.id, { channelId: ctx.channelId });
         const facetValue = await this.translatableSaver.update({
             ctx,
             input,
@@ -211,7 +225,9 @@ export class FacetValueService {
         let message = '';
         let result: DeletionResult;
 
-        const facetValue = await this.connection.getEntityOrThrow(ctx, FacetValue, id);
+        const facetValue = await this.connection.getEntityOrThrow(ctx, FacetValue, id, {
+            channelId: ctx.channelId,
+        });
         const i18nVars = {
             products: productCount,
             variants: variantCount,

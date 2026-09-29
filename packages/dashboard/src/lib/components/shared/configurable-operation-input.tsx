@@ -1,10 +1,10 @@
 import { ConfigurableOperationDefFragment } from '@/vdb/graphql/fragments.js';
 import { ConfigurableOperationInput as ConfigurableOperationInputType } from '@vendure/common/lib/generated-types';
 import { X } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { Button } from '../ui/button.js';
 import { Card, CardContent, CardHeader } from '../ui/card.js';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '../ui/form.js';
+import { Field, FieldLabel } from '../ui/field.js';
 import { ConfigurableOperationArgInput } from './configurable-operation-arg-input.js';
 
 export interface ConfigurableOperationInputProps {
@@ -16,6 +16,7 @@ export interface ConfigurableOperationInputProps {
     value: ConfigurableOperationInputType;
     onChange: (val: ConfigurableOperationInputType) => void;
     onRemove?: () => void;
+    onValidityChange?: (isValid: boolean) => void;
 }
 
 export function ConfigurableOperationInput({
@@ -26,12 +27,26 @@ export function ConfigurableOperationInput({
     value,
     onChange,
     onRemove,
+    onValidityChange,
 }: Readonly<ConfigurableOperationInputProps>) {
-    const form = useForm({
-        defaultValues: {
-            ...value,
-        },
-    });
+    // Check validity of required fields and notify parent.
+    // List args are exempt from required validation (matching legacy Angular admin-ui behavior)
+    // because an empty array is considered a valid value for list types.
+    useEffect(() => {
+        if (!onValidityChange) return;
+
+        const isValid = operationDefinition.args.every(arg => {
+            if (!arg.required || arg.list) return true;
+            const argValue = value.arguments.find(a => a.name === arg.name)?.value;
+            // Args with a defaultValue are considered valid even when absent from
+            // stored data. This handles legacy collections created before an arg
+            // (e.g. combineWithAnd) was added to the filter definition.
+            if (argValue === undefined && arg.defaultValue != null) return true;
+            return argValue !== undefined && argValue !== '';
+        });
+
+        onValidityChange(isValid);
+    }, [value.arguments, operationDefinition.args, onValidityChange]);
 
     const handleInputChange = (name: string, inputValue: string) => {
         const argIndex = value.arguments.findIndex(arg => arg.name === name);
@@ -83,43 +98,38 @@ export function ConfigurableOperationInput({
 
                 {operationDefinition.args && operationDefinition.args.length > 0 && (
                     <CardContent className="pt-0">
-                        <Form {...form}>
-                            <div className="space-y-4">
-                                <div
-                                    className={`grid gap-4 ${operationDefinition.args.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
-                                >
-                                    {operationDefinition.args
-                                        .filter(arg => arg.ui?.component !== 'combination-mode-form-input')
-                                        .map(arg => {
-                                            const argValue =
-                                                value.arguments.find(a => a.name === arg.name)?.value || '';
-                                            return (
-                                                <FormField
-                                                    key={arg.name}
-                                                    name={`args.${arg.name}`}
-                                                    render={() => (
-                                                        <FormItem className="space-y-2">
-                                                            <FormLabel className="text-sm font-medium text-foreground">
-                                                                {arg.label || arg.name}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <ConfigurableOperationArgInput
-                                                                    definition={arg}
-                                                                    value={argValue}
-                                                                    onChange={value =>
-                                                                        handleInputChange(arg.name, value)
-                                                                    }
-                                                                    readOnly={readonly}
-                                                                />
-                                                            </FormControl>
-                                                        </FormItem>
+                        <div className="space-y-4">
+                            <div
+                                className={`grid gap-4 ${operationDefinition.args.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
+                            >
+                                {operationDefinition.args
+                                    .filter(arg => arg.ui?.component !== 'combination-mode-form-input')
+                                    .map(arg => {
+                                        const argValue =
+                                            value.arguments.find(a => a.name === arg.name)?.value || '';
+                                        return (
+                                            <Field key={arg.name} className="gap-2">
+                                                <FieldLabel className="text-sm font-medium text-foreground">
+                                                    {arg.label || arg.name}
+                                                    {arg.required && !arg.list && (
+                                                        <span className="text-destructive ml-1">
+                                                            *
+                                                        </span>
                                                     )}
+                                                </FieldLabel>
+                                                <ConfigurableOperationArgInput
+                                                    definition={arg}
+                                                    value={argValue}
+                                                    onChange={value =>
+                                                        handleInputChange(arg.name, value)
+                                                    }
+                                                    readOnly={readonly}
                                                 />
-                                            );
-                                        })}
-                                </div>
+                                            </Field>
+                                        );
+                                    })}
                             </div>
-                        </Form>
+                        </div>
                     </CardContent>
                 )}
             </Card>

@@ -2,6 +2,7 @@ import { ConfigurableOperationSelector } from '@/vdb/components/shared/configura
 import { configurableOperationDefFragment } from '@/vdb/graphql/fragments.js';
 import { graphql } from '@/vdb/graphql/graphql.js';
 import { ConfigurableOperationInput as ConfigurableOperationInputType } from '@vendure/common/lib/generated-types';
+import { useLingui } from '@lingui/react/macro';
 
 export const paymentHandlersDocument = graphql(
     `
@@ -17,9 +18,15 @@ export const paymentHandlersDocument = graphql(
 interface PaymentHandlerSelectorProps {
     value: ConfigurableOperationInputType | undefined;
     onChange: (value: ConfigurableOperationInputType | undefined) => void;
+    onValidityChange?: (isValid: boolean) => void;
 }
 
-export function PaymentHandlerSelector({ value, onChange }: Readonly<PaymentHandlerSelectorProps>) {
+export function PaymentHandlerSelector({
+    value,
+    onChange,
+    onValidityChange,
+}: Readonly<PaymentHandlerSelectorProps>) {
+    const { t } = useLingui();
     return (
         <ConfigurableOperationSelector
             value={value}
@@ -27,7 +34,8 @@ export function PaymentHandlerSelector({ value, onChange }: Readonly<PaymentHand
             queryDocument={paymentHandlersDocument}
             queryKey="paymentMethodHandlers"
             dataPath="paymentMethodHandlers"
-            buttonText="Select Payment Handler"
+            buttonText={t`Select Payment Handler`}
+            onValidityChange={onValidityChange}
         />
     );
 }

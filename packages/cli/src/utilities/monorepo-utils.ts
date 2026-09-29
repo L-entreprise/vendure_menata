@@ -97,7 +97,9 @@ function hasNamedDependency(packageJsonPath: string, dependencyName: string): bo
     }
     try {
         const packageJson = fs.readJsonSync(packageJsonPath);
-        return !!packageJson.dependencies?.[dependencyName];
+        return !!(
+            packageJson.dependencies?.[dependencyName] ?? packageJson.devDependencies?.[dependencyName]
+        );
     } catch {
         return false;
     }
@@ -122,4 +124,28 @@ export function findTsConfigInDir(dir: string): string | null {
     }
 
     return null;
+}
+
+/**
+ * Checks if a directory has a workspace configuration marker file,
+ * confirming it is genuinely a monorepo/workspace root.
+ * Checks for pnpm-workspace.yaml, lerna.json, nx.json, turbo.json,
+ * or a "workspaces" field in package.json (npm/yarn workspaces).
+ */
+export function hasWorkspaceMarker(dir: string): boolean {
+    const markers = ['pnpm-workspace.yaml', 'lerna.json', 'nx.json', 'turbo.json'];
+    for (const marker of markers) {
+        if (fs.existsSync(path.join(dir, marker))) {
+            return true;
+        }
+    }
+    try {
+        const pkg = fs.readJsonSync(path.join(dir, 'package.json'));
+        if (pkg.workspaces) {
+            return true;
+        }
+    } catch {
+        // no package.json or unreadable
+    }
+    return false;
 }

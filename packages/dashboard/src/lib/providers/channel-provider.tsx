@@ -178,14 +178,22 @@ export function ChannelProvider({ children }: Readonly<{ children: React.ReactNo
     const setSelectedChannel = React.useCallback(
         (channelId: string) => {
             const channel = channels.find(c => c.id === channelId);
-            if (channel) {
-                setChannelTokenInLocalStorage(channel.token);
-                setSelectedChannelId(channelId);
-                setActiveChannelId(channelId);
+            if (!channel) {
+                return;
+            }
+            const previousToken = getChannelTokenFromLocalStorage();
+            setChannelTokenInLocalStorage(channel.token);
+            setSelectedChannelId(channelId);
+            setActiveChannelId(channelId);
+            // Only invalidate queries if the channel token actually changed.
+            // A no-op selection (e.g. clicking the already-active channel)
+            // would otherwise cause every visible query to flash through
+            // a fetching state for no reason.
+            if (previousToken !== channel.token) {
                 queryClient.invalidateQueries();
             }
         },
-        [queryClient, channels],
+        [queryClient, channels, setActiveChannelId],
     );
 
     // If no selected channel is set but we have an active channel, use that
@@ -214,7 +222,19 @@ export function ChannelProvider({ children }: Readonly<{ children: React.ReactNo
             // If no selected channel is set, use the first available channel
             const defaultChannel = channels[0];
             setSelectedChannelId(defaultChannel.id);
-            setChannelTokenInLocalStorage(defaultChannel.token);
+            const currentToken = getChannelTokenFromLocalStorage();
+            if (currentToken !== defaultChannel.token) {
+                setChannelTokenInLocalStorage(defaultChannel.token);
+                // The active channel query may have been refetched (e.g. by
+                // refreshChannels() after deleting the current channel) while
+                // localStorage still held the now-deleted channel's token, and
+                // it is not retried (retry: false). Invalidate it now that the
+                // token points at a valid channel so the active channel
+                // recovers without requiring a full page reload.
+                queryClient.invalidateQueries({
+                    queryKey: ['activeChannel', isAuthenticated],
+                });
+            }
         }
     }, [selectedChannelId, channels, queryClient, isAuthenticated]);
 
@@ -226,9 +246,12 @@ export function ChannelProvider({ children }: Readonly<{ children: React.ReactNo
     const refreshChannels = React.useCallback(() => {
         refreshCurrentUser();
         queryClient.invalidateQueries({
-            queryKey: ['channels', isAuthenticated],
+            queryKey: ['channels'],
         });
-    }, [refreshCurrentUser, queryClient, isAuthenticated]);
+        queryClient.invalidateQueries({
+            queryKey: ['activeChannel'],
+        });
+    }, [refreshCurrentUser, queryClient]);
 
     const contextValue: ChannelContext = React.useMemo(
         () => ({

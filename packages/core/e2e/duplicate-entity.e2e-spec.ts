@@ -3,47 +3,47 @@ import { pick } from '@vendure/common/lib/pick';
 import {
     Collection,
     CollectionService,
+    CurrencyCode,
     defaultEntityDuplicators,
     EntityDuplicator,
     freeShipping,
     LanguageCode,
     mergeConfig,
     minimumOrderAmount,
+    Permission,
     PermissionDefinition,
     TransactionalConnection,
     variantIdCollectionFilter,
 } from '@vendure/core';
-import { createErrorResultGuard, createTestEnvironment, ErrorResultGuard } from '@vendure/testing';
-import gql from 'graphql-tag';
+import {
+    createErrorResultGuard,
+    createTestEnvironment,
+    E2E_DEFAULT_CHANNEL_TOKEN,
+    ErrorResultGuard,
+} from '@vendure/testing';
 import path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { initialData } from '../../../e2e-common/e2e-initial-data';
 import { TEST_SETUP_TIMEOUT_MS, testConfig } from '../../../e2e-common/test-config';
 
-import * as Codegen from './graphql/generated-e2e-admin-types';
+import { channelFragment, promotionFragment, roleFragment } from './graphql/fragments-admin';
+import { FragmentOf, ResultOf } from './graphql/graphql-admin';
 import {
-    AdministratorFragment,
-    CreateAdministratorMutation,
-    CreateAdministratorMutationVariables,
-    CreateRoleMutation,
-    CreateRoleMutationVariables,
-    Permission,
-    RoleFragment,
-} from './graphql/generated-e2e-admin-types';
-import {
-    ASSIGN_PRODUCT_TO_CHANNEL,
-    CREATE_ADMINISTRATOR,
-    CREATE_CHANNEL,
-    CREATE_COLLECTION,
-    CREATE_PROMOTION,
-    CREATE_ROLE,
-    GET_COLLECTION,
-    GET_COLLECTIONS,
-    GET_FACET_WITH_VALUES,
-    GET_PRODUCT_WITH_VARIANTS,
-    GET_PROMOTION,
-    UPDATE_PRODUCT_VARIANTS,
+    assignProductToChannelDocument,
+    createAdministratorDocument,
+    createChannelDocument,
+    createCollectionDocument,
+    createPromotionDocument,
+    createRoleDocument,
+    duplicateEntityDocument,
+    getCollectionDocument,
+    getCollectionsDocument,
+    getEntityDuplicatorsDocument,
+    getFacetWithValuesDocument,
+    getProductWithVariantsDocument,
+    getPromotionDocument,
+    updateProductVariantsDocument,
 } from './graphql/shared-definitions';
 
 const customPermission = new PermissionDefinition({
@@ -121,8 +121,12 @@ describe('Duplicating entities', () => {
         result => !!result.newEntityId,
     );
 
-    let testRole: RoleFragment;
-    let testAdmin: AdministratorFragment;
+    const createChannelGuard: ErrorResultGuard<FragmentOf<typeof channelFragment>> = createErrorResultGuard(
+        result => !!result.id,
+    );
+
+    let testRole: FragmentOf<typeof roleFragment>;
+    let testAdmin: ResultOf<typeof createAdministratorDocument>['createAdministrator'];
     let newEntityId: string;
 
     beforeAll(async () => {
@@ -134,26 +138,20 @@ describe('Duplicating entities', () => {
         await adminClient.asSuperAdmin();
 
         // create a new role and Admin and sign in as that Admin
-        const { createRole } = await adminClient.query<CreateRoleMutation, CreateRoleMutationVariables>(
-            CREATE_ROLE,
-            {
-                input: {
-                    channelIds: ['T_1'],
-                    code: 'test-role',
-                    description: 'Testing custom permissions',
-                    permissions: [
-                        Permission.CreateCollection,
-                        Permission.UpdateCollection,
-                        Permission.ReadCollection,
-                    ],
-                },
+        const { createRole } = await adminClient.query(createRoleDocument, {
+            input: {
+                channelIds: ['T_1'],
+                code: 'test-role',
+                description: 'Testing custom permissions',
+                permissions: [
+                    Permission.CreateCollection,
+                    Permission.UpdateCollection,
+                    Permission.ReadCollection,
+                ],
             },
-        );
+        });
         testRole = createRole;
-        const { createAdministrator } = await adminClient.query<
-            CreateAdministratorMutation,
-            CreateAdministratorMutationVariables
-        >(CREATE_ADMINISTRATOR, {
+        const { createAdministrator } = await adminClient.query(createAdministratorDocument, {
             input: {
                 firstName: 'Test',
                 lastName: 'Admin',
@@ -171,8 +169,7 @@ describe('Duplicating entities', () => {
     });
 
     it('get entity duplicators', async () => {
-        const { entityDuplicators } =
-            await adminClient.query<Codegen.GetEntityDuplicatorsQuery>(GET_ENTITY_DUPLICATORS);
+        const { entityDuplicators } = await adminClient.query(getEntityDuplicatorsDocument);
 
         expect(entityDuplicators.find(d => d.code === 'custom-collection-duplicator')).toEqual({
             args: [
@@ -192,10 +189,7 @@ describe('Duplicating entities', () => {
     it('cannot duplicate if lacking permissions', async () => {
         await adminClient.asUserWithCredentials(testAdmin.emailAddress, 'test');
 
-        const { duplicateEntity } = await adminClient.query<
-            Codegen.DuplicateEntityMutation,
-            Codegen.DuplicateEntityMutationVariables
-        >(DUPLICATE_ENTITY, {
+        const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
             input: {
                 entityName: 'Collection',
                 entityId: 'T_2',
@@ -222,10 +216,7 @@ describe('Duplicating entities', () => {
     it('errors thrown in duplicator cause ErrorResult', async () => {
         await adminClient.asSuperAdmin();
 
-        const { duplicateEntity } = await adminClient.query<
-            Codegen.DuplicateEntityMutation,
-            Codegen.DuplicateEntityMutationVariables
-        >(DUPLICATE_ENTITY, {
+        const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
             input: {
                 entityName: 'Collection',
                 entityId: 'T_2',
@@ -250,7 +241,7 @@ describe('Duplicating entities', () => {
     it('errors thrown cause all DB changes to be rolled back', async () => {
         await adminClient.asSuperAdmin();
 
-        const { collections } = await adminClient.query<Codegen.GetCollectionsQuery>(GET_COLLECTIONS);
+        const { collections } = await adminClient.query(getCollectionsDocument);
 
         expect(collections.items.length).toBe(1);
         expect(collections.items.map(i => i.name)).toEqual(['Plants']);
@@ -259,10 +250,7 @@ describe('Duplicating entities', () => {
     it('returns ID of new entity', async () => {
         await adminClient.asSuperAdmin();
 
-        const { duplicateEntity } = await adminClient.query<
-            Codegen.DuplicateEntityMutation,
-            Codegen.DuplicateEntityMutationVariables
-        >(DUPLICATE_ENTITY, {
+        const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
             input: {
                 entityName: 'Collection',
                 entityId: 'T_2',
@@ -285,14 +273,11 @@ describe('Duplicating entities', () => {
     });
 
     it('duplicate gets created', async () => {
-        const { collection } = await adminClient.query<
-            Codegen.GetCollectionQuery,
-            Codegen.GetCollectionQueryVariables
-        >(GET_COLLECTION, {
+        const { collection } = await adminClient.query(getCollectionDocument, {
             id: newEntityId,
         });
 
-        expect(pick(collection, ['id', 'name', 'slug'])).toEqual({
+        expect(pick(collection!, ['id', 'name', 'slug'])).toEqual({
             id: newEntityId,
             name: 'Plants (copy)',
             slug: 'plants-copy',
@@ -301,9 +286,9 @@ describe('Duplicating entities', () => {
 
     describe('default entity duplicators', () => {
         describe('Product duplicator', () => {
-            let originalProduct: NonNullable<Codegen.GetProductWithVariantsQuery['product']>;
+            let originalProduct: NonNullable<ResultOf<typeof getProductWithVariantsDocument>['product']>;
             let originalFirstVariant: NonNullable<
-                Codegen.GetProductWithVariantsQuery['product']
+                ResultOf<typeof getProductWithVariantsDocument>['product']
             >['variants'][0];
             let newProduct1Id: string;
             let newProduct2Id: string;
@@ -312,10 +297,7 @@ describe('Duplicating entities', () => {
                 await adminClient.asSuperAdmin();
 
                 // Add asset and facet values to the first product variant
-                const { updateProductVariants } = await adminClient.query<
-                    Codegen.UpdateProductVariantsMutation,
-                    Codegen.UpdateProductVariantsMutationVariables
-                >(UPDATE_PRODUCT_VARIANTS, {
+                await adminClient.query(updateProductVariantsDocument, {
                     input: [
                         {
                             id: 'T_1',
@@ -326,10 +308,7 @@ describe('Duplicating entities', () => {
                     ],
                 });
 
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: 'T_1',
                 });
                 originalProduct = product!;
@@ -337,10 +316,7 @@ describe('Duplicating entities', () => {
             });
 
             it('duplicate product without variants', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Product',
                         entityId: 'T_1',
@@ -364,10 +340,7 @@ describe('Duplicating entities', () => {
             });
 
             it('new product has no variants', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct1Id,
                 });
 
@@ -375,10 +348,7 @@ describe('Duplicating entities', () => {
             });
 
             it('is initially disabled', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct1Id,
                 });
 
@@ -386,10 +356,7 @@ describe('Duplicating entities', () => {
             });
 
             it('assets are duplicated', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct1Id,
                 });
 
@@ -399,10 +366,7 @@ describe('Duplicating entities', () => {
             });
 
             it('facet values are duplicated', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct1Id,
                 });
 
@@ -411,10 +375,7 @@ describe('Duplicating entities', () => {
             });
 
             it('duplicate product with variants', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Product',
                         entityId: 'T_1',
@@ -438,10 +399,7 @@ describe('Duplicating entities', () => {
             });
 
             it('new product has variants', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -454,10 +412,7 @@ describe('Duplicating entities', () => {
             });
 
             it('product name is suffixed', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -465,10 +420,7 @@ describe('Duplicating entities', () => {
             });
 
             it('variant SKUs are suffixed', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -481,10 +433,7 @@ describe('Duplicating entities', () => {
             });
 
             it('variant assets are preserved', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -498,10 +447,7 @@ describe('Duplicating entities', () => {
             });
 
             it('variant facet values are preserved', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -515,10 +461,7 @@ describe('Duplicating entities', () => {
             });
 
             it('variant stock levels are preserved', async () => {
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: newProduct2Id,
                 });
 
@@ -528,10 +471,7 @@ describe('Duplicating entities', () => {
             });
 
             it('variant prices are duplicated', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Product',
                         entityId: 'T_1',
@@ -547,14 +487,11 @@ describe('Duplicating entities', () => {
                     },
                 });
 
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                duplicateEntityGuard.assertSuccess(duplicateEntity);
+
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: duplicateEntity.newEntityId,
                 });
-
-                duplicateEntityGuard.assertSuccess(duplicateEntity);
                 const variant = product?.variants.find(v => v.sku.startsWith(originalFirstVariant.sku));
                 expect(variant).not.toBeUndefined();
                 expect(originalFirstVariant.price).toBeGreaterThan(0);
@@ -562,57 +499,45 @@ describe('Duplicating entities', () => {
             });
 
             it('variant prices are duplicated on a channel specific basis', async () => {
-                const { createChannel } = await adminClient.query<
-                    Codegen.CreateChannelMutation,
-                    Codegen.CreateChannelMutationVariables
-                >(CREATE_CHANNEL, {
+                const { createChannel } = await adminClient.query(createChannelDocument, {
                     input: {
                         code: 'second-channel',
                         token: 'second-channel',
                         defaultLanguageCode: LanguageCode.en,
-                        currencyCode: Codegen.CurrencyCode.USD,
+                        currencyCode: CurrencyCode.USD,
                         pricesIncludeTax: false,
                         defaultShippingZoneId: 'T_1',
                         defaultTaxZoneId: 'T_1',
                     },
                 });
+                createChannelGuard.assertSuccess(createChannel);
 
-                await adminClient.query<
-                    Codegen.AssignProductsToChannelMutation,
-                    Codegen.AssignProductsToChannelMutationVariables
-                >(ASSIGN_PRODUCT_TO_CHANNEL, {
+                await adminClient.query(assignProductToChannelDocument, {
                     input: {
                         channelId: createChannel.id,
                         productIds: ['T_1'],
                     },
                 });
 
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: 'T_1',
                 });
                 const productVariant = product!.variants[0];
 
                 adminClient.setChannelToken('second-channel');
 
-                await adminClient.query<
-                    Codegen.UpdateProductVariantsMutation,
-                    Codegen.UpdateProductVariantsMutationVariables
-                >(UPDATE_PRODUCT_VARIANTS, {
-                    input: {
-                        id: productVariant.id,
-                        price: productVariant.price + 150,
-                    },
+                await adminClient.query(updateProductVariantsDocument, {
+                    input: [
+                        {
+                            id: productVariant.id,
+                            price: productVariant.price + 150,
+                        },
+                    ],
                 });
 
                 adminClient.setChannelToken('e2e-default-channel');
 
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Product',
                         entityId: 'T_1',
@@ -627,13 +552,14 @@ describe('Duplicating entities', () => {
                         },
                     },
                 });
+                duplicateEntityGuard.assertSuccess(duplicateEntity);
 
-                const { product: productWithVariantChannelNull } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
-                    id: duplicateEntity.newEntityId,
-                });
+                const { product: productWithVariantChannelNull } = await adminClient.query(
+                    getProductWithVariantsDocument,
+                    {
+                        id: duplicateEntity.newEntityId,
+                    },
+                );
 
                 const productVariantChannelNull = productWithVariantChannelNull!.variants.find(v =>
                     v.sku.startsWith(productVariant.sku),
@@ -643,31 +569,32 @@ describe('Duplicating entities', () => {
 
                 adminClient.setChannelToken('second-channel');
 
-                const { duplicateEntity: duplicateEntitySecondChannel } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
-                    input: {
-                        entityName: 'Product',
-                        entityId: 'T_1',
-                        duplicatorInput: {
-                            code: 'product-duplicator',
-                            arguments: [
-                                {
-                                    name: 'includeVariants',
-                                    value: 'true',
-                                },
-                            ],
+                const { duplicateEntity: duplicateEntitySecondChannel } = await adminClient.query(
+                    duplicateEntityDocument,
+                    {
+                        input: {
+                            entityName: 'Product',
+                            entityId: 'T_1',
+                            duplicatorInput: {
+                                code: 'product-duplicator',
+                                arguments: [
+                                    {
+                                        name: 'includeVariants',
+                                        value: 'true',
+                                    },
+                                ],
+                            },
                         },
                     },
-                });
+                );
+                duplicateEntityGuard.assertSuccess(duplicateEntitySecondChannel);
 
-                const { product: productWithVariantChannel2 } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
-                    id: duplicateEntitySecondChannel.newEntityId,
-                });
+                const { product: productWithVariantChannel2 } = await adminClient.query(
+                    getProductWithVariantsDocument,
+                    {
+                        id: duplicateEntitySecondChannel.newEntityId,
+                    },
+                );
 
                 const productVariantChannel2 = productWithVariantChannel2!.variants.find(v =>
                     v.sku.startsWith(productVariant.sku),
@@ -679,22 +606,13 @@ describe('Duplicating entities', () => {
             it('tax categories are duplicated', async () => {
                 // update existing variant with a non 1 first tax category
                 // bc tax category defaults to the first available
-                const { product } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                const { product } = await adminClient.query(getProductWithVariantsDocument, {
                     id: 'T_1',
                 });
-                const { updateProductVariants } = await adminClient.query<
-                    Codegen.UpdateProductVariantsMutation,
-                    Codegen.UpdateProductVariantsMutationVariables
-                >(UPDATE_PRODUCT_VARIANTS, {
+                await adminClient.query(updateProductVariantsDocument, {
                     input: [{ id: product!.variants[0].id, taxCategoryId: 'T_2' }],
                 });
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Product',
                         entityId: 'T_1',
@@ -709,10 +627,8 @@ describe('Duplicating entities', () => {
                         },
                     },
                 });
-                const { product: productReloaded } = await adminClient.query<
-                    Codegen.GetProductWithVariantsQuery,
-                    Codegen.GetProductWithVariantsQueryVariables
-                >(GET_PRODUCT_WITH_VARIANTS, {
+                duplicateEntityGuard.assertSuccess(duplicateEntity);
+                const { product: productReloaded } = await adminClient.query(getProductWithVariantsDocument, {
                     id: duplicateEntity.newEntityId,
                 });
                 const variant = productReloaded?.variants.find(v =>
@@ -724,16 +640,13 @@ describe('Duplicating entities', () => {
         });
 
         describe('Collection duplicator', () => {
-            let testCollection: Codegen.CreateCollectionMutation['createCollection'];
+            let testCollection: ResultOf<typeof createCollectionDocument>['createCollection'];
             let duplicatedCollectionId: string;
 
             beforeAll(async () => {
                 await adminClient.asSuperAdmin();
 
-                const { createCollection } = await adminClient.query<
-                    Codegen.CreateCollectionMutation,
-                    Codegen.CreateCollectionMutationVariables
-                >(CREATE_COLLECTION, {
+                const { createCollection } = await adminClient.query(createCollectionDocument, {
                     input: {
                         parentId: 'T_2',
                         assetIds: ['T_1'],
@@ -769,10 +682,7 @@ describe('Duplicating entities', () => {
             });
 
             it('duplicate collection', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Collection',
                         entityId: testCollection.id,
@@ -791,10 +701,7 @@ describe('Duplicating entities', () => {
             });
 
             it('collection name is suffixed', async () => {
-                const { collection } = await adminClient.query<
-                    Codegen.GetCollectionQuery,
-                    Codegen.GetCollectionQueryVariables
-                >(GET_COLLECTION, {
+                const { collection } = await adminClient.query(getCollectionDocument, {
                     id: duplicatedCollectionId,
                 });
 
@@ -802,10 +709,7 @@ describe('Duplicating entities', () => {
             });
 
             it('is initially private', async () => {
-                const { collection } = await adminClient.query<
-                    Codegen.GetCollectionQuery,
-                    Codegen.GetCollectionQueryVariables
-                >(GET_COLLECTION, {
+                const { collection } = await adminClient.query(getCollectionDocument, {
                     id: duplicatedCollectionId,
                 });
 
@@ -813,10 +717,7 @@ describe('Duplicating entities', () => {
             });
 
             it('assets are duplicated', async () => {
-                const { collection } = await adminClient.query<
-                    Codegen.GetCollectionQuery,
-                    Codegen.GetCollectionQueryVariables
-                >(GET_COLLECTION, {
+                const { collection } = await adminClient.query(getCollectionDocument, {
                     id: duplicatedCollectionId,
                 });
 
@@ -826,10 +727,7 @@ describe('Duplicating entities', () => {
             });
 
             it('parentId matches', async () => {
-                const { collection } = await adminClient.query<
-                    Codegen.GetCollectionQuery,
-                    Codegen.GetCollectionQueryVariables
-                >(GET_COLLECTION, {
+                const { collection } = await adminClient.query(getCollectionDocument, {
                     id: duplicatedCollectionId,
                 });
 
@@ -837,10 +735,7 @@ describe('Duplicating entities', () => {
             });
 
             it('filters are duplicated', async () => {
-                const { collection } = await adminClient.query<
-                    Codegen.GetCollectionQuery,
-                    Codegen.GetCollectionQueryVariables
-                >(GET_COLLECTION, {
+                const { collection } = await adminClient.query(getCollectionDocument, {
                     id: duplicatedCollectionId,
                 });
 
@@ -851,11 +746,14 @@ describe('Duplicating entities', () => {
         describe('Facet duplicator', () => {
             let newFacetId: string;
 
+            beforeAll(() => {
+                // The Facet used here belongs to the default channel, and an earlier test in this
+                // file leaves the client pointing at "second-channel", so switch back explicitly.
+                adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+            });
+
             it('duplicate facet', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Facet',
                         entityId: 'T_1',
@@ -878,10 +776,7 @@ describe('Duplicating entities', () => {
             });
 
             it('facet name is suffixed', async () => {
-                const { facet } = await adminClient.query<
-                    Codegen.GetFacetWithValuesQuery,
-                    Codegen.GetFacetWithValuesQueryVariables
-                >(GET_FACET_WITH_VALUES, {
+                const { facet } = await adminClient.query(getFacetWithValuesDocument, {
                     id: newFacetId,
                 });
 
@@ -889,10 +784,7 @@ describe('Duplicating entities', () => {
             });
 
             it('is initially private', async () => {
-                const { facet } = await adminClient.query<
-                    Codegen.GetFacetWithValuesQuery,
-                    Codegen.GetFacetWithValuesQueryVariables
-                >(GET_FACET_WITH_VALUES, {
+                const { facet } = await adminClient.query(getFacetWithValuesDocument, {
                     id: newFacetId,
                 });
 
@@ -900,10 +792,7 @@ describe('Duplicating entities', () => {
             });
 
             it('facet values are duplicated', async () => {
-                const { facet } = await adminClient.query<
-                    Codegen.GetFacetWithValuesQuery,
-                    Codegen.GetFacetWithValuesQueryVariables
-                >(GET_FACET_WITH_VALUES, {
+                const { facet } = await adminClient.query(getFacetWithValuesDocument, {
                     id: newFacetId,
                 });
 
@@ -915,7 +804,7 @@ describe('Duplicating entities', () => {
         });
 
         describe('Promotion duplicator', () => {
-            let testPromotion: Codegen.PromotionFragment;
+            let testPromotion: FragmentOf<typeof promotionFragment>;
             let duplicatedPromotionId: string;
             const promotionGuard: ErrorResultGuard<{ id: string }> = createErrorResultGuard(
                 result => !!result.id,
@@ -924,10 +813,7 @@ describe('Duplicating entities', () => {
             beforeAll(async () => {
                 await adminClient.asSuperAdmin();
 
-                const { createPromotion } = await adminClient.query<
-                    Codegen.CreatePromotionMutation,
-                    Codegen.CreatePromotionMutationVariables
-                >(CREATE_PROMOTION, {
+                const { createPromotion } = await adminClient.query(createPromotionDocument, {
                     input: {
                         enabled: true,
                         couponCode: 'TEST',
@@ -971,10 +857,7 @@ describe('Duplicating entities', () => {
             });
 
             it('duplicate promotion', async () => {
-                const { duplicateEntity } = await adminClient.query<
-                    Codegen.DuplicateEntityMutation,
-                    Codegen.DuplicateEntityMutationVariables
-                >(DUPLICATE_ENTITY, {
+                const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
                     input: {
                         entityName: 'Promotion',
                         entityId: testPromotion.id,
@@ -994,10 +877,7 @@ describe('Duplicating entities', () => {
             });
 
             it('promotion name is suffixed', async () => {
-                const { promotion } = await adminClient.query<
-                    Codegen.GetPromotionQuery,
-                    Codegen.GetPromotionQueryVariables
-                >(GET_PROMOTION, {
+                const { promotion } = await adminClient.query(getPromotionDocument, {
                     id: duplicatedPromotionId,
                 });
 
@@ -1005,10 +885,7 @@ describe('Duplicating entities', () => {
             });
 
             it('is initially disabled', async () => {
-                const { promotion } = await adminClient.query<
-                    Codegen.GetPromotionQuery,
-                    Codegen.GetPromotionQueryVariables
-                >(GET_PROMOTION, {
+                const { promotion } = await adminClient.query(getPromotionDocument, {
                     id: duplicatedPromotionId,
                 });
 
@@ -1016,10 +893,7 @@ describe('Duplicating entities', () => {
             });
 
             it('properties are duplicated', async () => {
-                const { promotion } = await adminClient.query<
-                    Codegen.GetPromotionQuery,
-                    Codegen.GetPromotionQueryVariables
-                >(GET_PROMOTION, {
+                const { promotion } = await adminClient.query(getPromotionDocument, {
                     id: duplicatedPromotionId,
                 });
 
@@ -1031,10 +905,7 @@ describe('Duplicating entities', () => {
             });
 
             it('conditions are duplicated', async () => {
-                const { promotion } = await adminClient.query<
-                    Codegen.GetPromotionQuery,
-                    Codegen.GetPromotionQueryVariables
-                >(GET_PROMOTION, {
+                const { promotion } = await adminClient.query(getPromotionDocument, {
                     id: duplicatedPromotionId,
                 });
 
@@ -1042,10 +913,7 @@ describe('Duplicating entities', () => {
             });
 
             it('actions are duplicated', async () => {
-                const { promotion } = await adminClient.query<
-                    Codegen.GetPromotionQuery,
-                    Codegen.GetPromotionQueryVariables
-                >(GET_PROMOTION, {
+                const { promotion } = await adminClient.query(getPromotionDocument, {
                     id: duplicatedPromotionId,
                 });
 
@@ -1053,34 +921,35 @@ describe('Duplicating entities', () => {
             });
         });
     });
+
+    // GHSA-f94w-2928-x43p: the EntityDuplicatorService guards ChannelAware source entities even
+    // when the duplicator itself does not scope its lookup. The custom duplicator defined at the
+    // top of this file deliberately loads the Collection without a channel filter.
+    describe('service-level channel guard', () => {
+        beforeAll(async () => {
+            await adminClient.asSuperAdmin();
+            // "second-channel" is created by the Product duplicator tests above.
+            adminClient.setChannelToken('second-channel');
+        });
+
+        afterAll(() => {
+            adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+        });
+
+        it('an unscoped duplicator cannot read a Collection from another channel', async () => {
+            const { duplicateEntity } = await adminClient.query(duplicateEntityDocument, {
+                input: {
+                    entityName: 'Collection',
+                    entityId: 'T_2',
+                    duplicatorInput: {
+                        code: 'custom-collection-duplicator',
+                        arguments: [{ name: 'throwError', value: 'false' }],
+                    },
+                },
+            });
+
+            duplicateEntityGuard.assertErrorResult(duplicateEntity);
+            expect(duplicateEntity.duplicationError).toBe('error.entity-with-id-not-found');
+        });
+    });
 });
-
-const GET_ENTITY_DUPLICATORS = gql`
-    query GetEntityDuplicators {
-        entityDuplicators {
-            code
-            description
-            requiresPermission
-            forEntities
-            args {
-                name
-                type
-                defaultValue
-            }
-        }
-    }
-`;
-
-const DUPLICATE_ENTITY = gql`
-    mutation DuplicateEntity($input: DuplicateEntityInput!) {
-        duplicateEntity(input: $input) {
-            ... on DuplicateEntitySuccess {
-                newEntityId
-            }
-            ... on DuplicateEntityError {
-                message
-                duplicationError
-            }
-        }
-    }
-`;

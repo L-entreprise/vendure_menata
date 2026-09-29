@@ -55,15 +55,17 @@ export class OrderCalculator {
         order: Order,
         promotions: Promotion[],
         updatedOrderLines: OrderLine[] = [],
-        options?: { recalculateShipping?: boolean },
+        options?: { recalculateShipping?: boolean; recalculateShippingPromotions?: boolean },
     ): Promise<Order> {
         const { taxZoneStrategy } = this.configService.taxOptions;
         // We reset the promotions array as all promotions
         // must be revalidated on any changes to an Order.
         order.promotions = [];
         const zones = await this.zoneService.getAllWithMembers(ctx);
-        const activeTaxZone = await this.requestContextCache.get(ctx, CacheKey.ActiveTaxZone, () =>
-            taxZoneStrategy.determineTaxZone(ctx, zones, ctx.channel, order),
+        const activeTaxZone = await this.requestContextCache.get(
+            ctx,
+            CacheKey.ActiveTaxZone(ctx.channelId),
+            () => taxZoneStrategy.determineTaxZone(ctx, zones, ctx.channel, order),
         );
 
         let taxZoneChanged = false;
@@ -99,8 +101,15 @@ export class OrderCalculator {
                 await this.applyTaxes(ctx, order, activeTaxZone);
             }
         }
-        if (options?.recalculateShipping !== false) {
+        const recalculateShipping = options?.recalculateShipping !== false;
+        if (recalculateShipping) {
             await this.applyShipping(ctx, order);
+        }
+        // Shipping Promotions are re-applied when the ShippingLine prices are recalculated. A caller which
+        // keeps the existing prices but needs the adjustments revalidated against a different set
+        // of Promotions - a seller Order being priced in its own Channel, say - opts in with
+        // `recalculateShippingPromotions`.
+        if (options?.recalculateShippingPromotions ?? recalculateShipping) {
             await this.applyShippingPromotions(ctx, order, promotions);
         }
         this.calculateOrderTotals(order);
@@ -241,8 +250,11 @@ export class OrderCalculator {
                     const adjustment = await promotion.apply(ctx, { order }, state);
                     if (adjustment && adjustment.amount !== 0) {
                         const amount = adjustment.amount;
-                        const weights = order.lines.map(l =>
-                            l.quantity !== 0 ? l.proratedLinePriceWithTax : 0,
+                        const { orderLineDiscountDistributionStrategy } = this.configService.orderOptions;
+                        const weights = await Promise.all(
+                            order.lines.map(line =>
+                                orderLineDiscountDistributionStrategy.getWeight(ctx, line, order),
+                            ),
                         );
                         const distribution = prorate(weights, amount);
                         order.lines.forEach((line, i) => {
@@ -312,7 +324,8 @@ export class OrderCalculator {
                 shippingLine?.shippingMethodId &&
                 (await this.shippingMethodService.findOne(ctx, shippingLine.shippingMethodId));
             if (!currentShippingMethod) {
-                return;
+                order.shippingLines = order.shippingLines.filter(sl => sl !== shippingLine);
+                continue;
             }
             const currentMethodStillEligible = await currentShippingMethod.test(ctx, order);
             if (currentMethodStillEligible) {
@@ -361,30 +374,12 @@ export class OrderCalculator {
      * totals.
      */
     public calculateOrderTotals(order: Order) {
-        let totalPrice = 0;
-        let totalPriceWithTax = 0;
-
-        for (const line of order.lines) {
-            totalPrice += line.proratedLinePrice;
-            totalPriceWithTax += line.proratedLinePriceWithTax;
-        }
-        for (const surcharge of order.surcharges) {
-            totalPrice += surcharge.price;
-            totalPriceWithTax += surcharge.priceWithTax;
-        }
-
-        order.subTotal = totalPrice;
-        order.subTotalWithTax = totalPriceWithTax;
-
-        let shippingPrice = 0;
-        let shippingPriceWithTax = 0;
-        for (const shippingLine of order.shippingLines) {
-            shippingPrice += shippingLine.discountedPrice;
-            shippingPriceWithTax += shippingLine.discountedPriceWithTax;
-        }
-
-        order.shipping = shippingPrice;
-        order.shippingWithTax = shippingPriceWithTax;
+        const { orderTaxCalculationStrategy } = this.configService.taxOptions;
+        const result = orderTaxCalculationStrategy.calculateOrderTotals(order);
+        order.subTotal = result.subTotal;
+        order.subTotalWithTax = result.subTotalWithTax;
+        order.shipping = result.shipping;
+        order.shippingWithTax = result.shippingWithTax;
     }
 
     private addPromotion(order: Order, promotion: Promotion) {

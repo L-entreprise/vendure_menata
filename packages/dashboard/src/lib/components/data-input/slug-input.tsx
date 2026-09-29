@@ -1,7 +1,7 @@
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { DashboardFormComponentProps } from '@/vdb/framework/form-engine/form-engine-types.js';
-import { isReadonlyField } from '@/vdb/framework/form-engine/utils.js';
+import { isFieldDisabled } from '@/vdb/framework/form-engine/utils.js';
 import { api } from '@/vdb/graphql/api.js';
 import { graphql } from '@/vdb/graphql/graphql.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
@@ -138,6 +138,7 @@ export function SlugInput({
     value,
     onChange,
     fieldDef,
+    disabled,
     entityName,
     fieldName,
     watchFieldName,
@@ -145,12 +146,13 @@ export function SlugInput({
     defaultReadonly = true,
     className,
     name,
+    placeholder: externalPlaceholder,
     ...props
-}: SlugInputProps) {
+}: SlugInputProps & { placeholder?: string }) {
     const { t } = useLingui();
     const form = useFormContext();
     const { contentLanguage } = useUserSettings().settings;
-    const isFormReadonly = isReadonlyField(fieldDef);
+    const isFormReadonly = isFieldDisabled(disabled, fieldDef);
     const [isManuallyReadonly, setIsManuallyReadonly] = useState(defaultReadonly);
     const isReadonly = isFormReadonly || isManuallyReadonly;
 
@@ -234,7 +236,7 @@ export function SlugInput({
                         isReadonly
                             ? value
                                 ? t`Slug is set`
-                                : t`Slug will be generated automatically...`
+                                : externalPlaceholder || t`Slug will be generated automatically...`
                             : t`Enter slug manually`
                     }
                     className={cn(
@@ -258,7 +260,7 @@ export function SlugInput({
                         <Button
                             type="button"
                             variant="outline"
-                            size="sm"
+                            size="icon"
                             onClick={handleRegenerate}
                             className="shrink-0"
                             title={t`Regenerate slug from source field`}
@@ -272,7 +274,7 @@ export function SlugInput({
                     <Button
                         type="button"
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         onClick={toggleReadonly}
                         className="shrink-0"
                         title={isManuallyReadonly ? t`Edit slug manually` : t`Generate slug automatically`}

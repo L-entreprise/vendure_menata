@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import {
     CreateAdministratorInput,
     DeletionResult,
+    Permission,
     UpdateAdministratorInput,
 } from '@vendure/common/lib/generated-types';
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
-import { In, IsNull } from 'typeorm';
+import { unique } from '@vendure/common/lib/unique';
+import { IsNull, SelectQueryBuilder } from 'typeorm';
 
 import { RequestContext } from '../../api/common/request-context';
 import { RelationPaths } from '../../api/decorators/relations.decorator';
@@ -13,11 +15,11 @@ import { Instrument } from '../../common';
 import { EntityNotFoundError, InternalServerError, UserInputError } from '../../common/error/errors';
 import { ListQueryOptions } from '../../common/types/common-types';
 import { assertFound, idsAreEqual, normalizeEmailAddress } from '../../common/utils';
-import { ConfigService } from '../../config';
+import { API_KEY_AUTH_STRATEGY_NAME, ConfigService, Logger } from '../../config';
 import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Administrator } from '../../entity/administrator/administrator.entity';
+import { ApiKey } from '../../entity/api-key/api-key.entity';
 import { NativeAuthenticationMethod } from '../../entity/authentication-method/native-authentication-method.entity';
-import { Role } from '../../entity/role/role.entity';
 import { User } from '../../entity/user/user.entity';
 import { EventBus } from '../../event-bus';
 import { AdministratorEvent } from '../../event-bus/events/administrator-event';
@@ -26,7 +28,7 @@ import { CustomFieldRelationService } from '../helpers/custom-field-relation/cus
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
 import { PasswordCipher } from '../helpers/password-cipher/password-cipher';
 import { RequestContextService } from '../helpers/request-context/request-context.service';
-import { getChannelPermissions } from '../helpers/utils/get-user-channels-permissions';
+import { checkSuperadminCredentials } from '../helpers/utils/check-superadmin-credentials';
 import { patchEntity } from '../helpers/utils/patch-entity';
 
 import { RoleService } from './role.service';
@@ -62,43 +64,88 @@ export class AdministratorService {
      * @description
      * Get a paginated list of Administrators.
      */
-    findAll(
+    async findAll(
         ctx: RequestContext,
         options?: ListQueryOptions<Administrator>,
         relations?: RelationPaths<Administrator>,
     ): Promise<PaginatedList<Administrator>> {
-        return this.listQueryBuilder
-            .build(Administrator, options, {
-                relations: relations ?? ['user', 'user.roles'],
-                where: { deletedAt: IsNull() },
-                ctx,
-            })
-            .getManyAndCount()
-            .then(([items, totalItems]) => ({
-                items,
-                totalItems,
-            }));
+        const qb = this.listQueryBuilder.build(Administrator, options, {
+            relations: relations ?? ['user', 'user.roles'],
+            where: { deletedAt: IsNull() },
+            ctx,
+        });
+        await this.restrictToVisibleAdministrators(ctx, qb);
+        const [items, totalItems] = await qb.getManyAndCount();
+        return { items, totalItems };
     }
 
     /**
      * @description
      * Get an Administrator by id.
+     *
+     * Resolves to `undefined` if the Administrator is not visible to the active user, so that a
+     * caller cannot confirm the existence of an Administrator they are not allowed to see.
      */
-    findOne(
+    async findOne(
         ctx: RequestContext,
         administratorId: ID,
         relations?: RelationPaths<Administrator>,
     ): Promise<Administrator | undefined> {
-        return this.connection
-            .getRepository(ctx, Administrator)
-            .findOne({
-                relations: relations ?? ['user', 'user.roles'],
-                where: {
-                    id: administratorId,
-                    deletedAt: IsNull(),
-                },
-            })
-            .then(result => result ?? undefined);
+        const administrator = await this.connection.getRepository(ctx, Administrator).findOne({
+            // The Roles are always loaded, since they are what the visibility check is based on.
+            relations: unique([...(relations ?? []), 'user', 'user.roles']),
+            where: {
+                id: administratorId,
+                deletedAt: IsNull(),
+            },
+        });
+        if (!administrator) {
+            return undefined;
+        }
+        // An Administrator is visible only to an active user who could be granted every one of the
+        // Administrator's Roles. This is the same rule that create() and update() apply, so the read
+        // and the write policy cannot drift apart.
+        const visible = await this.roleService.activeUserHasPermissionsOfRoles(
+            ctx,
+            administrator.user.roles.map(role => role.id),
+        );
+        return visible ? administrator : undefined;
+    }
+
+    /**
+     * Restricts a list query to the Administrators which are visible to the active user. The
+     * restriction is applied to the query rather than to its result, so that `totalItems`,
+     * sorting, filtering and pagination all operate over the visible Administrators only.
+     */
+    private async restrictToVisibleAdministrators(
+        ctx: RequestContext,
+        qb: SelectQueryBuilder<Administrator>,
+    ) {
+        // A SuperAdmin sees every Administrator. getVisibleRoleIds() returns every Role id for a
+        // SuperAdmin, so the sub-query below would exclude nobody. This early return only saves the query.
+        if (ctx.userHasPermissions([Permission.SuperAdmin])) {
+            return;
+        }
+        const visibleRoleIds = await this.roleService.getVisibleRoleIds(ctx);
+        // An Administrator is excluded as soon as they hold a single Role which the active user
+        // cannot read. A sub-query is used rather than a join on the main query, so that the
+        // Administrator rows are not duplicated by the Role and Channel relations.
+        qb.andWhere(outerQb => {
+            const hiddenAdministratorsQuery = outerQb
+                .subQuery()
+                .select('visibility_administrator.id')
+                .from(Administrator, 'visibility_administrator')
+                .innerJoin('visibility_administrator.user', 'visibility_user')
+                .innerJoin('visibility_user.roles', 'visibility_role');
+            // With no visible Roles, every Role is hidden, so no condition is needed on the Role.
+            if (visibleRoleIds.length) {
+                hiddenAdministratorsQuery.where('visibility_role.id NOT IN (:...visibleRoleIds)', {
+                    visibleRoleIds,
+                });
+            }
+            const administratorId = `${outerQb.escape(outerQb.alias)}.${outerQb.escape('id')}`;
+            return `${administratorId} NOT IN ${hiddenAdministratorsQuery.getQuery()}`;
+        });
     }
 
     /**
@@ -124,12 +171,73 @@ export class AdministratorService {
 
     /**
      * @description
+     * Resolves the Administrator to be credited as the actor of the current request when
+     * recording an audit trail, e.g. the `administrator` of a {@link HistoryEntry}.
+     *
+     * For a regular session this is the Administrator of the active User, exactly as returned by
+     * {@link AdministratorService.findOneByUserId}.
+     *
+     * An API-Key session authenticates as the synthetic "API-Key user" created alongside the key,
+     * which has no Administrator of its own. For those sessions we fall back to the Administrator
+     * of the {@link ApiKey}'s `owner`, so that actions performed with the key are attributed to the
+     * Administrator who created it. The owner is not required to be an Administrator — it may be a
+     * Customer's User — in which case `undefined` is returned and the entry stays unattributed.
+     *
+     * This is deliberately kept separate from {@link AdministratorService.findOneByUserId}, which
+     * answers the literal question "which Administrator belongs to this User id?".
+     *
+     * **Never use this method to make authorization decisions.** The Administrator it returns is not
+     * the authenticated principal of the request, and their permissions do not apply to it.
+     *
+     * @since 3.6.4
+     */
+    async resolveActorAdministrator(
+        ctx: RequestContext,
+        relations?: RelationPaths<Administrator>,
+    ): Promise<Administrator | undefined> {
+        if (!ctx.activeUserId) {
+            return undefined;
+        }
+        const activeAdministrator = await this.findOneByUserId(ctx, ctx.activeUserId, relations);
+        if (activeAdministrator) {
+            return activeAdministrator;
+        }
+        if (ctx.session?.authenticationStrategy !== API_KEY_AUTH_STRATEGY_NAME) {
+            return undefined;
+        }
+        // The ApiKey lookup is intentionally not Channel-scoped: the AuthGuard resolves the key
+        // via the Channel-aware ApiKeyService.findOneByLookupId() on every request, so a key which
+        // gets this far is by definition valid for the current Channel.
+        const apiKey = await this.connection.getRepository(ctx, ApiKey).findOne({
+            select: { id: true, ownerId: true },
+            where: {
+                userId: ctx.activeUserId,
+                deletedAt: IsNull(),
+            },
+        });
+        if (!apiKey) {
+            return undefined;
+        }
+        const ownerAdministrator = await this.findOneByUserId(ctx, apiKey.ownerId, relations);
+        if (!ownerAdministrator) {
+            Logger.verbose(
+                `The owner (User ${String(apiKey.ownerId)}) of ApiKey ${String(apiKey.id)} is not an ` +
+                    'Administrator, so the current request cannot be attributed to one.',
+            );
+        }
+        return ownerAdministrator;
+    }
+
+    /**
+     * @description
      * Create a new Administrator.
      */
     async create(ctx: RequestContext, input: CreateAdministratorInput): Promise<Administrator> {
         await this.checkActiveUserCanGrantRoles(ctx, input.roleIds);
+        const normalizedEmail = normalizeEmailAddress(input.emailAddress);
+        await this.checkForDuplicateEmailAddress(ctx, normalizedEmail);
         const administrator = new Administrator(input);
-        administrator.emailAddress = normalizeEmailAddress(input.emailAddress);
+        administrator.emailAddress = normalizedEmail;
         administrator.user = await this.userService.createAdminUser(ctx, input.emailAddress, input.password);
         let createdAdministrator = await this.connection
             .getRepository(ctx, Administrator)
@@ -158,6 +266,11 @@ export class AdministratorService {
         }
         if (input.roleIds) {
             await this.checkActiveUserCanGrantRoles(ctx, input.roleIds);
+        }
+        if (input.emailAddress) {
+            const normalizedEmail = normalizeEmailAddress(input.emailAddress);
+            await this.checkForDuplicateEmailAddress(ctx, normalizedEmail, input.id);
+            input.emailAddress = normalizedEmail;
         }
         let updatedAdministrator = patchEntity(administrator, input);
         await this.connection.getRepository(ctx, Administrator).save(administrator, { reload: false });
@@ -195,8 +308,8 @@ export class AdministratorService {
             for (const roleId of input.roleIds) {
                 updatedAdministrator = await this.assignRole(ctx, administrator.id, roleId);
             }
-            await this.eventBus.publish(new RoleChangeEvent(ctx, administrator, addIds, 'assigned'));
-            await this.eventBus.publish(new RoleChangeEvent(ctx, administrator, removeIds, 'removed'));
+            await this.eventBus.publish(new RoleChangeEvent(ctx, updatedAdministrator, addIds, 'assigned'));
+            await this.eventBus.publish(new RoleChangeEvent(ctx, updatedAdministrator, removeIds, 'removed'));
         }
         await this.customFieldRelationService.updateRelations(
             ctx,
@@ -204,7 +317,7 @@ export class AdministratorService {
             input,
             updatedAdministrator,
         );
-        await this.eventBus.publish(new AdministratorEvent(ctx, administrator, 'updated', input));
+        await this.eventBus.publish(new AdministratorEvent(ctx, updatedAdministrator, 'updated', input));
         return updatedAdministrator;
     }
 
@@ -214,20 +327,8 @@ export class AdministratorService {
      * updating an Administrator.
      */
     private async checkActiveUserCanGrantRoles(ctx: RequestContext, roleIds: ID[]) {
-        const roles = await this.connection.getRepository(ctx, Role).find({
-            where: { id: In(roleIds) },
-            relations: { channels: true },
-        });
-        const permissionsRequired = getChannelPermissions(roles);
-        for (const channelPermissions of permissionsRequired) {
-            const activeUserHasRequiredPermissions = await this.roleService.userHasAllPermissionsOnChannel(
-                ctx,
-                channelPermissions.id,
-                channelPermissions.permissions,
-            );
-            if (!activeUserHasRequiredPermissions) {
-                throw new UserInputError('error.active-user-does-not-have-sufficient-permissions');
-            }
+        if (!(await this.roleService.activeUserHasPermissionsOfRoles(ctx, roleIds))) {
+            throw new UserInputError('error.active-user-does-not-have-sufficient-permissions');
         }
     }
 
@@ -254,9 +355,10 @@ export class AdministratorService {
      * Soft deletes an Administrator (sets the `deletedAt` field).
      */
     async softDelete(ctx: RequestContext, id: ID) {
-        const administrator = await this.connection.getEntityOrThrow(ctx, Administrator, id, {
-            relations: ['user'],
-        });
+        const administrator = await this.findOne(ctx, id);
+        if (!administrator) {
+            throw new EntityNotFoundError('Administrator', id);
+        }
         const isSoleSuperadmin = await this.isSoleSuperadmin(ctx, id);
         if (isSoleSuperadmin) {
             throw new InternalServerError('error.cannot-delete-sole-superadmin');
@@ -270,6 +372,18 @@ export class AdministratorService {
         };
     }
 
+    private async checkForDuplicateEmailAddress(ctx: RequestContext, emailAddress: string, excludeId?: ID) {
+        const existing = await this.connection.getRepository(ctx, Administrator).findOne({
+            where: {
+                emailAddress,
+                deletedAt: IsNull(),
+            },
+        });
+        if (existing && (!excludeId || !idsAreEqual(existing.id, excludeId))) {
+            throw new UserInputError('error.email-address-already-exists-for-administrator');
+        }
+    }
+
     /**
      * @description
      * Resolves to `true` if the administrator ID belongs to the only Administrator
@@ -279,15 +393,18 @@ export class AdministratorService {
         const superAdminRole = await this.roleService.getSuperAdminRole(ctx);
         const allAdmins = await this.connection.getRepository(ctx, Administrator).find({
             relations: ['user', 'user.roles'],
+            where: { deletedAt: IsNull() },
         });
         const superAdmins = allAdmins.filter(
-            admin => !!admin.user.roles.find(r => r.id === superAdminRole.id),
+            admin => !!admin.user.roles.find(r => idsAreEqual(r.id, superAdminRole.id)),
         );
-        if (1 < superAdmins.length) {
+        if (superAdmins.length === 0) {
             return false;
-        } else {
-            return idsAreEqual(superAdmins[0].id, id);
         }
+        if (superAdmins.length > 1) {
+            return false;
+        }
+        return idsAreEqual(superAdmins[0].id, id);
     }
 
     /**
@@ -299,6 +416,8 @@ export class AdministratorService {
      */
     private async ensureSuperAdminExists() {
         const { superadminCredentials } = this.configService.authOptions;
+
+        checkSuperadminCredentials(superadminCredentials);
 
         const superAdminUser = await this.connection.rawConnection.getRepository(User).findOne({
             where: {
@@ -320,7 +439,15 @@ export class AdministratorService {
                 superadminCredentials.password,
             );
             const { id } = await this.connection.getRepository(ctx, Administrator).save(administrator);
-            const createdAdministrator = await assertFound(this.findOne(ctx, id));
+            // The Administrator is read straight from the repository rather than through findOne(),
+            // so bootstrap does not depend on the visibility rule and a later change to that rule
+            // cannot stop the SuperAdmin being created.
+            const createdAdministrator = await assertFound(
+                this.connection.getRepository(ctx, Administrator).findOne({
+                    where: { id },
+                    relations: ['user', 'user.roles'],
+                }),
+            );
             createdAdministrator.user.roles.push(superAdminRole);
             await this.connection.getRepository(ctx, User).save(createdAdministrator.user, { reload: false });
         } else {

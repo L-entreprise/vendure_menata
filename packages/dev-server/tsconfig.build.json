@@ -1,0 +1,24 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        // Repo root, not this package: dev-config.ts imports the Menata plugins from ../../plugins. Output lands in dist/packages/dev-server/.
+        "rootDir": "../..",
+        "noEmitOnError": true
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "custom-admin-ui",
+        "load-testing",
+        "scripts",
+        "vite.config.*",
+        "**/*.tsx",
+        "example-plugins/**/ui/**/*",
+        "example-plugins/**/dashboard/**/*",
+        "test-plugins/**/components/**/*",
+        "test-plugins/**/dashboard/**/*",
+        "test-plugins/**/react/**/*",
+        "test-plugins/**/ui/**/*"
+    ]
+}

@@ -19,11 +19,11 @@ import { Logger } from '../../config/logger/vendure-logger';
 import { PaymentMethodHandler } from '../../config/payment/payment-method-handler';
 import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Fulfillment } from '../../entity/fulfillment/fulfillment.entity';
-import { RefundLine } from '../../entity/order-line-reference/refund-line.entity';
-import { OrderLine } from '../../entity/order-line/order-line.entity';
 import { Order } from '../../entity/order/order.entity';
-import { PaymentMethod } from '../../entity/payment-method/payment-method.entity';
+import { OrderLine } from '../../entity/order-line/order-line.entity';
+import { RefundLine } from '../../entity/order-line-reference/refund-line.entity';
 import { Payment } from '../../entity/payment/payment.entity';
+import { PaymentMethod } from '../../entity/payment-method/payment-method.entity';
 import { Refund } from '../../entity/refund/refund.entity';
 import { EventBus } from '../../event-bus/event-bus';
 import { PaymentStateTransitionEvent } from '../../event-bus/events/payment-state-transition-event';
@@ -31,6 +31,7 @@ import { RefundStateTransitionEvent } from '../../event-bus/events/refund-state-
 import { PaymentState } from '../helpers/payment-state-machine/payment-state';
 import { PaymentStateMachine } from '../helpers/payment-state-machine/payment-state-machine';
 import { RefundStateMachine } from '../helpers/refund-state-machine/refund-state-machine';
+import { assertOrderIsInChannel } from '../helpers/utils/order-utils';
 
 import { PaymentMethodService } from './payment-method.service';
 
@@ -59,6 +60,14 @@ export class PaymentService {
         return this.connection.getRepository(ctx, Payment).save(newPayment);
     }
 
+    /**
+     * @description
+     * Loads a Payment by id with no Channel check. Payment is not ChannelAware, so callers must first
+     * load the parent Order in the current Channel (or use a path which does, such as the private
+     * `getPaymentInChannelOrThrow` used by the payment mutations). The only core caller is the
+     * `Refund.lines` field resolver, which is reached from an Order already loaded in the current
+     * Channel.
+     */
     async findOneOrThrow(ctx: RequestContext, id: ID, relations: string[] = ['order']): Promise<Payment> {
         return await this.connection.getEntityOrThrow(ctx, Payment, id, {
             relations,
@@ -84,7 +93,7 @@ export class PaymentService {
         if (state === 'Cancelled') {
             return this.cancelPayment(ctx, paymentId);
         }
-        const payment = await this.findOneOrThrow(ctx, paymentId);
+        const payment = await this.getPaymentInChannelOrThrow(ctx, paymentId);
         const fromState = payment.state;
         return this.transitionStateAndSave(ctx, payment, fromState, state);
     }
@@ -129,22 +138,37 @@ export class PaymentService {
             paymentMethod,
         );
         const initialState = 'Created';
-        const payment = await this.connection
-            .getRepository(ctx, Payment)
-            .save(new Payment({ ...result, method, state: initialState }));
-        const { finalize } = await this.paymentStateMachine.transition(ctx, order, payment, result.state);
-        await this.connection.getRepository(ctx, Payment).save(payment, { reload: false });
-        await this.connection
-            .getRepository(ctx, Order)
-            .createQueryBuilder()
-            .relation('payments')
-            .of(order)
-            .add(payment);
-        await this.eventBus.publish(
-            new PaymentStateTransitionEvent(initialState, result.state, ctx, payment, order),
-        );
-        await finalize();
-        return payment;
+        // The DB-write sequence below (payment create, state transition, save, relation
+        // add, onTransitionEnd hooks) is wrapped in withTransaction so it commits or
+        // rolls back atomically — this is what fixes #4686 for this method. Note that
+        // handler.createPayment above is intentionally outside the transaction (it is
+        // a network call to a third-party gateway) and is NOT covered by this wrap.
+        // If the gateway succeeds and a subsequent DB write fails, the resulting
+        // orphaned charge must be reconciled at a higher level. Likewise, the `order`
+        // entity was loaded by the caller outside this transaction.
+        return this.connection.withTransaction(ctx, async txCtx => {
+            const payment = await this.connection
+                .getRepository(txCtx, Payment)
+                .save(new Payment({ ...result, method, state: initialState }));
+            const { finalize } = await this.paymentStateMachine.transition(
+                txCtx,
+                order,
+                payment,
+                result.state,
+            );
+            await this.connection.getRepository(txCtx, Payment).save(payment, { reload: false });
+            await this.connection
+                .getRepository(txCtx, Order)
+                .createQueryBuilder()
+                .relation('payments')
+                .of(order)
+                .add(payment);
+            await this.eventBus.publish(
+                new PaymentStateTransitionEvent(initialState, result.state, txCtx, payment, order),
+            );
+            await finalize();
+            return payment;
+        });
     }
 
     /**
@@ -156,9 +180,7 @@ export class PaymentService {
      * updating the Order state too.
      */
     async settlePayment(ctx: RequestContext, paymentId: ID): Promise<PaymentStateTransitionError | Payment> {
-        const payment = await this.connection.getEntityOrThrow(ctx, Payment, paymentId, {
-            relations: ['order'],
-        });
+        const payment = await this.getPaymentInChannelOrThrow(ctx, paymentId);
         const { paymentMethod, handler } = await this.paymentMethodService.getMethodAndOperations(
             ctx,
             payment.method,
@@ -183,9 +205,7 @@ export class PaymentService {
     }
 
     async cancelPayment(ctx: RequestContext, paymentId: ID): Promise<PaymentStateTransitionError | Payment> {
-        const payment = await this.connection.getEntityOrThrow(ctx, Payment, paymentId, {
-            relations: ['order'],
-        });
+        const payment = await this.getPaymentInChannelOrThrow(ctx, paymentId);
         const { paymentMethod, handler } = await this.paymentMethodService.getMethodAndOperations(
             ctx,
             payment.method,
@@ -209,6 +229,20 @@ export class PaymentService {
         return this.transitionStateAndSave(ctx, payment, fromState, toState);
     }
 
+    /**
+     * Loads a Payment by id and checks that its Order is visible in the active Channel. Payment is
+     * not ChannelAware, so without this check a Channel-scoped administrator can settle, cancel or
+     * refund the payments of any other Channel's Orders. The check must happen before the
+     * PaymentMethodHandler is invoked, because a gateway side-effect cannot be rolled back.
+     */
+    private async getPaymentInChannelOrThrow(ctx: RequestContext, paymentId: ID): Promise<Payment> {
+        const payment = await this.connection.getEntityOrThrow(ctx, Payment, paymentId, {
+            relations: ['order'],
+        });
+        await assertOrderIsInChannel(ctx, this.connection, payment.order.id, 'Payment', paymentId);
+        return payment;
+    }
+
     private async transitionStateAndSave(
         ctx: RequestContext,
         payment: Payment,
@@ -220,20 +254,30 @@ export class PaymentService {
             await this.connection.getRepository(ctx, Payment).save(payment, { reload: false });
             return payment;
         }
-        let finalize: () => Promise<any>;
-        try {
-            const result = await this.paymentStateMachine.transition(ctx, payment.order, payment, toState);
-            finalize = result.finalize;
-        } catch (e: any) {
-            const transitionError = ctx.translate(e.message, { fromState, toState });
-            return new PaymentStateTransitionError({ transitionError, fromState, toState });
-        }
-        await this.connection.getRepository(ctx, Payment).save(payment, { reload: false });
-        await this.eventBus.publish(
-            new PaymentStateTransitionEvent(fromState, toState, ctx, payment, payment.order),
-        );
-        await finalize();
-        return payment;
+        // Wrapped in withTransaction so the state save and onTransitionEnd hooks
+        // are atomic — see the equivalent comment on OrderService.transitionToState.
+        // #4686.
+        return this.connection.withTransaction(ctx, async txCtx => {
+            let finalize: () => Promise<any>;
+            try {
+                const result = await this.paymentStateMachine.transition(
+                    txCtx,
+                    payment.order,
+                    payment,
+                    toState,
+                );
+                finalize = result.finalize;
+            } catch (e: any) {
+                const transitionError = txCtx.translate(e.message, { fromState, toState });
+                return new PaymentStateTransitionError({ transitionError, fromState, toState });
+            }
+            await this.connection.getRepository(txCtx, Payment).save(payment, { reload: false });
+            await this.eventBus.publish(
+                new PaymentStateTransitionEvent(fromState, toState, txCtx, payment, payment.order),
+            );
+            await finalize();
+            return payment;
+        });
     }
 
     /**
@@ -247,29 +291,39 @@ export class PaymentService {
     async createManualPayment(ctx: RequestContext, order: Order, amount: number, input: ManualPaymentInput) {
         const initialState = 'Created';
         const endState = 'Settled';
-        const payment = await this.connection.getRepository(ctx, Payment).save(
-            new Payment({
-                amount,
+        // Wrapped in withTransaction so the payment create, state transition, save,
+        // relation add and onTransitionEnd hooks all commit or roll back together.
+        // #4686.
+        return this.connection.withTransaction(ctx, async txCtx => {
+            const payment = await this.connection.getRepository(txCtx, Payment).save(
+                new Payment({
+                    amount,
+                    order,
+                    transactionId: input.transactionId,
+                    metadata: input.metadata,
+                    method: input.method,
+                    state: initialState,
+                }),
+            );
+            const { finalize } = await this.paymentStateMachine.transition(
+                txCtx,
                 order,
-                transactionId: input.transactionId,
-                metadata: input.metadata,
-                method: input.method,
-                state: initialState,
-            }),
-        );
-        const { finalize } = await this.paymentStateMachine.transition(ctx, order, payment, endState);
-        await this.connection.getRepository(ctx, Payment).save(payment, { reload: false });
-        await this.connection
-            .getRepository(ctx, Order)
-            .createQueryBuilder()
-            .relation('payments')
-            .of(order)
-            .add(payment);
-        await this.eventBus.publish(
-            new PaymentStateTransitionEvent(initialState, endState, ctx, payment, order),
-        );
-        await finalize();
-        return payment;
+                payment,
+                endState,
+            );
+            await this.connection.getRepository(txCtx, Payment).save(payment, { reload: false });
+            await this.connection
+                .getRepository(txCtx, Order)
+                .createQueryBuilder()
+                .relation('payments')
+                .of(order)
+                .add(payment);
+            await this.eventBus.publish(
+                new PaymentStateTransitionEvent(initialState, endState, txCtx, payment, order),
+            );
+            await finalize();
+            return payment;
+        });
     }
 
     /**
@@ -388,28 +442,46 @@ export class PaymentService {
                 .of(refund)
                 .add(refundLines);
             if (createRefundResult) {
-                let finalize: () => Promise<any>;
                 const fromState = refund.state;
-                try {
-                    const result = await this.refundStateMachine.transition(
-                        ctx,
-                        order,
-                        refund,
-                        createRefundResult.state,
+                // Each iteration's state transition is wrapped in withTransaction so
+                // the save, onTransitionEnd hooks and event publish commit or roll
+                // back together — same atomicity guarantee as the dedicated
+                // transition methods. The surrounding loop is intentionally NOT
+                // wrapped: refunds created in earlier iterations remain committed
+                // if a later iteration fails. #4686.
+                const transitionError = await this.connection.withTransaction(ctx, async txCtx => {
+                    let finalize: () => Promise<any>;
+                    try {
+                        const result = await this.refundStateMachine.transition(
+                            txCtx,
+                            order,
+                            refund,
+                            createRefundResult.state,
+                        );
+                        finalize = result.finalize;
+                    } catch (e: any) {
+                        return new RefundStateTransitionError({
+                            transitionError: e.message,
+                            fromState,
+                            toState: createRefundResult.state,
+                        });
+                    }
+                    await this.connection.getRepository(txCtx, Refund).save(refund, { reload: false });
+                    await finalize();
+                    await this.eventBus.publish(
+                        new RefundStateTransitionEvent(
+                            fromState,
+                            createRefundResult.state,
+                            txCtx,
+                            refund,
+                            order,
+                        ),
                     );
-                    finalize = result.finalize;
-                } catch (e: any) {
-                    return new RefundStateTransitionError({
-                        transitionError: e.message,
-                        fromState,
-                        toState: createRefundResult.state,
-                    });
+                    return undefined;
+                });
+                if (transitionError) {
+                    return transitionError;
                 }
-                await this.connection.getRepository(ctx, Refund).save(refund, { reload: false });
-                await finalize();
-                await this.eventBus.publish(
-                    new RefundStateTransitionEvent(fromState, createRefundResult.state, ctx, refund, order),
-                );
             }
             if (primaryRefund == null) {
                 primaryRefund = refund;

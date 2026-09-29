@@ -16,7 +16,7 @@ import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import { defaultEmailHandlers, EmailPlugin, FileBasedTemplateLoader } from '@vendure/email-plugin';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
 import { BullMQJobQueuePlugin } from '@vendure/job-queue-plugin/package/bullmq';
-import { SentryPlugin } from '@vendure/sentry-plugin';
+import { SentryPlugin } from '@vendure-community/sentry-plugin';
 import { TelemetryPlugin } from '@vendure/telemetry-plugin';
 import 'dotenv/config';
 import { Redis, RedisOptions } from 'ioredis';
@@ -163,7 +163,8 @@ function getPlugins(useRedis: boolean): VendureConfig['plugins'] {
             : []),
         DashboardPlugin.init({
             route: 'dashboard',
-            appDir: path.join(__dirname, './dist'),
+            // Matches `build.outDir` in vite.config.mts (upstream 3.7 moved it to dist/dashboard).
+            appDir: path.join(__dirname, './dist/dashboard'),
         }),
     ];
 }

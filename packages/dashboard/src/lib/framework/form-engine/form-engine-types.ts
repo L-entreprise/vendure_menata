@@ -110,11 +110,9 @@ export type DashboardFormComponentProps<
  *   // implementation omitted
  * }
  *
- * // highlight-start
- * MyCustomInput.metadata = {
- *   isListInput: true
- * }
- * // highlight-end
+ * MyCustomInput.metadata = { // [!code highlight]
+ *   isListInput: true // [!code highlight]
+ * } // [!code highlight]
  * ```
  *
  * @docsCategory extensions-api
@@ -131,7 +129,8 @@ export type DashboardFormComponentMetadata = {
     isListInput?: boolean | 'dynamic';
     /**
      * @description
-     * TODO: not currently implemented
+     * When true, the dashboard will render this form component so it spans
+     * the full width of the detail form grid.
      */
     isFullWidth?: boolean;
 };

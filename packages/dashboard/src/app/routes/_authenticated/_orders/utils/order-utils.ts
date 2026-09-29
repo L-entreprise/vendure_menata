@@ -7,6 +7,7 @@ import { Fulfillment, Order, Payment } from './order-types.js';
 import { ProductVariantInfo } from './use-modify-order.js';
 
 type ModifyOrderInput = VariablesOf<typeof modifyOrderDocument>['input'];
+type WithCustomFields<T> = T & { customFields?: Record<string, any> };
 
 /**
  * Calculates the outstanding payment amount for an order
@@ -99,14 +100,20 @@ export function computePendingOrder(
     input: ModifyOrderInput,
     addedVariants: Map<string, ProductVariantInfo>,
     eligibleShippingMethods?: Array<{ id: string; name: string; priceWithTax: number }>,
+    orderLineCustomFieldNames?: string[],
 ): Order {
     // Adjust lines
     const lines = order.lines.map(line => {
         const adjust = input.adjustOrderLines?.find(l => l.orderLineId === line.id);
-        return adjust
-            ? { ...line, quantity: adjust.quantity, customFields: (adjust as any).customFields }
-            : line;
+        const adjustCf = (adjust as WithCustomFields<typeof adjust>)?.customFields;
+        const lineCf = (line as WithCustomFields<typeof line>).customFields;
+        return adjust ? { ...line, quantity: adjust.quantity, customFields: adjustCf ?? lineCf } : line;
     });
+
+    const customFieldsTemplate =
+        orderLineCustomFieldNames && orderLineCustomFieldNames.length > 0
+            ? Object.fromEntries(orderLineCustomFieldNames.map(k => [k, null]))
+            : undefined;
 
     // Add new items (as AddedLine)
     const addedLines = input.addItems
@@ -126,6 +133,8 @@ export function computePendingOrder(
                       quantity: item.quantity,
                       linePrice: (variantInfo.price ?? 0) * item.quantity,
                       linePriceWithTax: (variantInfo.priceWithTax ?? 0) * item.quantity,
+                      customFields:
+                          (item as WithCustomFields<typeof item>).customFields ?? customFieldsTemplate,
                   } as unknown as Order['lines'][number])
                 : null;
         })
@@ -176,11 +185,22 @@ export function getRefundedQuantity(order: Order, lineId: string): number {
 }
 
 /**
+ * The quantity of a line that is eligible for refund/cancellation. Uses the greater of
+ * `orderPlacedQuantity` and the current `quantity` so that lines added or increased while
+ * the order was in the `Modifying` state (which keep `orderPlacedQuantity` at their
+ * placement value, 0 for new lines) can still be refunded. Mirrors core's effective-quantity
+ * pattern (see OrderLine price/discount distribution).
+ */
+export function getRefundableQuantity(line: Order['lines'][number]): number {
+    return Math.max(line.orderPlacedQuantity, line.quantity);
+}
+
+/**
  * Checks if an order line can still be refunded (has unrefunded quantity).
  */
 export function lineCanBeRefunded(order: Order, line: Order['lines'][number]): boolean {
     const refundedCount = getRefundedQuantity(order, line.id);
-    return refundedCount < line.orderPlacedQuantity;
+    return refundedCount < getRefundableQuantity(line);
 }
 
 /**
@@ -188,7 +208,7 @@ export function lineCanBeRefunded(order: Order, line: Order['lines'][number]): b
  */
 export function getMaxRefundableQuantity(order: Order, line: Order['lines'][number]): number {
     const refundedCount = getRefundedQuantity(order, line.id);
-    return Math.max(0, line.orderPlacedQuantity - refundedCount);
+    return Math.max(0, getRefundableQuantity(line) - refundedCount);
 }
 
 /**

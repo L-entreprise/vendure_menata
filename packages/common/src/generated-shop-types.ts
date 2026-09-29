@@ -29,6 +29,7 @@ export type AddItemInput = {
 };
 
 export type AddPaymentToOrderResult =
+    | CouponRemovedDuringCheckoutError
     | IneligiblePaymentMethodError
     | NoActiveOrderError
     | Order
@@ -92,11 +93,13 @@ export type Asset = Node & {
     focalPoint?: Maybe<Coordinate>;
     height: Scalars['Int']['output'];
     id: Scalars['ID']['output'];
+    languageCode: LanguageCode;
     mimeType: Scalars['String']['output'];
     name: Scalars['String']['output'];
     preview: Scalars['String']['output'];
     source: Scalars['String']['output'];
     tags: Array<Tag>;
+    translations: Array<AssetTranslation>;
     type: AssetType;
     updatedAt: Scalars['DateTime']['output'];
     width: Scalars['Int']['output'];
@@ -106,6 +109,15 @@ export type AssetList = PaginatedList & {
     __typename?: 'AssetList';
     items: Array<Asset>;
     totalItems: Scalars['Int']['output'];
+};
+
+export type AssetTranslation = {
+    __typename?: 'AssetTranslation';
+    createdAt: Scalars['DateTime']['output'];
+    id: Scalars['ID']['output'];
+    languageCode: LanguageCode;
+    name: Scalars['String']['output'];
+    updatedAt: Scalars['DateTime']['output'];
 };
 
 export enum AssetType {
@@ -391,6 +403,26 @@ export type CouponCodeLimitError = ErrorResult & {
     errorCode: ErrorCode;
     limit: Scalars['Int']['output'];
     message: Scalars['String']['output'];
+};
+
+/**
+ * Returned by `addPaymentToOrder` when one or more coupon codes were removed
+ * from the Order during payment-time revalidation and the removal would have
+ * increased the amount the customer is charged. Refusing the payment in this
+ * case prevents silently charging the customer more than they agreed to. The
+ * most common trigger is a usage-limited coupon's slot being claimed by a
+ * concurrent checkout, but the same protection applies when a coupon is
+ * stripped because the order no longer meets the promotion's eligibility
+ * conditions or because the promotion was disabled mid-checkout.
+ */
+export type CouponRemovedDuringCheckoutError = ErrorResult & {
+    __typename?: 'CouponRemovedDuringCheckoutError';
+    currencyCode: CurrencyCode;
+    errorCode: ErrorCode;
+    message: Scalars['String']['output'];
+    newTotalWithTax: Scalars['Money']['output'];
+    previousTotalWithTax: Scalars['Money']['output'];
+    removedCouponCodes: Array<Scalars['String']['output']>;
 };
 
 /**
@@ -959,6 +991,7 @@ export enum ErrorCode {
     COUPON_CODE_EXPIRED_ERROR = 'COUPON_CODE_EXPIRED_ERROR',
     COUPON_CODE_INVALID_ERROR = 'COUPON_CODE_INVALID_ERROR',
     COUPON_CODE_LIMIT_ERROR = 'COUPON_CODE_LIMIT_ERROR',
+    COUPON_REMOVED_DURING_CHECKOUT_ERROR = 'COUPON_REMOVED_DURING_CHECKOUT_ERROR',
     EMAIL_ADDRESS_CONFLICT_ERROR = 'EMAIL_ADDRESS_CONFLICT_ERROR',
     GUEST_CHECKOUT_ERROR = 'GUEST_CHECKOUT_ERROR',
     IDENTIFIER_CHANGE_TOKEN_EXPIRED_ERROR = 'IDENTIFIER_CHANGE_TOKEN_EXPIRED_ERROR',
@@ -1276,6 +1309,7 @@ export enum HistoryEntryType {
     ORDER_CANCELLATION = 'ORDER_CANCELLATION',
     ORDER_COUPON_APPLIED = 'ORDER_COUPON_APPLIED',
     ORDER_COUPON_REMOVED = 'ORDER_COUPON_REMOVED',
+    ORDER_CURRENCY_UPDATED = 'ORDER_CURRENCY_UPDATED',
     ORDER_CUSTOMER_UPDATED = 'ORDER_CUSTOMER_UPDATED',
     ORDER_FULFILLMENT = 'ORDER_FULFILLMENT',
     ORDER_FULFILLMENT_TRANSITION = 'ORDER_FULFILLMENT_TRANSITION',
@@ -1792,7 +1826,7 @@ export type Mutation = {
     /** Regenerate and send a verification token for a new Customer registration. Only applicable if `authOptions.requireVerification` is set to true. */
     refreshCustomerVerification: RefreshCustomerVerificationResult;
     /**
-     * Register a Customer account with the given credentials. There are three possible registration flows:
+     * Register a Customer account with the given credentials. There are four possible registration flows:
      *
      * _If `authOptions.requireVerification` is set to `true`:_
      *
@@ -1806,6 +1840,19 @@ export type Mutation = {
      * _If `authOptions.requireVerification` is set to `false`:_
      *
      * 3. The Customer _must_ be registered _with_ a password. No further action is needed - the Customer is able to authenticate immediately.
+     *
+     * _Whatever the setting, if an account already exists for the email address through another authentication strategy
+     * (for example an SSO provider) and has no password yet:_
+     *
+     * 4. **The supplied password is never stored.** A verificationToken is created and emailed to the address, and this mutation
+     *    answers with a generic success so that it does not reveal whether the account exists. The password is set only when that
+     *    token is passed to the `verifyCustomerAccount` mutation _with_ the chosen password, which proves the caller controls the
+     *    mailbox. This holds even when `requireVerification` is `false`, so the Customer cannot be authenticated straight after
+     *    registering. Registering again issues a fresh token and sends the email again.
+     *
+     * In every flow the caller-supplied `firstName`, `lastName`, `phoneNumber` and custom fields are ignored whenever a User already
+     * exists for the email address, since the caller has not proven they own it. This includes an account an administrator created
+     * earlier. A Customer with no User, such as one left by a guest checkout, is not an account and its details are still filled in.
      */
     registerCustomerAccount: RegisterCustomerAccountResult;
     /** Remove all OrderLine from the Order */
@@ -1825,6 +1872,8 @@ export type Mutation = {
     requestUpdateCustomerEmailAddress: RequestUpdateCustomerEmailAddressResult;
     /** Resets a Customer's password based on the provided token */
     resetPassword: ResetPasswordResult;
+    /** Sets the currency code for the active Order */
+    setCurrencyCodeForOrder: UpdateOrderItemsResult;
     /** Set the Customer for the Order. Required only if the Customer is not currently logged in */
     setCustomerForOrder: SetCustomerForOrderResult;
     /** Sets the billing address for the active Order */
@@ -1858,7 +1907,9 @@ export type Mutation = {
     /** Update the password of the active Customer */
     updateCustomerPassword: UpdateCustomerPasswordResult;
     /**
-     * Verify a Customer email address with the token sent to that address. Only applicable if `authOptions.requireVerification` is set to true.
+     * Verify a Customer email address with the token sent to that address. Applicable whenever a verificationToken was issued:
+     * that is when `authOptions.requireVerification` is set to true, and also when a password was registered against an account
+     * that already existed through another authentication strategy, whatever that setting is.
      *
      * If the Customer was not registered with a password in the `registerCustomerAccount` mutation, the password _must_ be
      * provided here.
@@ -1935,6 +1986,10 @@ export type MutationRequestUpdateCustomerEmailAddressArgs = {
 export type MutationResetPasswordArgs = {
     password: Scalars['String']['input'];
     token: Scalars['String']['input'];
+};
+
+export type MutationSetCurrencyCodeForOrderArgs = {
+    currencyCode: CurrencyCode;
 };
 
 export type MutationSetCustomerForOrderArgs = {
@@ -2133,19 +2188,34 @@ export type OrderAddress = {
 export type OrderFilterParameter = {
     _and?: InputMaybe<Array<OrderFilterParameter>>;
     _or?: InputMaybe<Array<OrderFilterParameter>>;
+    /** An order is active as long as the payment process has not been completed */
     active?: InputMaybe<BooleanOperators>;
+    /** A unique code for the Order */
     code?: InputMaybe<StringOperators>;
     createdAt?: InputMaybe<DateOperators>;
     currencyCode?: InputMaybe<StringOperators>;
     id?: InputMaybe<IdOperators>;
+    /**
+     * The date & time that the Order was placed, i.e. the Customer
+     * completed the checkout and the Order is no longer "active"
+     */
     orderPlacedAt?: InputMaybe<DateOperators>;
     shipping?: InputMaybe<NumberOperators>;
     shippingWithTax?: InputMaybe<NumberOperators>;
     state?: InputMaybe<StringOperators>;
+    /**
+     * The subTotal is the total of all OrderLines in the Order. This figure also includes any Order-level
+     * discounts which have been prorated (proportionally distributed) amongst the items of each OrderLine.
+     * To get a total of all OrderLines which does not account for prorated discounts, use the
+     * sum of `OrderLine.discountedLinePrice` values.
+     */
     subTotal?: InputMaybe<NumberOperators>;
+    /** Same as subTotal, but inclusive of tax */
     subTotalWithTax?: InputMaybe<NumberOperators>;
+    /** Equal to subTotal plus shipping */
     total?: InputMaybe<NumberOperators>;
     totalQuantity?: InputMaybe<NumberOperators>;
+    /** The final payable amount. Equal to subTotalWithTax plus shippingWithTax */
     totalWithTax?: InputMaybe<NumberOperators>;
     type?: InputMaybe<StringOperators>;
     updatedAt?: InputMaybe<DateOperators>;
@@ -2265,17 +2335,31 @@ export type OrderPaymentStateError = ErrorResult & {
 };
 
 export type OrderSortParameter = {
+    /** A unique code for the Order */
     code?: InputMaybe<SortOrder>;
     createdAt?: InputMaybe<SortOrder>;
     id?: InputMaybe<SortOrder>;
+    /**
+     * The date & time that the Order was placed, i.e. the Customer
+     * completed the checkout and the Order is no longer "active"
+     */
     orderPlacedAt?: InputMaybe<SortOrder>;
     shipping?: InputMaybe<SortOrder>;
     shippingWithTax?: InputMaybe<SortOrder>;
     state?: InputMaybe<SortOrder>;
+    /**
+     * The subTotal is the total of all OrderLines in the Order. This figure also includes any Order-level
+     * discounts which have been prorated (proportionally distributed) amongst the items of each OrderLine.
+     * To get a total of all OrderLines which does not account for prorated discounts, use the
+     * sum of `OrderLine.discountedLinePrice` values.
+     */
     subTotal?: InputMaybe<SortOrder>;
+    /** Same as subTotal, but inclusive of tax */
     subTotalWithTax?: InputMaybe<SortOrder>;
+    /** Equal to subTotal plus shipping */
     total?: InputMaybe<SortOrder>;
     totalQuantity?: InputMaybe<SortOrder>;
+    /** The final payable amount. Equal to subTotalWithTax plus shippingWithTax */
     totalWithTax?: InputMaybe<SortOrder>;
     updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2468,6 +2552,8 @@ export enum Permission {
     Authenticated = 'Authenticated',
     /** Grants permission to create Administrator */
     CreateAdministrator = 'CreateAdministrator',
+    /** Grants permission to create ApiKey */
+    CreateApiKey = 'CreateApiKey',
     /** Grants permission to create Asset */
     CreateAsset = 'CreateAsset',
     /** Grants permission to create Products, Facets, Assets, Collections */
@@ -2512,6 +2598,8 @@ export enum Permission {
     CreateZone = 'CreateZone',
     /** Grants permission to delete Administrator */
     DeleteAdministrator = 'DeleteAdministrator',
+    /** Grants permission to delete ApiKey */
+    DeleteApiKey = 'DeleteApiKey',
     /** Grants permission to delete Asset */
     DeleteAsset = 'DeleteAsset',
     /** Grants permission to delete Products, Facets, Assets, Collections */
@@ -2560,6 +2648,8 @@ export enum Permission {
     Public = 'Public',
     /** Grants permission to read Administrator */
     ReadAdministrator = 'ReadAdministrator',
+    /** Grants permission to read ApiKey */
+    ReadApiKey = 'ReadApiKey',
     /** Grants permission to read Asset */
     ReadAsset = 'ReadAsset',
     /** Grants permission to read Products, Facets, Assets, Collections */
@@ -2606,6 +2696,8 @@ export enum Permission {
     SuperAdmin = 'SuperAdmin',
     /** Grants permission to update Administrator */
     UpdateAdministrator = 'UpdateAdministrator',
+    /** Grants permission to update ApiKey */
+    UpdateApiKey = 'UpdateApiKey',
     /** Grants permission to update Asset */
     UpdateAsset = 'UpdateAsset',
     /** Grants permission to update Products, Facets, Assets, Collections */
@@ -2741,6 +2833,8 @@ export type ProductOptionGroup = Node & {
     languageCode: LanguageCode;
     name: Scalars['String']['output'];
     options: Array<ProductOption>;
+    /** The number of products that use this option group */
+    productCount: Scalars['Int']['output'];
     translations: Array<ProductOptionGroupTranslation>;
     updatedAt: Scalars['DateTime']['output'];
 };
@@ -3156,7 +3250,9 @@ export type RoleList = PaginatedList & {
 
 export type SearchInput = {
     collectionId?: InputMaybe<Scalars['ID']['input']>;
+    collectionIds?: InputMaybe<Array<Scalars['ID']['input']>>;
     collectionSlug?: InputMaybe<Scalars['String']['input']>;
+    collectionSlugs?: InputMaybe<Array<Scalars['String']['input']>>;
     facetValueFilters?: InputMaybe<Array<FacetValueFilterInput>>;
     /** @deprecated Use `facetValueFilters` instead */
     facetValueIds?: InputMaybe<Array<Scalars['ID']['input']>>;

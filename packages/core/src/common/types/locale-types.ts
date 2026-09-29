@@ -40,6 +40,8 @@ export type Translation<T> =
 // Translation must include the languageCode and a reference to the base Translatable entity it is associated with
     {
         id: ID;
+        createdAt: Date;
+        updatedAt: Date;
         languageCode: LanguageCode;
         base: T;
     } &
@@ -52,7 +54,7 @@ export type Translation<T> =
  */
 export type TranslationInput<T> = { [K in TranslatableKeys<T>]?: string | null } & {
     id?: ID | null;
-    languageCode: LanguageCode;
+    languageCode: LanguageCode | `${LanguageCode}`;
 };
 
 /**

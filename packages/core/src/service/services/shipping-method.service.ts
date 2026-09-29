@@ -93,17 +93,31 @@ export class ShippingMethodService {
         shippingMethodId: ID,
         includeDeleted = false,
         relations: RelationPaths<ShippingMethod> = [],
+        filterOnChannel = true,
     ): Promise<Translated<ShippingMethod> | undefined> {
-        const shippingMethod = await this.connection.findOneInChannel(
-            ctx,
-            ShippingMethod,
-            shippingMethodId,
-            ctx.channelId,
-            {
+        let shippingMethod: ShippingMethod | undefined | null;
+
+        if (!filterOnChannel) {
+            shippingMethod = await this.connection.getRepository(ctx, ShippingMethod).findOne({
+                where: {
+                    id: shippingMethodId,
+                    deletedAt: includeDeleted ? undefined : IsNull(),
+                },
                 relations,
-                ...(includeDeleted === false ? { where: { deletedAt: IsNull() } } : {}),
-            },
-        );
+            });
+        } else {
+            shippingMethod = await this.connection.findOneInChannel(
+                ctx,
+                ShippingMethod,
+                shippingMethodId,
+                ctx.channelId,
+                {
+                    relations,
+                    ...(includeDeleted === false ? { where: { deletedAt: IsNull() } } : {}),
+                },
+            );
+        }
+
         return (shippingMethod && this.translator.translate(shippingMethod, ctx)) ?? undefined;
     }
 
@@ -179,7 +193,7 @@ export class ShippingMethodService {
         await this.connection
             .getRepository(ctx, ShippingMethod)
             .save(updatedShippingMethod, { reload: false });
-        await this.eventBus.publish(new ShippingMethodEvent(ctx, shippingMethod, 'updated', input));
+        await this.eventBus.publish(new ShippingMethodEvent(ctx, updatedShippingMethod, 'updated', input));
         return assertFound(this.findOne(ctx, shippingMethod.id));
     }
 
@@ -207,19 +221,27 @@ export class ShippingMethodService {
         if (!hasPermission) {
             throw new ForbiddenError();
         }
-        for (const shippingMethodId of input.shippingMethodIds) {
-            const shippingMethod = await this.connection.findOneInChannel(
-                ctx,
-                ShippingMethod,
-                shippingMethodId,
-                ctx.channelId,
-            );
-            await this.channelService.assignToChannels(ctx, ShippingMethod, shippingMethodId, [
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const shippingMethods = await this.connection.findByIdsInChannel(
+            ctx,
+            ShippingMethod,
+            input.shippingMethodIds,
+            ctx.channelId,
+            {},
+        );
+        for (const shippingMethod of shippingMethods) {
+            await this.channelService.assignToChannels(ctx, ShippingMethod, shippingMethod.id, [
                 input.channelId,
             ]);
         }
         return this.connection
-            .findByIdsInChannel(ctx, ShippingMethod, input.shippingMethodIds, ctx.channelId, {})
+            .findByIdsInChannel(
+                ctx,
+                ShippingMethod,
+                shippingMethods.map(method => method.id),
+                ctx.channelId,
+                {},
+            )
             .then(methods => methods.map(method => this.translator.translate(method, ctx)));
     }
 
@@ -238,18 +260,27 @@ export class ShippingMethodService {
         if (idsAreEqual(input.channelId, defaultChannel.id)) {
             throw new UserInputError('error.items-cannot-be-removed-from-default-channel');
         }
-        for (const shippingMethodId of input.shippingMethodIds) {
-            const shippingMethod = await this.connection.getEntityOrThrow(
-                ctx,
-                ShippingMethod,
-                shippingMethodId,
-            );
-            await this.channelService.removeFromChannels(ctx, ShippingMethod, shippingMethodId, [
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const shippingMethods = await this.connection.findByIdsInChannel(
+            ctx,
+            ShippingMethod,
+            input.shippingMethodIds,
+            ctx.channelId,
+            {},
+        );
+        for (const shippingMethod of shippingMethods) {
+            await this.channelService.removeFromChannels(ctx, ShippingMethod, shippingMethod.id, [
                 input.channelId,
             ]);
         }
         return this.connection
-            .findByIdsInChannel(ctx, ShippingMethod, input.shippingMethodIds, ctx.channelId, {})
+            .findByIdsInChannel(
+                ctx,
+                ShippingMethod,
+                shippingMethods.map(method => method.id),
+                ctx.channelId,
+                {},
+            )
             .then(methods => methods.map(method => this.translator.translate(method, ctx)));
     }
 

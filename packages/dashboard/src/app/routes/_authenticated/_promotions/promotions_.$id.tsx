@@ -3,26 +3,25 @@ import { NumberInput } from '@/vdb/components/data-input/number-input.js';
 import { RichTextInput } from '@/vdb/components/data-input/rich-text-input.js';
 import { ErrorPage } from '@/vdb/components/shared/error-page.js';
 import { FormFieldWrapper } from '@/vdb/components/shared/form-field-wrapper.js';
-import { PermissionGuard } from '@/vdb/components/shared/permission-guard.js';
 import { TranslatableFormFieldWrapper } from '@/vdb/components/shared/translatable-form-field.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
 import { NEW_ENTITY_PATH } from '@/vdb/constants.js';
-import {
-    CustomFieldsPageBlock,
+import {    CustomFieldsPageBlock,
     DetailFormGrid,
     Page,
     PageActionBar,
-    PageActionBarRight,
     PageBlock,
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { ActionBarItem } from '@/vdb/framework/layout-engine/action-bar-item-wrapper.js';
 import { detailPageRouteLoader } from '@/vdb/framework/page/detail-page-route-loader.js';
 import { useDetailPage } from '@/vdb/framework/page/use-detail-page.js';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { PromotionActionsSelector } from './components/promotion-actions-selector.js';
 import { PromotionConditionsSelector } from './components/promotion-conditions-selector.js';
@@ -124,20 +123,27 @@ function PromotionDetailPage() {
         },
     });
 
+    const [conditionsArgsValid, setConditionsArgsValid] = useState(true);
+    const [actionsArgsValid, setActionsArgsValid] = useState(true);
+
     return (
         <Page pageId={pageId} form={form} submitHandler={submitHandler} entity={entity}>
             <PageTitle>{creatingNewEntity ? <Trans>New promotion</Trans> : (entity?.name ?? '')}</PageTitle>
             <PageActionBar>
-                <PageActionBarRight>
-                    <PermissionGuard requires={['UpdatePromotion']}>
-                        <Button
-                            type="submit"
-                            disabled={!form.formState.isDirty || !form.formState.isValid || isPending}
-                        >
-                            {creatingNewEntity ? <Trans>Create</Trans> : <Trans>Update</Trans>}
-                        </Button>
-                    </PermissionGuard>
-                </PageActionBarRight>
+                <ActionBarItem itemId="save-button" requiresPermission={['UpdatePromotion']}>
+                    <Button
+                        type="submit"
+                        disabled={
+                            !form.formState.isDirty ||
+                            !form.formState.isValid ||
+                            isPending ||
+                            !conditionsArgsValid ||
+                            !actionsArgsValid
+                        }
+                    >
+                        {creatingNewEntity ? <Trans>Create</Trans> : <Trans>Update</Trans>}
+                    </Button>
+                </ActionBarItem>
             </PageActionBar>
             <PageLayout>
                 <PageBlock column="side" blockId="enabled">
@@ -205,7 +211,7 @@ function PromotionDetailPage() {
                             name="perCustomerUsageLimit"
                             label={<Trans>Per customer usage limit</Trans>}
                             render={({ field }) => (
-                                <NumberInput {...field} value={field.value ?? ''} min={0} max={1000} />
+                                <NumberInput {...field} value={field.value ?? ''} min={0} />
                             )}
                         />
                         <FormFieldWrapper
@@ -213,7 +219,7 @@ function PromotionDetailPage() {
                             name="usageLimit"
                             label={<Trans>Usage limit</Trans>}
                             render={({ field }) => (
-                                <NumberInput {...field} value={field.value ?? ''} min={0} max={1000} />
+                                <NumberInput {...field} value={field.value ?? ''} min={0} />
                             )}
                         />
                     </DetailFormGrid>
@@ -227,6 +233,7 @@ function PromotionDetailPage() {
                             <PromotionConditionsSelector
                                 value={field.value ?? []}
                                 onChange={field.onChange}
+                                onValidityChange={setConditionsArgsValid}
                             />
                         )}
                     />
@@ -236,7 +243,11 @@ function PromotionDetailPage() {
                         control={form.control}
                         name="actions"
                         render={({ field }) => (
-                            <PromotionActionsSelector value={field.value ?? []} onChange={field.onChange} />
+                            <PromotionActionsSelector
+                                value={field.value ?? []}
+                                onChange={field.onChange}
+                                onValidityChange={setActionsArgsValid}
+                            />
                         )}
                     />
                 </PageBlock>

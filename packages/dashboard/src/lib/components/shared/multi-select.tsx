@@ -39,6 +39,7 @@ export function MultiSelect<T extends boolean>(props: MultiSelectProps<T>) {
         className,
     } = props;
     const [search, setSearch] = useState('');
+    const [open, setOpen] = useState(false);
 
     const filteredItems = items.filter(item => item.label.toLowerCase().includes(search.toLowerCase()));
 
@@ -51,6 +52,9 @@ export function MultiSelect<T extends boolean>(props: MultiSelectProps<T>) {
             onChange(newValue as T extends true ? string[] : string);
         } else {
             onChange(selectedValue as T extends true ? string[] : string);
+            // A single-select has nothing left to choose once a value is picked, so close. A
+            // multiple select stays open to take further selections.
+            setOpen(false);
         }
     };
 
@@ -69,9 +73,9 @@ export function MultiSelect<T extends boolean>(props: MultiSelectProps<T>) {
                     variant="outline"
                     role="combobox"
                     className={cn(
-                        'w-full justify-between',
+                        'w-full justify-between bg-transparent',
                         'min-h-[2.5rem] h-auto',
-                        'flex flex-wrap gap-1 p-1 shadow-xs',
+                        'flex flex-wrap gap-1 p-1',
                         className,
                     )}
                 >
@@ -117,7 +121,11 @@ export function MultiSelect<T extends boolean>(props: MultiSelectProps<T>) {
         }
         const selectedItem = items.find(i => i.value === value);
         return (
-            <Button variant="outline" role="combobox" className={cn('w-full justify-between', className)}>
+            <Button
+                variant="outline"
+                role="combobox"
+                className={cn('w-full justify-between bg-transparent', className)}
+            >
                 {selectedItem ? (selectedItem.display ?? selectedItem.label) : placeholder}
                 <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -125,9 +133,14 @@ export function MultiSelect<T extends boolean>(props: MultiSelectProps<T>) {
     };
 
     return (
-        <Popover>
-            <PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" side="bottom" align="start" onWheel={(e) => e.stopPropagation()}>
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger render={renderTrigger()}></PopoverTrigger>
+            <PopoverContent
+                className="w-[200px] p-0"
+                side="bottom"
+                align="start"
+                onWheel={e => e.stopPropagation()}
+            >
                 {(showSearch === true || items.length > 10) && (
                     <div className="p-2">
                         <Input

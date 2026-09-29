@@ -5,41 +5,14 @@ import {
     getCatalogs,
 } from '@lingui/cli/api';
 import { getConfig, LinguiConfigNormalized } from '@lingui/conf';
-import { generateMessageId } from '@lingui/message-utils/generateMessageId';
 import glob from 'fast-glob';
-import * as fs from 'fs';
-import * as path from 'path';
-// @ts-ignore – pofile ships its own types
-import PO from 'pofile';
-// @ts-ignore
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { Plugin } from 'vite';
-
-// Parse a plugin .po file directly. The default lingui catalog matching used for
-// built-in translations does not reliably resolve plugin files (their absolute
-// paths are outside the dashboard rootDir), so plugin translations were silently
-// dropped. Direct parsing guarantees plugin strings end up in the merged map.
-function parsePluginPoFile(file: string): { locale: string; messages: Record<string, string> } {
-    const content = fs.readFileSync(file, 'utf-8');
-    const po = PO.parse(content);
-    const locale: string =
-        (po.headers && (po.headers as Record<string, string>).Language) || path.basename(file, '.po');
-    const messages: Record<string, string> = {};
-    for (const item of po.items as Array<{ msgid: string; msgstr: string[]; msgctxt?: string }>) {
-        if (!item.msgid) continue;
-        const value = (item.msgstr && item.msgstr[0]) || '';
-        if (!value) continue;
-        // Lingui v5 looks up translations by 6-char SHA256/base64 hash of the
-        // source message + msgctxt. Store both forms so a runtime call by
-        // either hash id or raw text resolves correctly.
-        const hashedId = generateMessageId(item.msgid, item.msgctxt || '');
-        messages[hashedId] = value;
-        messages[item.msgid] = value;
-    }
-    return { locale: locale.trim(), messages };
-}
 
 import { PluginInfo } from './types.js';
 import { CompileResult } from './utils/compiler.js';
+import { filterActivePluginInfo } from './utils/get-active-plugin-info.js';
 import { getDashboardPaths } from './utils/get-dashboard-paths.js';
 import { ConfigLoaderApi, getConfigLoaderApi } from './vite-plugin-config-loader.js';
 
@@ -86,6 +59,9 @@ const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 export function translationsPlugin(options: TranslationsPluginOptions): Plugin {
     let configLoaderApi: ConfigLoaderApi;
     let loadVendureConfigResult: CompileResult;
+    let cachedLinguiConfig: LinguiConfigNormalized;
+    let cachedPluginTranslations: PluginTranslation[];
+    let cachedCatalogs: Catalog[];
 
     return {
         name: 'vendure:compile-translations',
@@ -105,25 +81,22 @@ export function translationsPlugin(options: TranslationsPluginOptions): Plugin {
                     loadVendureConfigResult = await configLoaderApi.getVendureConfig();
                 }
 
-                const { pluginInfo } = loadVendureConfigResult;
-                const pluginTranslations = await getPluginTranslations(pluginInfo);
-                const pluginFiles = pluginTranslations.flatMap(translation => translation.translations);
+                const { pluginInfo, vendureConfig } = loadVendureConfigResult;
+                const activePluginInfo = filterActivePluginInfo(pluginInfo, vendureConfig);
+                cachedPluginTranslations = await getPluginTranslations(activePluginInfo);
+                cachedLinguiConfig = getConfig({
+                    configPath: path.join(options.packageRoot, 'lingui.config.js'),
+                });
+                cachedCatalogs = await getLinguiCatalogs(cachedLinguiConfig, cachedPluginTranslations);
 
-                const mergedMessageMap = new Map<string, Record<string, string>>();
-                for (const file of pluginFiles) {
-                    try {
-                        const { locale, messages } = parsePluginPoFile(file);
-                        if (!locale) continue;
-                        const existing = mergedMessageMap.get(locale) ?? {};
-                        mergedMessageMap.set(locale, { ...existing, ...messages });
-                    } catch (err) {
-                        this.warn(
-                            `Failed to parse plugin po file ${file}: ${
-                                err instanceof Error ? err.message : String(err)
-                            }`,
-                        );
-                    }
-                }
+                const pluginFiles = cachedPluginTranslations.flatMap(translation => translation.translations);
+
+                const mergedMessageMap = await createMergedMessageMap({
+                    files: pluginFiles,
+                    packageRoot: options.packageRoot,
+                    catalogs: cachedCatalogs,
+                    sourceLocale: cachedLinguiConfig.sourceLocale,
+                });
                 return `
                     const translations = {
                         ${[...mergedMessageMap.entries()]
@@ -141,14 +114,28 @@ export function translationsPlugin(options: TranslationsPluginOptions): Plugin {
         async generateBundle() {
             // This runs during the bundle generation phase - emit files directly to build output
             try {
-                const { pluginInfo } = await configLoaderApi.getVendureConfig();
+                if (!loadVendureConfigResult) {
+                    loadVendureConfigResult = await configLoaderApi.getVendureConfig();
+                }
+                const { pluginInfo, vendureConfig } = loadVendureConfigResult;
+                const activePluginInfo = filterActivePluginInfo(pluginInfo, vendureConfig);
 
-                // Get any plugin-provided .po files
-                const pluginTranslations = await getPluginTranslations(pluginInfo);
+                // Reuse cached data from load hook when available
+                const pluginTranslations =
+                    cachedPluginTranslations ?? (await getPluginTranslations(activePluginInfo));
                 const pluginTranslationFiles = pluginTranslations.flatMap(p => p.translations);
                 this.info(`Found ${pluginTranslationFiles.length} translation files from plugins`);
                 this.debug(pluginTranslationFiles.join('\n'));
-                await compileTranslations(options, pluginTranslations, this.emitFile);
+
+                const linguiConfig =
+                    cachedLinguiConfig ??
+                    getConfig({
+                        configPath: path.join(options.packageRoot, 'lingui.config.js'),
+                    });
+                const catalogs =
+                    cachedCatalogs ?? (await getLinguiCatalogs(linguiConfig, pluginTranslations));
+
+                await compileTranslations(options, pluginTranslations, linguiConfig, catalogs, this.emitFile);
             } catch (error) {
                 this.error(
                     `Translation plugin error: ${error instanceof Error ? error.message : String(error)}`,
@@ -162,7 +149,6 @@ async function getPluginTranslations(pluginInfo: PluginInfo[]): Promise<PluginTr
     const dashboardPaths = getDashboardPaths(pluginInfo);
     const pluginTranslations: PluginTranslation[] = [];
     for (const dashboardPath of dashboardPaths) {
-        // fast-glob requires forward slashes even on Windows.
         const poPatterns = path.join(dashboardPath, '**/*.po').replace(/\\/g, '/');
         const translations = await glob(poPatterns, {
             ignore: [
@@ -187,12 +173,12 @@ async function getPluginTranslations(pluginInfo: PluginInfo[]): Promise<PluginTr
 async function compileTranslations(
     options: TranslationsPluginOptions,
     pluginTranslations: PluginTranslation[],
+    linguiConfig: LinguiConfigNormalized,
+    catalogs: Catalog[],
     emitFile: any,
 ) {
     const { localesDir = 'src/i18n/locales', outputPath = 'assets/i18n' } = options;
-    const linguiConfig = getConfig({ configPath: path.join(options.packageRoot, 'lingui.config.js') });
     const resolvedLocalesDir = path.resolve(options.packageRoot, localesDir);
-    const catalogs = await getLinguiCatalogs(linguiConfig, pluginTranslations);
 
     // Get all built-in .po files
     const builtInFiles = fs
@@ -202,24 +188,12 @@ async function compileTranslations(
 
     const pluginFiles = pluginTranslations.flatMap(translation => translation.translations);
 
-    // Built-in translations: rely on lingui catalog matching.
     const mergedMessageMap = await createMergedMessageMap({
-        files: builtInFiles,
+        files: [...builtInFiles, ...pluginFiles],
         packageRoot: options.packageRoot,
         catalogs,
         sourceLocale: linguiConfig.sourceLocale,
     });
-    // Plugin translations: parse directly to avoid catalog path mismatches.
-    for (const file of pluginFiles) {
-        try {
-            const { locale, messages } = parsePluginPoFile(file);
-            if (!locale) continue;
-            const existing = mergedMessageMap.get(locale) ?? {};
-            mergedMessageMap.set(locale, { ...existing, ...messages });
-        } catch {
-            // ignore broken plugin po
-        }
-    }
 
     for (const [locale, messages] of mergedMessageMap.entries()) {
         const { source: code, errors } = createCompiledCatalog(locale, messages, {

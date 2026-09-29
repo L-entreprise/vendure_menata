@@ -6,12 +6,12 @@ import { addCustomFields } from '@/vdb/framework/document-introspection/add-cust
 import {
     Page,
     PageActionBar,
-    PageActionBarRight,
     PageBlock,
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
-import { getDetailQueryOptions, useDetailPage } from '@/vdb/framework/page/use-detail-page.js';
+import { ActionBarItem } from '@/vdb/framework/layout-engine/action-bar-item-wrapper.js';
+import { useDetailPage } from '@/vdb/framework/page/use-detail-page.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useCustomFieldConfig } from '@/vdb/hooks/use-custom-field-config.js';
 import { useDynamicTranslations } from '@/vdb/hooks/use-dynamic-translations.js';
@@ -28,6 +28,7 @@ import {
     setOrderCustomFieldsDocument,
     transitionOrderToStateDocument,
 } from '../orders.graphql.js';
+import { OrderProcessDialog } from './order-process-dialog.js';
 import { canAddFulfillment, canRefundOrder, shouldShowAddManualPaymentButton } from '../utils/order-utils.js';
 
 import { AddManualPaymentDialog } from './add-manual-payment-dialog.js';
@@ -77,7 +78,7 @@ export function OrderDetailShared({
     const { form, submitHandler, entity, refreshEntity } = useDetailPage({
         pageId,
         queryDocument: addCustomFields(orderDetailDocument, {
-            includeNestedFragments: ['OrderLine'],
+            includeNestedFragments: ['OrderLine', 'Fulfillment'],
         }),
         updateDocument: setOrderCustomFieldsDocument,
         setValuesForUpdate: (entity: any) => {
@@ -106,33 +107,35 @@ export function OrderDetailShared({
     const customFieldConfig = useCustomFieldConfig('Order');
     const refundDialogRef = useRef<RefundOrderDialogRef>(null);
 
-    const refreshOrderAndHistory = useCallback(async () => {
-        if (entity) {
-            const queryKey = getDetailQueryOptions(orderDetailDocument, { id: entity.id }).queryKey;
-            await queryClient.invalidateQueries({ queryKey });
-            void queryClient.refetchQueries({ queryKey: orderHistoryQueryKey(entity.id) });
-        }
-    }, [entity, queryClient]);
+    const refreshPage = useCallback(async () => {
+        if (!entity) return;
+        await Promise.all([
+            refreshEntity(),
+            queryClient.refetchQueries({ queryKey: orderHistoryQueryKey(entity.id) }),
+        ]);
+    }, [refreshEntity, entity, queryClient]);
 
     const stateTransitionActions = useMemo(() => {
         if (!entity) {
             return [];
         }
-        return entity.nextStates.map((state: string) => ({
-            label: t`Transition to ${getTranslatedOrderState(state)}`,
-            type: getTypeForState(state),
-            onClick: async () => {
-                const transitionError = await transitionToState(state);
-                if (transitionError) {
-                    toast(t`Failed to transition order to state`, {
-                        description: transitionError,
-                    });
-                } else {
-                    void refreshOrderAndHistory();
-                }
-            },
-        }));
-    }, [entity, transitionToState, t, refreshOrderAndHistory]);
+        return entity.nextStates
+            .filter((state: string) => state !== 'Modifying')
+            .map((state: string) => ({
+                label: t`Transition to ${getTranslatedOrderState(state)}`,
+                type: getTypeForState(state),
+                onClick: async () => {
+                    const transitionError = await transitionToState(state);
+                    if (transitionError) {
+                        toast(t`Failed to transition order to state`, {
+                            description: transitionError,
+                        });
+                    } else {
+                        void refreshPage();
+                    }
+                },
+            }));
+    }, [entity, transitionToState, t, refreshPage]);
 
     const handleModifyClick = useCallback(async () => {
         if (!entity) return;
@@ -141,15 +144,14 @@ export function OrderDetailShared({
                 id: entity.id,
                 state: 'Modifying',
             });
-            const queryKey = getDetailQueryOptions(orderDetailDocument, { id: entity.id }).queryKey;
-            await queryClient.invalidateQueries({ queryKey });
+            await refreshPage();
             await navigate({ to: `/orders/$id/modify`, params: { id: entity.id } });
         } catch (error) {
             toast(t`Failed to modify order`, {
                 description: error instanceof Error ? error.message : 'Unknown error',
             });
         }
-    }, [entity, transitionOrderToStateMutation, queryClient, navigate, t]);
+    }, [entity, transitionOrderToStateMutation, refreshPage, navigate, t]);
 
     const ModifyMenuItem = useCallback(
         () => (
@@ -185,44 +187,42 @@ export function OrderDetailShared({
     return (
         <Page pageId={pageId} form={form} submitHandler={submitHandler} entity={entity}>
             <PageTitle>{titleSlot?.(entity) || <DefaultOrderTitle entity={entity} />}</PageTitle>
-            <PageActionBar>
-                <PageActionBarRight
+            <PageActionBar
                     dropdownMenuItems={[
                         ...(nextStates.includes('Modifying') ? [{ component: ModifyMenuItem }] : []),
                         ...(showRefundOption ? [{ component: RefundMenuItem }] : []),
                     ]}
                 >
-                    {showAddPaymentButton && (
-                        <PermissionGuard requires={['UpdateOrder']}>
-                            <AddManualPaymentDialog
-                                order={entity}
-                                onSuccess={() => {
-                                    refreshEntity();
-                                }}
-                            />
-                        </PermissionGuard>
-                    )}
-                    {showFulfillButton && (
-                        <PermissionGuard requires={['UpdateOrder']}>
-                            <FulfillOrderDialog
-                                order={entity}
-                                onSuccess={() => {
-                                    void refreshOrderAndHistory();
-                                }}
-                            />
-                        </PermissionGuard>
-                    )}
-                </PageActionBarRight>
+                {showAddPaymentButton && (
+                    <ActionBarItem itemId="add-payment-button" requiresPermission={['UpdateOrder']}>
+                        <AddManualPaymentDialog
+                            order={entity}
+                            onSuccess={() => {
+                                refreshEntity();
+                            }}
+                        />
+                    </ActionBarItem>
+                )}
+                {showFulfillButton && (
+                    <ActionBarItem itemId="fulfill-order-button" requiresPermission={['UpdateOrder']}>
+                        <FulfillOrderDialog
+                            order={entity}
+                            onSuccess={() => {
+                                void refreshPage();
+                            }}
+                        />
+                    </ActionBarItem>
+                )}
+                {showRefundOption && (
+                    <RefundOrderDialog
+                        ref={refundDialogRef}
+                        order={entity}
+                        onSuccess={() => {
+                            void refreshPage();
+                        }}
+                    />
+                )}
             </PageActionBar>
-            {showRefundOption && (
-                <RefundOrderDialog
-                    ref={refundDialogRef}
-                    order={entity}
-                    onSuccess={() => {
-                        void refreshOrderAndHistory();
-                    }}
-                />
-            )}
             <PageLayout>
                 {/* Main Column Blocks */}
                 {beforeOrderTable?.(entity)}
@@ -252,7 +252,7 @@ export function OrderDetailShared({
                                 key={payment.id}
                                 payment={payment}
                                 currencyCode={entity.currencyCode}
-                                onSuccess={refreshOrderAndHistory}
+                                onSuccess={refreshPage}
                             />
                         ))}
                     </div>
@@ -263,19 +263,21 @@ export function OrderDetailShared({
 
                 {/* Side Column Blocks */}
                 <PageBlock column="side" blockId="state">
-                    <StateTransitionControl
-                        currentState={entity?.state}
-                        actions={stateTransitionActions}
-                        isLoading={transitionOrderToStateMutation.isPending}
-                    />
+                    <div className="flex items-center gap-1.5">
+                        <StateTransitionControl
+                            currentState={entity?.state}
+                            statesTranslationFunction={getTranslatedOrderState}
+                            actions={stateTransitionActions}
+                            isLoading={transitionOrderToStateMutation.isPending}
+                        />
+                        <OrderProcessDialog currentState={entity!.state} />
+                    </div>
                 </PageBlock>
                 <PageBlock column="side" blockId="customer" title={<Trans>Customer</Trans>}>
                     {entity?.customer ? (
-                        <Button variant="outline" asChild>
-                            <Link to={`/customers/${entity.customer.id}`}>
-                                <User className="w-4 h-4" />
-                                {entity.customer.firstName} {entity.customer.lastName}
-                            </Link>
+                        <Button variant="outline" render={<Link to={`/customers/${entity.customer.id}`} />}>
+                            <User className="w-4 h-4" />
+                            {entity.customer.firstName} {entity.customer.lastName}
                         </Button>
                     ) : (
                         <div className="text-muted-foreground text-xs font-medium p-3 border rounded-md">
@@ -314,10 +316,7 @@ export function OrderDetailShared({
                                     order={entity}
                                     fulfillment={fulfillment}
                                     onSuccess={() => {
-                                        refreshEntity();
-                                        void queryClient.refetchQueries({
-                                            queryKey: orderHistoryQueryKey(entity.id),
-                                        });
+                                        void refreshPage();
                                     }}
                                 />
                             ))}

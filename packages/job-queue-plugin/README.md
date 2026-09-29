@@ -1,8 +1,6 @@
 # Vendure Job Queue Plugin
 
-This plugin includes alternate JobQueueStrategy implementations built on different technologies.
+This plugin provides the `BullMQJobQueuePlugin` which uses Redis via BullMQ to power the Vendure job queue.
 
-Implemented: 
-
-* The `PubSubPlugin` uses Google Cloud Pub/Sub to power the Vendure job queue. 
-* The `BullMQJobQueuePlugin` uses Redis via BullMQ.
+> **Note:** The Pub/Sub plugin has been moved to
+> [`@vendure-community/pub-sub-plugin`](https://github.com/vendurehq/vendure-community-plugins).

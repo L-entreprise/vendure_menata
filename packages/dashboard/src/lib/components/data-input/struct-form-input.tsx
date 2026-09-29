@@ -1,19 +1,12 @@
 import { Button } from '@/vdb/components/ui/button.js';
-import {
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/vdb/components/ui/form.js';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/vdb/components/ui/field.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
 import { getInputComponent } from '@/vdb/framework/extension-api/input-component-extensions.js';
 import { useLocalFormat } from '@/vdb/hooks/use-local-format.js';
 import { CheckIcon, PencilIcon, X } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { ControllerRenderProps, useFormContext, useWatch } from 'react-hook-form';
+import { Controller, ControllerRenderProps, useFormContext, useWatch } from 'react-hook-form';
 
 // Import the form input component we already have
 import {
@@ -22,7 +15,7 @@ import {
     StructField,
 } from '@/vdb/framework/form-engine/form-engine-types.js';
 import {
-    isReadonlyField,
+    isFieldDisabled,
     isStringStructFieldWithOptions,
     isStructFieldConfig,
 } from '@/vdb/framework/form-engine/utils.js';
@@ -68,10 +61,10 @@ function DisplayMode({
             <dl className="grid grid-cols-2 divide-y divide-muted -mt-2">
                 {fieldDef.fields.map(structField => (
                     <React.Fragment key={structField.name}>
-                        <dt className="text-sm font-medium text-muted-foreground py-2">
+                        <dt className="text-sm font-medium text-muted-foreground py-2 min-w-0">
                             {getTranslation(structField.label) ?? structField.name}
                         </dt>
-                        <dd className="text-sm text-foreground py-2">
+                        <dd className="text-sm text-foreground py-2 min-w-0 break-words">
                             {formatFieldValue(watchedStructValue[structField.name], structField)}
                         </dd>
                     </React.Fragment>
@@ -81,7 +74,7 @@ function DisplayMode({
     );
 }
 
-export function StructFormInput({ fieldDef, ...field }: Readonly<DashboardFormComponentProps>) {
+export function StructFormInput({ fieldDef, disabled, ...field }: Readonly<DashboardFormComponentProps>) {
     const { formatDate } = useLocalFormat();
     const [isEditing, setIsEditing] = useState(false);
     const { control } = useFormContext();
@@ -103,7 +96,7 @@ export function StructFormInput({ fieldDef, ...field }: Readonly<DashboardFormCo
         return input?.find(t => t.languageCode === displayLanguage)?.value;
     };
 
-    const isReadonly = isReadonlyField(fieldDef);
+    const isReadonly = isFieldDisabled(disabled, fieldDef);
 
     // Edit mode - memoized to prevent focus loss from re-renders
     const EditMode = useMemo(
@@ -124,35 +117,33 @@ export function StructFormInput({ fieldDef, ...field }: Readonly<DashboardFormCo
                         </div>
                     )}
                     {fieldDef?.fields.map(structField => (
-                        <FormField
+                        <Controller
                             key={structField.name}
                             control={control}
                             name={`${field.name}.${structField.name}`}
-                            render={({ field: structInputField }) => (
-                                <FormItem>
+                            render={({ field: structInputField, fieldState }) => (
+                                <Field data-invalid={fieldState.invalid || undefined}>
                                     <div className="flex items-baseline gap-4">
                                         <div className="flex-1">
-                                            <FormLabel>
+                                            <FieldLabel>
                                                 {getTranslation(structField.label) ?? structField.name}
-                                            </FormLabel>
+                                            </FieldLabel>
                                             {getTranslation(structField.description) && (
-                                                <FormDescription>
+                                                <FieldDescription>
                                                     {getTranslation(structField.description)}
-                                                </FormDescription>
+                                                </FieldDescription>
                                             )}
                                         </div>
                                         <div className="flex-[2]">
-                                            <FormControl>
-                                                {renderStructFieldInput(
-                                                    structField,
-                                                    structInputField,
-                                                    isReadonly,
-                                                )}
-                                            </FormControl>
-                                            <FormMessage />
+                                            {renderStructFieldInput(
+                                                structField,
+                                                structInputField,
+                                                isReadonly,
+                                            )}
+                                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                                         </div>
                                     </div>
-                                </FormItem>
+                                </Field>
                             )}
                         />
                     ))}
@@ -178,7 +169,7 @@ export function StructFormInput({ fieldDef, ...field }: Readonly<DashboardFormCo
         switch (structField.type) {
             case 'boolean':
                 return (
-                    <span className={`inline-flex items-center ${value ? 'text-green-600' : 'text-red-500'}`}>
+                    <span className={`inline-flex items-center ${value ? 'text-success' : 'text-destructive'}`}>
                         {value ? <CheckIcon className="h-4 w-4" /> : <X className="h-4 w-4" />}
                     </span>
                 );
@@ -260,7 +251,7 @@ const renderStructFieldInput = (
                         value={singleField.value ?? ''}
                         onChange={e => {
                             const value = e.target.valueAsNumber;
-                            singleField.onChange(isNaN(value) ? undefined : value);
+                            singleField.onChange(Number.isNaN(value) ? undefined : value);
                         }}
                         onBlur={singleField.onBlur}
                         name={singleField.name}
@@ -280,7 +271,7 @@ const renderStructFieldInput = (
                     />
                 );
             case 'datetime':
-                return <DateTimeInput {...singleField} />;
+                return <DateTimeInput {...singleField} disabled={isReadonly} />;
             default:
                 return (
                     <Input

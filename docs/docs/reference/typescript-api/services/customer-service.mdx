@@ -41,11 +41,6 @@ class CustomerService {
 
 <div className="members-wrapper">
 
-### constructor
-
-<MemberInfo kind="method" type={`(connection: <a href='/reference/typescript-api/data-access/transactional-connection#transactionalconnection'>TransactionalConnection</a>, configService: ConfigService, userService: <a href='/reference/typescript-api/services/user-service#userservice'>UserService</a>, countryService: <a href='/reference/typescript-api/services/country-service#countryservice'>CountryService</a>, listQueryBuilder: <a href='/reference/typescript-api/data-access/list-query-builder#listquerybuilder'>ListQueryBuilder</a>, eventBus: <a href='/reference/typescript-api/events/event-bus#eventbus'>EventBus</a>, historyService: <a href='/reference/typescript-api/services/history-service#historyservice'>HistoryService</a>, channelService: <a href='/reference/typescript-api/services/channel-service#channelservice'>ChannelService</a>, customFieldRelationService: CustomFieldRelationService, translator: <a href='/reference/typescript-api/service-helpers/translator-service#translatorservice'>TranslatorService</a>) => CustomerService`}   />
-
-
 ### findAll
 
 <MemberInfo kind="method" type={`(ctx: <a href='/reference/typescript-api/request/request-context#requestcontext'>RequestContext</a>, options: ListQueryOptions<<a href='/reference/typescript-api/entities/customer#customer'>Customer</a>> | undefined, relations: RelationPaths<<a href='/reference/typescript-api/entities/customer#customer'>Customer</a>> = []) => Promise<<a href='/reference/typescript-api/common/paginated-list#paginatedlist'>PaginatedList</a><<a href='/reference/typescript-api/entities/customer#customer'>Customer</a>>>`}   />
@@ -107,6 +102,13 @@ This method is intended to be used in admin-created Customer flows.
 Registers a new Customer account with the [NativeAuthenticationStrategy](/reference/typescript-api/auth/native-authentication-strategy#nativeauthenticationstrategy) and starts
 the email verification flow (unless [AuthOptions](/reference/typescript-api/auth/auth-options#authoptions) `requireVerification` is set to `false`)
 by publishing an [AccountRegistrationEvent](/reference/typescript-api/events/event-types#accountregistrationevent).
+
+If an account with the given email address already exists via another authentication method
+(for example an external/SSO strategy) and has no native credential yet, a native credential is
+added in an unactivated state (no password) and an [AccountRegistrationEvent](/reference/typescript-api/events/event-types#accountregistrationevent) is always
+published, even when `requireVerification` is `false`. The password can then only be set by
+whoever controls the email address, by completing the verification flow. This prevents an
+unauthenticated caller from taking over such an account by registering a password against it.
 
 This method is intended to be used in storefront Customer-creation flows.
 ### refreshVerificationToken

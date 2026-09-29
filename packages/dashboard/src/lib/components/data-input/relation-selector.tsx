@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/vdb/components/ui/pop
 import { getQueryName } from '@/vdb/framework/document-introspection/get-document-structure.js';
 import { api } from '@/vdb/graphql/api.js';
 import { cn } from '@/vdb/lib/utils.js';
-import { Trans } from '@lingui/react/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebounce } from '@uidotdev/usehooks';
 import type { DocumentNode } from 'graphql';
@@ -48,7 +48,7 @@ export interface RelationSelectorProps<T = any> {
      */
     selectorLabel?: React.ReactNode;
     value?: string | string[];
-    onChange: (value: string | string[] | undefined) => void;
+    onChange: (value: string | string[] | null | undefined) => void;
     disabled?: boolean;
     className?: string;
 }
@@ -79,7 +79,7 @@ export function RelationSelectorItem<T>({
             {showCheckbox && (
                 <Checkbox
                     checked={isSelected}
-                    onChange={onSelect}
+                    onCheckedChange={() => onSelect()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 />
             )}
@@ -195,6 +195,8 @@ export function RelationSelector<T>({
     className,
     selectorLabel,
 }: Readonly<RelationSelectorProps<T>>) {
+    const { t } = useLingui();
+
     const [open, setOpen] = useState(false);
     const [selectedItemsCache, setSelectedItemsCache] = useState<T[]>([]);
     const fetchedIdsRef = React.useRef<Set<string>>(new Set());
@@ -344,7 +346,9 @@ export function RelationSelector<T>({
         } else {
             // Clear cache for single select
             setSelectedItemsCache([]);
-            onChange(undefined);
+            // Use null instead of undefined so the value is sent to the server
+            // (undefined gets stripped from JSON, null explicitly clears the field)
+            onChange(null);
         }
     };
 
@@ -397,24 +401,20 @@ export function RelationSelector<T>({
 
             {/* Selector trigger */}
             <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" type="button" disabled={disabled} className="gap-2">
+                <PopoverTrigger render={<Button variant="outline" size="sm" type="button" disabled={disabled} className="gap-2" />}>
                         <Plus className="h-4 w-4" />
-                        <Trans>
-                            {isMultiple
-                                ? selectedItems.length > 0
-                                    ? `Add more (${selectedItems.length} selected)`
-                                    : (selectorLabel ?? <Trans>Select items</Trans>)
-                                : selectedItems.length > 0
-                                  ? 'Change selection'
-                                  : (selectorLabel ?? <Trans>Select item</Trans>)}
-                        </Trans>
-                    </Button>
+                        {isMultiple
+                            ? selectedItems.length > 0
+                                ? <Trans>Add more ({selectedItems.length} selected)</Trans>
+                                : (selectorLabel ?? <Trans>Select items</Trans>)
+                            : selectedItems.length > 0
+                                ? <Trans>Change selection</Trans>
+                                : (selectorLabel ?? <Trans>Select item</Trans>)}
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-[400px]" align="start">
                     <Command shouldFilter={false}>
                         <CommandInput
-                            placeholder={config.placeholder ?? 'Search...'}
+                            placeholder={config.placeholder ?? t`Search...`}
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                             disabled={disabled}

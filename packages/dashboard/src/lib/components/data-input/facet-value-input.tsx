@@ -34,16 +34,21 @@ export const FacetValueInput: DashboardFormComponent = ({ value, onChange, disab
                     },
                 },
             }),
+        // Opt out of the global keepPreviousData default: this query is
+        // keyed on the selected ids, so any "previous" data corresponds
+        // to a different selection. Showing it would render stale chips
+        // (e.g. a removed value lingering) during the swap.
+        placeholderData: undefined,
     });
 
     const onValueSelectHandler = (value: FacetValue) => {
         const newIds = new Set([...ids, value.id]);
-        onChange(JSON.stringify(Array.from(newIds)));
+        onChange(Array.from(newIds));
     };
 
     const onValueRemoveHandler = (id: string) => {
         const newIds = new Set(ids.filter(existingId => existingId !== id));
-        onChange(JSON.stringify(Array.from(newIds)));
+        onChange(Array.from(newIds));
     };
 
     return (

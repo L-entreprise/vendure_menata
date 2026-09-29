@@ -1,5 +1,7 @@
 ---
 title: "Navigation Menu"
+metaTitle: "Building a Collection-Based Navigation Menu in Vendure"
+metaDescription: "Query top-level collections from the Vendure Shop API and transform them into a hierarchical navigation tree for your storefront."
 ---
 
 A navigation menu allows your customers to navigate your store and find the products they are looking for.
@@ -28,7 +30,7 @@ query GetTopLevelCollections {
 ```
 
 </TabItem>
-<TabItem value="Response" label="Response" >
+<TabItem value="Response" label="Response">
 
 ```json
 {
@@ -124,7 +126,7 @@ export function arrayToTree<T extends HasParent>(nodes: T[]): RootNode<T> {
         if (mappedArr.hasOwnProperty(id)) {
             const mappedElem = mappedArr[id];
             const parentId = mappedElem.parentId;
-            if (!parent) {
+            if (!parentId) {
                 continue;
             }
             // If the element is not at the root level, add it to its parent array of children.

@@ -5,7 +5,8 @@ import fs from 'fs-extra';
 import Handlebars from 'handlebars';
 import path from 'path';
 
-import { checkCancel, isDockerAvailable } from './helpers';
+import { checkCancel, isDockerAvailable, toComposeProjectName } from './helpers';
+import { getStorefrontStarter, STOREFRONT_STARTERS, StorefrontId } from './storefront-starters';
 import { DbType, FileSources, PackageManager, UserResponses } from './types';
 
 interface PromptAnswers {
@@ -20,7 +21,24 @@ interface PromptAnswers {
     superadminIdentifier: string | symbol;
     superadminPassword: string | symbol;
     populateProducts: boolean | symbol;
-    includeStorefront: boolean | symbol;
+    storefront?: StorefrontId;
+}
+
+async function selectStorefront(): Promise<StorefrontId | undefined> {
+    const selected = await select({
+        message: 'Would you like to include a storefront?',
+        options: [
+            { label: 'None', value: 'none' },
+            ...STOREFRONT_STARTERS.map(storefront => ({
+                label: storefront.name,
+                value: storefront.id,
+                hint: storefront.description,
+            })),
+        ],
+        initialValue: 'none' as const,
+    });
+    checkCancel(selected);
+    return selected === 'none' ? undefined : (selected as StorefrontId);
 }
 
 /* eslint-disable no-console */
@@ -64,19 +82,7 @@ export async function getQuickStartConfiguration(
         }
     }
 
-    const includeStorefront = await select({
-        message: 'Would you like to include the Next.js storefront?',
-        options: [
-            { label: 'No', value: false },
-            {
-                label: 'Yes',
-                value: true,
-                hint: 'Adds a ready-to-use Next.js storefront connected to your Vendure server',
-            },
-        ],
-        initialValue: false,
-    });
-    checkCancel(includeStorefront);
+    const storefront = await selectStorefront();
 
     const quickStartAnswers: PromptAnswers = {
         dbType: usePostgres ? 'postgres' : 'sqlite',
@@ -89,7 +95,7 @@ export async function getQuickStartConfiguration(
         populateProducts: true,
         superadminIdentifier: SUPER_ADMIN_USER_IDENTIFIER,
         superadminPassword: SUPER_ADMIN_USER_PASSWORD,
-        includeStorefront,
+        storefront,
     };
 
     const responses = {
@@ -98,7 +104,7 @@ export async function getQuickStartConfiguration(
         populateProducts: quickStartAnswers.populateProducts as boolean,
         superadminIdentifier: quickStartAnswers.superadminIdentifier as string,
         superadminPassword: quickStartAnswers.superadminPassword as string,
-        includeStorefront: includeStorefront as boolean,
+        storefront,
     };
 
     return responses;
@@ -200,19 +206,7 @@ export async function getManualConfiguration(
     });
     checkCancel(populateProducts);
 
-    const includeStorefront = await select({
-        message: 'Would you like to include the Next.js storefront?',
-        options: [
-            { label: 'No', value: false },
-            {
-                label: 'Yes',
-                value: true,
-                hint: 'Adds a ready-to-use Next.js storefront connected to your Vendure server',
-            },
-        ],
-        initialValue: false,
-    });
-    checkCancel(includeStorefront);
+    const storefront = await selectStorefront();
 
     const answers: PromptAnswers = {
         dbType,
@@ -226,7 +220,7 @@ export async function getManualConfiguration(
         superadminIdentifier,
         superadminPassword,
         populateProducts,
-        includeStorefront,
+        storefront,
     };
 
     return {
@@ -235,7 +229,7 @@ export async function getManualConfiguration(
         populateProducts: answers.populateProducts as boolean,
         superadminIdentifier: answers.superadminIdentifier as string,
         superadminPassword: answers.superadminPassword as string,
-        includeStorefront: includeStorefront as boolean,
+        storefront,
     };
 }
 
@@ -246,19 +240,24 @@ export async function getCiConfiguration(
     root: string,
     packageManager: PackageManager,
     port: number,
-    includeStorefront: boolean = false,
+    storefront?: StorefrontId,
+    dbType: 'sqlite' | 'postgres' = 'sqlite',
 ): Promise<UserResponses> {
+    // The postgres answers mirror the Quick Start flow, which starts the database
+    // in a Docker container mapped to host port 6543 (see docker-compose.hbs).
+    const usePostgres = dbType === 'postgres';
     const ciAnswers = {
-        dbType: 'sqlite' as const,
-        dbHost: '',
-        dbPort: '',
-        dbName: 'vendure',
-        dbUserName: '',
-        dbPassword: '',
+        dbType,
+        dbHost: usePostgres ? 'localhost' : '',
+        dbPort: usePostgres ? '6543' : '',
+        dbName: usePostgres ? 'vendure' : '',
+        dbUserName: usePostgres ? 'vendure' : '',
+        dbPassword: usePostgres ? randomBytes(16).toString('base64url') : '',
+        dbSchema: usePostgres ? 'public' : '',
         populateProducts: true,
         superadminIdentifier: SUPER_ADMIN_USER_IDENTIFIER,
         superadminPassword: SUPER_ADMIN_USER_PASSWORD,
-        includeStorefront,
+        storefront,
     };
 
     return {
@@ -267,7 +266,7 @@ export async function getCiConfiguration(
         populateProducts: ciAnswers.populateProducts,
         superadminIdentifier: ciAnswers.superadminIdentifier,
         superadminPassword: ciAnswers.superadminPassword,
-        includeStorefront,
+        storefront,
     };
 }
 
@@ -282,24 +281,24 @@ async function generateSources(
 ): Promise<FileSources> {
     const assetPath = (fileName: string) => path.join(__dirname, '../assets', fileName);
 
-    /**
-     * Helper to escape single quotes only. Used when generating the config file since e.g. passwords
-     * might use special chars (`< > ' "` etc) which Handlebars would be default convert to HTML entities.
-     * Instead, we disable escaping and use this custom helper to escape only the single quote character.
-     */
-    Handlebars.registerHelper('escapeSingle', (aString: unknown) => {
-        return typeof aString === 'string' ? aString.replace(/'/g, "\\'") : aString;
-    });
+    registerEscapeSingleHelper();
 
     const templateContext = {
         ...answers,
         dbType: answers.dbType === 'sqlite' ? 'better-sqlite3' : answers.dbType,
         name: path.basename(root),
+        composeProjectName: toComposeProjectName(path.basename(root)),
         isSQLite: answers.dbType === 'sqlite',
         requiresConnection: answers.dbType !== 'sqlite',
         cookieSecret: randomBytes(16).toString('base64url'),
         port,
-        isMonorepo: answers.includeStorefront,
+        isMonorepo: answers.storefront != null,
+        storefrontName: answers.storefront
+            ? getStorefrontStarter(answers.storefront).frameworkName
+            : undefined,
+        packageManager,
+        isBun: packageManager === 'bun',
+        needsCorepack: packageManager === 'pnpm' || packageManager === 'yarn',
     };
 
     async function createSourceFile(filename: string, noEscape = false): Promise<string> {
@@ -318,6 +317,7 @@ async function generateSources(
         dockerComposeSource: await createSourceFile('docker-compose.hbs'),
         tsconfigDashboardSource: await createSourceFile('tsconfig.dashboard.hbs'),
         viteConfigSource: await createSourceFile('vite.config.hbs'),
+        agentsSource: await createSourceFile('agents.hbs'),
     };
 }
 
@@ -331,4 +331,16 @@ function defaultDBPort(dbType: DbType): number {
         default:
             return 3306;
     }
+}
+
+/**
+ * Registers the Handlebars helper used for values rendered inside single-quoted string
+ * literals (e.g. passwords in the generated config). Handlebars' default escaping would
+ * convert special chars (`< > ' "` etc.) to HTML entities, so templates render these
+ * values raw and this helper escapes backslashes and single quotes instead.
+ */
+export function registerEscapeSingleHelper(): void {
+    Handlebars.registerHelper('escapeSingle', (aString: unknown) => {
+        return typeof aString === 'string' ? aString.replace(/\\/g, '\\\\').replace(/'/g, "\\'") : aString;
+    });
 }

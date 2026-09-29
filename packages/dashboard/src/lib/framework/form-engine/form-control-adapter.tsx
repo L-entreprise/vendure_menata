@@ -13,6 +13,7 @@ import {
 } from '@/vdb/framework/form-engine/form-engine-types.js';
 import { isCustomFieldConfig } from '@/vdb/framework/form-engine/utils.js';
 import { DefaultInputForType } from './default-input-for-type.js';
+import { selectListInputComponent } from './list-input-selection.js';
 import { transformValue, ValueMode } from './value-transformers.js';
 
 export interface FormControlAdapterProps {
@@ -116,26 +117,25 @@ function renderListField(
     valueMode: ValueMode,
     isReadonly: boolean,
 ): JSX.Element {
-    if (valueMode === 'json-string') {
-        return <ConfigurableOperationListInput {...fieldWithTransform} fieldDef={fieldDef} />;
+    switch (selectListInputComponent(fieldDef, valueMode)) {
+        case 'string':
+            return <StringListInput {...fieldWithTransform} fieldDef={fieldDef} />;
+        case 'configurable-operation':
+            return <ConfigurableOperationListInput {...fieldWithTransform} fieldDef={fieldDef} />;
+        case 'relation':
+            return <DefaultInputForType {...fieldWithTransform} fieldDef={fieldDef} />;
+        case 'custom-field':
+            return (
+                <CustomFieldListInput
+                    {...field}
+                    disabled={isReadonly}
+                    renderInput={(index, inputField) => (
+                        <DefaultInputForType {...inputField} fieldDef={fieldDef} />
+                    )}
+                    defaultValue={getDefaultValueForType(fieldDef.type)}
+                />
+            );
     }
-
-    if (fieldDef.type === 'relation') {
-        return <DefaultInputForType {...fieldWithTransform} fieldDef={fieldDef} />;
-    }
-
-    if (fieldDef.type === 'string') {
-        return <StringListInput {...fieldWithTransform} fieldDef={fieldDef} />;
-    }
-
-    return (
-        <CustomFieldListInput
-            {...field}
-            disabled={isReadonly}
-            renderInput={(index, inputField) => <DefaultInputForType {...inputField} fieldDef={fieldDef} />}
-            defaultValue={getDefaultValueForType(fieldDef.type)}
-        />
-    );
 }
 
 /**
@@ -148,7 +148,7 @@ function renderListField(
  * - Custom field forms
  * - Configurable operation forms
  */
-export function FormControlAdapter({ fieldDef, field, valueMode }: Readonly<FormControlAdapterProps>) {
+export function FormControlAdapter({ fieldDef, field, valueMode, ...rest }: Readonly<FormControlAdapterProps> & { placeholder?: string }) {
     const isList = fieldDef.list ?? false;
     const isReadonly = isCustomFieldConfig(fieldDef) ? fieldDef.readonly === true : false;
     const componentId = fieldDef.ui?.component as string | undefined;
@@ -164,7 +164,7 @@ export function FormControlAdapter({ fieldDef, field, valueMode }: Readonly<Form
             },
         };
         return transformedField;
-    }, [field.name, field.value, field.onChange, fieldDef, valueMode]);
+    }, [field.name, field.value, field.disabled, field.onChange, fieldDef, valueMode]);
 
     const CustomComponent = getInputComponent(componentId);
 
@@ -189,5 +189,5 @@ export function FormControlAdapter({ fieldDef, field, valueMode }: Readonly<Form
     }
 
     // Default case: non-list, non-struct fields
-    return <DefaultInputForType {...fieldWithTransform} fieldDef={fieldDef} />;
+    return <DefaultInputForType {...fieldWithTransform} fieldDef={fieldDef} {...rest} />;
 }

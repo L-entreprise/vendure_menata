@@ -28,50 +28,68 @@ import { FieldInfo } from '../document-introspection/get-document-structure.js';
  * Transforms relation fields in an entity, extracting IDs from relation objects.
  * This is primarily used for custom fields of type "ID".
  *
- * @param fields - Array of field information
+ * Walks the `fields` tree recursively so that `customFields` are processed
+ * regardless of nesting depth (e.g. both `{ customFields }` and
+ * `{ input: { customFields } }` are handled correctly).
+ *
+ * @param fields - Array of field information describing the expected structure
  * @param entity - The entity to transform
  * @returns A new entity with transformed relation fields
  */
 export function transformRelationFields<E extends Record<string, any>>(fields: FieldInfo[], entity: E): E {
     // Create a shallow copy to avoid mutating the original entity
-    const processedEntity = { ...entity, customFields: { ...(entity.customFields ?? {}) } };
+    const processedEntity = { ...entity };
 
-    // Skip processing if there are no custom fields
-    if (!entity.customFields || !processedEntity.customFields) {
-        return processedEntity;
-    }
+    for (const field of fields) {
+        if (field.name === 'customFields' && field.typeInfo) {
+            // Found customFields at this level — process relation ID fields
+            const sourceCustomFields = entity[field.name];
+            if (!sourceCustomFields) {
+                continue;
+            }
 
-    // Find the customFields field info
-    const customFieldsInfo = fields.find(field => field.name === 'customFields' && field.typeInfo);
-    if (!customFieldsInfo?.typeInfo) {
-        return processedEntity;
-    }
+            const customFieldsCopy = { ...sourceCustomFields };
+            const idTypeCustomFields = field.typeInfo.filter(f => f.type === 'ID');
 
-    // Process only ID type custom fields
-    const idTypeCustomFields = customFieldsInfo.typeInfo.filter(field => field.type === 'ID');
+            for (const customField of idTypeCustomFields) {
+                const relationField = customField.name;
 
-    for (const customField of idTypeCustomFields) {
-        const relationField = customField.name;
+                if (customField.list) {
+                    // For list fields, the accessor is the field name without the "Ids" suffix
+                    const propertyAccessorKey = customField.name.replace(/Ids$/, '');
+                    const relationValue = sourceCustomFields[propertyAccessorKey];
 
-        if (customField.list) {
-            // For list fields, the accessor is the field name without the "Ids" suffix
-            const propertyAccessorKey = customField.name.replace(/Ids$/, '');
-            const relationValue = entity.customFields[propertyAccessorKey];
-
-            if (relationValue) {
-                const relationIdValue = relationValue.map((v: { id: string }) => v.id);
-                if (relationIdValue && relationIdValue.length > 0) {
-                    processedEntity.customFields[relationField] = relationIdValue;
+                    if (relationValue === null) {
+                        customFieldsCopy[relationField] = null;
+                    } else if (Array.isArray(relationValue)) {
+                        customFieldsCopy[relationField] = relationValue.map((v: { id: string }) => v.id);
+                    }
+                    delete customFieldsCopy[propertyAccessorKey];
+                } else {
+                    // For single fields, the accessor is the field name without the "Id" suffix
+                    const propertyAccessorKey = customField.name.replace(/Id$/, '');
+                    const relationValue = sourceCustomFields[propertyAccessorKey];
+                    customFieldsCopy[relationField] = relationValue === null ? null : relationValue?.id;
+                    delete customFieldsCopy[propertyAccessorKey];
                 }
             }
-        } else {
-            // For single fields, the accessor is the field name without the "Id" suffix
-            const propertyAccessorKey = customField.name.replace(/Id$/, '');
-            const relationValue = entity.customFields[propertyAccessorKey];
-            processedEntity.customFields[relationField] = relationValue?.id;
-            delete processedEntity.customFields[propertyAccessorKey];
+            processedEntity[field.name as keyof E] = customFieldsCopy;
+        } else if (field.typeInfo && !field.isScalar && entity[field.name] != null) {
+            // Non-scalar nested field (e.g. `input`) — recurse into it
+            const { typeInfo } = field;
+            if (Array.isArray(entity[field.name])) {
+                processedEntity[field.name as keyof E] = entity[field.name].map((item: any) =>
+                    transformRelationFields(typeInfo, item),
+                );
+            } else if (typeof entity[field.name] === 'object') {
+                processedEntity[field.name as keyof E] = transformRelationFields(
+                    typeInfo,
+                    entity[field.name],
+                );
+            }
         }
     }
+
     return processedEntity;
 }
 
@@ -120,6 +138,154 @@ export function removeEmptyIdFields<T extends Record<string, any>>(values: T, fi
 
     recursiveRemove(result, fields);
     return result;
+}
+
+/**
+ * Converts empty string values to null for nullable non-string fields before submission.
+ * This handles cases where user interaction (e.g. clearing a date picker) leaves
+ * empty strings that are invalid for non-string GraphQL types like DateTime or Enums.
+ */
+export function convertEmptyStringsToNull<T extends Record<string, any>>(values: T, fields: FieldInfo[]): T {
+    if (!values) {
+        return values;
+    }
+    const result = structuredClone(values);
+
+    function processFields(obj: any, fieldDefs: FieldInfo[]) {
+        for (const field of fieldDefs) {
+            if (field.nullable && obj[field.name] === '' && field.type !== 'String') {
+                obj[field.name] = null;
+            }
+            if (field.typeInfo && typeof obj[field.name] === 'object' && obj[field.name] !== null) {
+                if (Array.isArray(obj[field.name])) {
+                    for (const item of obj[field.name]) {
+                        processFields(item, field.typeInfo);
+                    }
+                } else {
+                    processFields(obj[field.name], field.typeInfo);
+                }
+            }
+        }
+    }
+
+    processFields(result, fields);
+    return result;
+}
+
+/**
+ * Strips null-valued nullable fields from the payload so they are omitted
+ * rather than sent as explicit nulls. In GraphQL, omitting a field lets the
+ * server apply its own default, whereas sending null means "set to NULL".
+ * This is only used for create mutations, to avoid sending explicit nulls for
+ * fields the user likely did not touch.
+ */
+export function stripNullNullableFields<T extends Record<string, any>>(values: T, fields: FieldInfo[]): T {
+    if (!values) return values;
+    const result = structuredClone(values);
+
+    function processFields(obj: any, fieldDefs: FieldInfo[]) {
+        for (const field of fieldDefs) {
+            if (field.nullable && obj[field.name] === null) {
+                delete obj[field.name];
+            } else if (field.typeInfo && typeof obj[field.name] === 'object' && obj[field.name] !== null) {
+                if (Array.isArray(obj[field.name])) {
+                    for (const item of obj[field.name]) {
+                        processFields(item, field.typeInfo);
+                    }
+                } else {
+                    processFields(obj[field.name], field.typeInfo);
+                }
+            }
+        }
+    }
+
+    processFields(result, fields);
+    return result;
+}
+
+/**
+ * @description
+ * Removes translation rows the form seeded but the user never edited. The form engine seeds a
+ * translation row for every configured language (so any language can be edited in the form), but
+ * submitting the untouched ones persists empty translation rows. Those empty rows break language
+ * fallback — a lookup for that language finds the empty row instead of falling back to the default
+ * language — most visibly in the search index, which shows an empty name. See #4885 / OSS-579.
+ *
+ * A row is kept when it is **dirty OR persisted**, and dropped otherwise. The two predicates are
+ * complementary, each covering what the other is blind to:
+ *
+ * - `dirty` (from react-hook-form's `dirtyFields`) carries the **create** path: no row has an `id`
+ *   yet, so a seeded row never typed into is not dirty and is dropped, while a filled one is kept.
+ * - `persisted` (the row carries an `id`) carries the **update** path: react-hook-form's `values`
+ *   prop resets the form and promotes the entity to `defaultValues`, so on an update nothing is
+ *   dirty until the user types — an untouched persisted row and an untouched seeded row look
+ *   identical to dirty state, and only the `id` separates them.
+ *
+ * Crucially there is no value inspection anywhere, so an untouched row seeded with a filled-looking
+ * default (`Boolean` → `false`, `Int`/`Money` → `0`, enum → first member) is still correctly
+ * dropped — a value-based "is it empty?" check would treat those as user input. Works at any
+ * nesting depth and for any translatable sub-entity (detected by a `languageCode` field).
+ *
+ * NOTE: `dirtyFields` must be read during render for react-hook-form to populate it (its
+ * `formState` is a lazily-tracked Proxy). Destructure it in the component/hook body, not only
+ * inside the submit handler — otherwise it comes back empty and, combined with the floor below,
+ * this silently keeps every row.
+ */
+export function stripUntouchedTranslations<T extends Record<string, any>>(
+    values: T,
+    fields: FieldInfo[],
+    dirtyFields: any,
+): T {
+    if (!values) {
+        return values;
+    }
+    const result = structuredClone(values);
+
+    function process(obj: any, dirty: any, fieldDefs: FieldInfo[]) {
+        for (const field of fieldDefs) {
+            const value = obj?.[field.name];
+            if (!value || typeof value !== 'object' || !field.typeInfo) {
+                continue;
+            }
+            const dirtyValue = dirty?.[field.name];
+            if (Array.isArray(value)) {
+                const isTranslationsArray = field.typeInfo.some(f => f.name === 'languageCode');
+                if (isTranslationsArray) {
+                    const kept = value.filter((entry, i) => isDirty(dirtyValue?.[i]) || isPersisted(entry));
+                    // Never strip every row: a fully-empty form (a non-nullable `String` maps to a
+                    // bare `z.string()`, so a blank create passes validation) would otherwise submit
+                    // `translations: []`. Leave the input untouched and let validation surface the
+                    // empty required fields instead.
+                    obj[field.name] = kept.length ? kept : value;
+                }
+                for (const [i, item] of obj[field.name].entries()) {
+                    process(item, dirtyValue?.[i], field.typeInfo);
+                }
+            } else {
+                process(value, dirtyValue, field.typeInfo);
+            }
+        }
+    }
+
+    process(result, dirtyFields, fields);
+    return result;
+}
+
+function isDirty(value: any): boolean {
+    if (value != null && typeof value === 'object') {
+        return Object.values(value).some(isDirty);
+    }
+    return value === true;
+}
+
+/**
+ * A row that already exists in the database carries an `id`. Dirty state alone cannot identify
+ * these: react-hook-form's `values` prop resets the form and promotes the entity to
+ * `defaultValues`, so on an update nothing is dirty until the user types — an untouched persisted
+ * row and an untouched seeded row look identical. The `id` is the only thing that separates them.
+ */
+function isPersisted(entry: any): boolean {
+    return !!entry && typeof entry === 'object' && entry.id != null && entry.id !== '';
 }
 
 // =============================================================================
@@ -339,6 +505,17 @@ export function isReadonlyField(input?: ConfigurableFieldDef): boolean {
 }
 
 /**
+ * Determines if a field should be disabled based on the `disabled` prop from
+ * react-hook-form's Controller and the field's own readonly configuration.
+ *
+ * This centralises the disabled check so that every input component handles
+ * both sources of disabled state consistently.
+ */
+export function isFieldDisabled(disabled?: boolean, fieldDef?: ConfigurableFieldDef): boolean {
+    return Boolean(disabled) || isReadonlyField(fieldDef);
+}
+
+/**
  * Determines if a field requires special permissions
  */
 export function hasPermissionRequirement(input: ConfigurableFieldDef): boolean {
@@ -350,6 +527,20 @@ export function hasPermissionRequirement(input: ConfigurableFieldDef): boolean {
  */
 export function isNullableField(input: ConfigurableFieldDef): boolean {
     return isCustomFieldConfig(input) && Boolean(input.nullable);
+}
+
+/**
+ * Determines if a custom field or struct sub-field allows null values.
+ * Configurable operation args are never treated as nullable.
+ */
+export function isFieldNullable(input: ConfigurableFieldDef | StructField): boolean {
+    if (isCustomFieldConfig(input as ConfigurableFieldDef)) {
+        return (input as ConfigurableFieldDef & { nullable?: boolean }).nullable !== false;
+    }
+    if ('nullable' in input && input.nullable) {
+        return true;
+    }
+    return false;
 }
 
 /**

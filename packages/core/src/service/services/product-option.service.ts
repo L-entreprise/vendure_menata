@@ -28,6 +28,8 @@ import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-build
 import { TranslatableSaver } from '../helpers/translatable-saver/translatable-saver';
 import { TranslatorService } from '../helpers/translator/translator.service';
 
+import { ChannelService } from './channel.service';
+
 /**
  * @description
  * Contains methods relating to {@link ProductOption} entities.
@@ -44,6 +46,7 @@ export class ProductOptionService {
         private eventBus: EventBus,
         private translator: TranslatorService,
         private listQueryBuilder: ListQueryBuilder,
+        private channelService: ChannelService,
     ) {}
 
     findAll(
@@ -55,6 +58,7 @@ export class ProductOptionService {
         const qb = this.listQueryBuilder.build(ProductOption, options, {
             entityAlias: 'option',
             ctx,
+            channelId: ctx.channelId,
             where: {
                 deletedAt: IsNull(),
             },
@@ -75,12 +79,15 @@ export class ProductOptionService {
         relations?: RelationPaths<ProductOption>,
     ): Promise<Translated<ProductOption> | undefined> {
         return this.connection
-            .getRepository(ctx, ProductOption)
-            .findOne({
-                where: { id, deletedAt: IsNull() },
+            .findOneInChannel(ctx, ProductOption, id, ctx.channelId, {
                 relations: relations ?? ['group'],
             })
-            .then(option => (option && this.translator.translate(option, ctx)) ?? undefined);
+            .then(option => {
+                if (!option || option.deletedAt) {
+                    return undefined;
+                }
+                return this.translator.translate(option, ctx);
+            });
     }
 
     async create(
@@ -91,13 +98,18 @@ export class ProductOptionService {
         const productOptionGroup =
             group instanceof ProductOptionGroup
                 ? group
-                : await this.connection.getEntityOrThrow(ctx, ProductOptionGroup, group);
+                : await this.connection.getEntityOrThrow(ctx, ProductOptionGroup, group, {
+                      channelId: ctx.channelId,
+                  });
         const option = await this.translatableSaver.create({
             ctx,
             input,
             entityType: ProductOption,
             translationType: ProductOptionTranslation,
-            beforeSave: po => (po.group = productOptionGroup),
+            beforeSave: async po => {
+                po.group = productOptionGroup;
+                await this.channelService.assignToCurrentChannel(po, ctx);
+            },
         });
         const optionWithRelations = await this.customFieldRelationService.updateRelations(
             ctx,
@@ -110,6 +122,8 @@ export class ProductOptionService {
     }
 
     async update(ctx: RequestContext, input: UpdateProductOptionInput): Promise<Translated<ProductOption>> {
+        // Ensure the entity belongs to the active channel before updating.
+        await this.connection.getEntityOrThrow(ctx, ProductOption, input.id, { channelId: ctx.channelId });
         const option = await this.translatableSaver.update({
             ctx,
             input,
@@ -131,7 +145,9 @@ export class ProductOptionService {
      * - If the ProductOption is not used by any ProductVariant at all, it will be hard-deleted.
      */
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
-        const productOption = await this.connection.getEntityOrThrow(ctx, ProductOption, id);
+        const productOption = await this.connection.getEntityOrThrow(ctx, ProductOption, id, {
+            channelId: ctx.channelId,
+        });
         const deletedProductOption = new ProductOption(productOption);
         const inUseByActiveVariants = await this.isInUse(ctx, productOption, 'active');
         if (0 < inUseByActiveVariants) {

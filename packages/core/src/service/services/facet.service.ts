@@ -11,7 +11,6 @@ import {
     UpdateFacetInput,
 } from '@vendure/common/lib/generated-types';
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
-import { In } from 'typeorm';
 
 import { RequestContext } from '../../api/common/request-context';
 import { RelationPaths } from '../../api/decorators/relations.decorator';
@@ -112,17 +111,23 @@ export class FacetService {
         lang?: LanguageCode,
     ): Promise<Translated<Facet> | undefined> {
         const relations = ['values', 'values.facet'];
-        const [repository, facetCode, languageCode] =
+        const [repository, facetCode, languageCode, channelLanguageCode] =
             ctxOrFacetCode instanceof RequestContext
-                ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  [this.connection.getRepository(ctxOrFacetCode, Facet), facetCodeOrLang, lang!]
+                ? [
+                      this.connection.getRepository(ctxOrFacetCode, Facet),
+                      facetCodeOrLang,
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      lang!,
+                      ctxOrFacetCode.channel.defaultLanguageCode,
+                  ]
                 : [
                       this.connection.rawConnection.getRepository(Facet),
                       ctxOrFacetCode,
                       facetCodeOrLang as LanguageCode,
+                      undefined,
                   ];
+        const globalDefaultLanguageCode = this.configService.defaultLanguageCode;
 
-        // TODO: Implement usage of channelLanguageCode
         return repository
             .findOne({
                 where: {
@@ -132,7 +137,14 @@ export class FacetService {
             })
             .then(
                 facet =>
-                    (facet && translateDeep(facet, languageCode, ['values', ['values', 'facet']])) ??
+                    (facet &&
+                        translateDeep(
+                            facet,
+                            channelLanguageCode
+                                ? [languageCode, channelLanguageCode, globalDefaultLanguageCode]
+                                : [languageCode, globalDefaultLanguageCode],
+                            ['values', ['values', 'facet']],
+                        )) ??
                     undefined,
             );
     }
@@ -176,6 +188,8 @@ export class FacetService {
     }
 
     async update(ctx: RequestContext, input: UpdateFacetInput): Promise<Translated<Facet>> {
+        // Ensure the entity belongs to the active channel before updating.
+        await this.connection.getEntityOrThrow(ctx, Facet, input.id, { channelId: ctx.channelId });
         const facet = await this.translatableSaver.update({
             ctx,
             input,
@@ -278,9 +292,14 @@ export class FacetService {
         if (!hasPermission) {
             throw new ForbiddenError();
         }
-        const facetsToAssign = await this.connection
-            .getRepository(ctx, Facet)
-            .find({ where: { id: In(input.facetIds) }, relations: ['values'] });
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const facetsToAssign = await this.connection.findByIdsInChannel(
+            ctx,
+            Facet,
+            input.facetIds,
+            ctx.channelId,
+            { relations: ['values'] },
+        );
         const valuesToAssign = facetsToAssign.reduce(
             (values, facet) => [...values, ...facet.values],
             [] as FacetValue[],
@@ -324,9 +343,14 @@ export class FacetService {
         if (idsAreEqual(input.channelId, defaultChannel.id)) {
             throw new UserInputError('error.items-cannot-be-removed-from-default-channel');
         }
-        const facetsToRemove = await this.connection
-            .getRepository(ctx, Facet)
-            .find({ where: { id: In(input.facetIds) }, relations: ['values'] });
+        // Source entities must be visible in the active Channel (GHSA-422x-jq57-j238).
+        const facetsToRemove = await this.connection.findByIdsInChannel(
+            ctx,
+            Facet,
+            input.facetIds,
+            ctx.channelId,
+            { relations: ['values'] },
+        );
 
         const results: Array<ErrorResultUnion<RemoveFacetFromChannelResult, Facet>> = [];
 
