@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { generateMigration, revertLastMigration, runMigration } from '@vendure/core';
+import { generateMigration, revertLastMigration, runMigrations } from '@vendure/core';
 import 'dotenv/config';
 
 import { config } from './vendure-config';
@@ -29,7 +29,7 @@ if (command === 'generate') {
             process.exit(1);
         });
 } else if (command === 'run') {
-    runMigration(config)
+    runMigrations(config)
         .then(() => process.exit(0))
         .catch(err => {
             console.error(err);

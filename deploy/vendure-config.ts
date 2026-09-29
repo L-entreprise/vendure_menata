@@ -14,7 +14,7 @@ import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import { defaultEmailHandlers, EmailPlugin, FileBasedTemplateLoader } from '@vendure/email-plugin';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
 import { BullMQJobQueuePlugin } from '@vendure/job-queue-plugin/package/bullmq';
-import { SentryPlugin } from '@vendure/sentry-plugin';
+import { SentryPlugin } from '@vendure-community/sentry-plugin';
 import { RedisOptions } from 'ioredis';
 import path from 'path';
 import { DataSourceOptions } from 'typeorm';

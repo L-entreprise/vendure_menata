@@ -4,7 +4,7 @@
     "private": true,
     "description": "Minimal production deployment for the Menata Vendure store. Consumes @vendure/* from npm (precompiled) instead of building the monorepo fork. Plugins are shared from ../plugins (single source).",
     "engines": {
-        "node": ">= 20"
+        "node": "^20.19.0 || >=22.12.0"
     },
     "scripts": {
         "build:dashboard": "vite build",
@@ -14,16 +14,16 @@
         "migration:run": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts run",
         "migration:revert": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts revert"
     },
-    "//": "Version ranges (~3.5.0) auto-track upstream patch/minor so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.6.0) only on a major upstream jump.",
+    "//": "Version ranges (~3.7.3) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.8.0) when the monorepo fork merges a new upstream minor.",
     "dependencies": {
-        "@vendure/asset-server-plugin": "~3.5.0",
-        "@vendure/common": "~3.5.0",
-        "@vendure/core": "~3.5.0",
-        "@vendure/dashboard": "~3.5.0",
-        "@vendure/email-plugin": "~3.5.0",
-        "@vendure/graphiql-plugin": "~3.5.0",
-        "@vendure/job-queue-plugin": "~3.5.0",
-        "@vendure/sentry-plugin": "~3.5.0",
+        "@vendure-community/sentry-plugin": "^1.0.0",
+        "@vendure/asset-server-plugin": "~3.7.3",
+        "@vendure/common": "~3.7.3",
+        "@vendure/core": "~3.7.3",
+        "@vendure/dashboard": "~3.7.3",
+        "@vendure/email-plugin": "~3.7.3",
+        "@vendure/graphiql-plugin": "~3.7.3",
+        "@vendure/job-queue-plugin": "~3.7.3",
         "bullmq": "^5.4.2",
         "dotenv": "^16.6.1",
         "ioredis": "^5.9.1",
@@ -33,17 +33,17 @@
     "devDependencies": {
         "ts-node": "^10.9.2",
         "typescript": "5.8.2",
-        "vite": "^6.3.6"
+        "vite": "^7.3.1"
     },
-    "//overrides": "Pin the TanStack Router family to the versions the monorepo resolves (1.157.16). Newer releases tighten route-id parsing and break the dashboard's bundled routes. The committed package-lock.json freezes the rest.",
+    "//overrides": "Pin the TanStack Router family to the exact versions the upstream v3.7.3 monorepo lockfile (bun.lock) resolves. Newer releases have tightened route-id parsing and changed dev-mode loading, which broke the dashboard before. The committed package-lock.json freezes the rest.",
     "overrides": {
-        "@tanstack/react-router": "1.157.16",
-        "@tanstack/react-router-devtools": "1.157.16",
-        "@tanstack/router-core": "1.157.16",
-        "@tanstack/router-generator": "1.157.16",
-        "@tanstack/router-plugin": "1.157.16",
-        "@tanstack/router-utils": "1.154.7",
-        "@tanstack/virtual-file-routes": "1.154.7",
-        "@tanstack/history": "1.154.14"
+        "@tanstack/react-router": "1.168.1",
+        "@tanstack/react-router-devtools": "1.166.10",
+        "@tanstack/router-core": "1.168.1",
+        "@tanstack/router-generator": "1.166.15",
+        "@tanstack/router-plugin": "1.167.1",
+        "@tanstack/router-utils": "1.161.6",
+        "@tanstack/virtual-file-routes": "1.161.7",
+        "@tanstack/history": "1.161.6"
     }
 }
