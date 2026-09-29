@@ -1,4 +1,6 @@
 import { graphql } from '@/graphql/graphql';
+import { i18n } from '@lingui/core';
+import { compileMessage } from '@lingui/message-utils/compileMessage';
 import { api, defineDashboardExtension } from '@vendure/dashboard';
 import { FileTextIcon, PinIcon } from 'lucide-react';
 
@@ -6,6 +8,11 @@ import { cmsCollectionEntry } from './cms-collection-entry';
 import { cmsPageDetail } from './cms-page-detail';
 import { cmsPageList } from './cms-page-list';
 import { cmsSubmissionDetail } from './cms-submission-detail';
+
+// Plugin .po catalogs reach the production dashboard as raw (uncompiled) ICU strings
+// and are merged over the compiled core catalog, so placeholders would render literally
+// ("Page {0} of {1}", "{count} images"). Let Lingui compile them at runtime.
+i18n.setMessagesCompiler(compileMessage);
 
 const pinnedCmsPagesDocument = graphql(`
     query GetPinnedCmsPagesNav {

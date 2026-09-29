@@ -273,9 +273,9 @@ export const cmsSubmissionDetail: DashboardRouteDefinition = {
         }
         return {
             breadcrumb: [
-                { path: '/cms-pages', label: 'Pages' },
+                { path: '/cms-pages', label: <Trans>Pages</Trans> },
                 { path: `/cms-pages/${params.pageId}`, label: pageLabel },
-                'Submission',
+                <Trans>Submission</Trans>,
             ],
         };
     },

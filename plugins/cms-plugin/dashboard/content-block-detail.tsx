@@ -1,5 +1,5 @@
 import { graphql } from '@/graphql/graphql';
-import { useLingui } from '@lingui/react/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { DashboardRouteDefinition, DetailPage, detailPageRouteLoader } from '@vendure/dashboard';
 
 const contentBlockDetailDocument = graphql(`
@@ -77,8 +77,8 @@ export const contentBlockDetail: DashboardRouteDefinition = {
     loader: detailPageRouteLoader({
         queryDocument: contentBlockDetailDocument,
         breadcrumb: (isNew, entity) => [
-            { path: '/content-blocks', label: 'Content Blocks' },
-            isNew ? 'New content block' : entity?.name,
+            { path: '/content-blocks', label: <Trans>Content Blocks</Trans> },
+            isNew ? <Trans>New content block</Trans> : entity?.name,
         ],
     }),
     component: route => <ContentBlockDetailContent route={route} />,

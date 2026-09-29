@@ -587,8 +587,8 @@ export const cmsCollectionEntry: DashboardRouteDefinition = {
     path: '/cms-pages/$pageId/entries/$entryId',
     loader: () => ({
         breadcrumb: [
-            { path: '/cms-pages', label: 'Pages' },
-            'Entry',
+            { path: '/cms-pages', label: <Trans>Pages</Trans> },
+            <Trans>Entry</Trans>,
         ],
     }),
     component: route => <CollectionEntryPage route={route} />,

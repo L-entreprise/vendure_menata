@@ -369,3 +369,42 @@ msgstr "Add"
 
 msgid "Add an option and press Enter"
 msgstr "Add an option and press Enter"
+
+msgid "Visible"
+msgstr "Visible"
+
+msgid "Hidden"
+msgstr "Hidden"
+
+msgid "Disabled sections are hidden from the Shop API"
+msgstr "Disabled sections are hidden from the Shop API"
+
+msgid "{count} options"
+msgstr "{count} options"
+
+msgid "{count} images"
+msgstr "{count} images"
+
+msgid "images"
+msgstr "images"
+
+msgid "Submission not found"
+msgstr "Submission not found"
+
+msgid "Back"
+msgstr "Back"
+
+msgid "Small\nMedium\nLarge\nExtra Large"
+msgstr "Small\nMedium\nLarge\nExtra Large"
+
+#. js-lingui-explicit-id
+msgid "CMS"
+msgstr "CMS"
+
+#. js-lingui-explicit-id
+msgid "Pages"
+msgstr "Pages"
+
+#. js-lingui-explicit-id
+msgid "Content Blocks"
+msgstr "Content Blocks"

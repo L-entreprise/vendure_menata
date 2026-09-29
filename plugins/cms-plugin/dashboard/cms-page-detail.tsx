@@ -220,6 +220,17 @@ function toDatetimeLocalValue(value: any): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * A block without an id is new. The generic create form seeds its first block from
+ * `UpdatePageContentBlockInput`, whose Boolean `enabled` defaults to `false` — a value
+ * the editor never lets the user pick. New blocks are therefore always sent enabled;
+ * existing blocks keep their stored flag (toggled via the per-block switch).
+ */
+function resolveBlockEnabled(block: any): boolean {
+    if (!block.id) return true;
+    return block.enabled ?? true;
+}
+
 function prepareBlocksForMutation(blocks: any[]): any[] {
     return (blocks || [])
         .filter((b: any) => b.type)
@@ -228,7 +239,7 @@ function prepareBlocksForMutation(blocks: any[]): any[] {
             type: b.type,
             key: b.key,
             position: i,
-            enabled: b.enabled,
+            enabled: resolveBlockEnabled(b),
             featuredAssetId: b.featuredAssetId ?? null,
             metadata: b.metadata ?? null,
             dateValue: b.dateValue ?? null,
@@ -292,7 +303,7 @@ function getDefaultMetadata(type: string): Record<string, unknown> | null {
         case 'BOOLEAN':
             return { trueLabel: 'Yes', falseLabel: 'No' };
         case 'IMAGE_GALLERY':
-            return { assetIds: [], assetPreviews: [], imageMeta: {} };
+            return { assetIds: [], imageMeta: {} };
         default:
             return null;
     }
@@ -463,50 +474,6 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
 
-    // Fix: resolve gallery asset preview URLs from saved asset IDs
-    useEffect(() => {
-        if (!entity?.contentBlocks) return;
-        const galleryBlocks = (entity.contentBlocks as any[])
-            .map((b: any, i: number) => ({ block: b, index: i }))
-            .filter(({ block }: any) =>
-                block.type === 'IMAGE_GALLERY' &&
-                block.metadata?.assetIds?.length > 0,
-            );
-        if (galleryBlocks.length === 0) return;
-
-        const allAssetIds: string[] = [
-            ...new Set(galleryBlocks.flatMap(({ block }: any) => block.metadata.assetIds as string[])),
-        ];
-
-        api.query(getAssetsByIdsDocument, {
-            options: { filter: { id: { in: allAssetIds } } },
-        }).then((result: any) => {
-            const assetMap = new Map<string, string>(
-                result.assets.items.map((a: any) => [a.id, a.preview]),
-            );
-            const currentBlocks = form.getValues('contentBlocks') ?? [];
-            const updated = [...currentBlocks];
-            let changed = false;
-            for (const { block, index: idx } of galleryBlocks) {
-                const previews = (block.metadata.assetIds as string[])
-                    .map((id: string) => assetMap.get(id))
-                    .filter(Boolean) as string[];
-                if (previews.length > 0) {
-                    updated[idx] = {
-                        ...updated[idx],
-                        metadata: { ...updated[idx].metadata, assetPreviews: previews },
-                    };
-                    changed = true;
-                }
-            }
-            if (changed) {
-                form.setValue('contentBlocks', updated);
-            }
-        }).catch(e => {
-            if (import.meta.env.DEV) console.warn('Failed to fetch gallery previews', e);
-        });
-    }, [entity?.id]);
-
     const toggleBlockExpanded = (index: number) => {
         setExpandedBlocks(prev => {
             const next = new Set(prev);
@@ -644,6 +611,18 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                                {block.id && (
+                                                    <label
+                                                        className="flex items-center gap-2 mr-2 text-xs text-muted-foreground"
+                                                        title={t`Disabled sections are hidden from the Shop API`}
+                                                    >
+                                                        {resolveBlockEnabled(block) ? <Trans>Visible</Trans> : <Trans>Hidden</Trans>}
+                                                        <Switch
+                                                            checked={resolveBlockEnabled(block)}
+                                                            onCheckedChange={checked => updateBlockField(index, 'enabled', checked)}
+                                                        />
+                                                    </label>
+                                                )}
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -1553,6 +1532,56 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
     );
 }
 
+const ASSET_PREVIEW_BATCH_SIZE = 100;
+
+/**
+ * Resolves asset preview URLs keyed by asset id. The `assets` list query defaults to
+ * `take: 10`, so ids are fetched in explicit batches; keying by id (not array index)
+ * keeps previews correct after reorder, removal, save/reset, or a missing asset.
+ */
+function useAssetPreviews(assetIds: string[]) {
+    const [previews, setPreviews] = useState<Map<string, string>>(() => new Map());
+    const missingKey = assetIds.filter(id => !previews.has(id)).join(',');
+
+    useEffect(() => {
+        const missing = [...new Set(missingKey.split(',').filter(Boolean))];
+        if (missing.length === 0) return;
+        let active = true;
+        const batches: string[][] = [];
+        for (let i = 0; i < missing.length; i += ASSET_PREVIEW_BATCH_SIZE) {
+            batches.push(missing.slice(i, i + ASSET_PREVIEW_BATCH_SIZE));
+        }
+        Promise.all(
+            batches.map(ids =>
+                api.query(getAssetsByIdsDocument, {
+                    options: { filter: { id: { in: ids } }, take: ids.length },
+                }),
+            ),
+        )
+            .then(results => {
+                if (!active) return;
+                const found = results.flatMap((r: any) => r.assets.items as Array<{ id: string; preview: string }>);
+                setPreviews(prev => {
+                    const next = new Map(prev);
+                    for (const asset of found) next.set(String(asset.id), asset.preview);
+                    return next;
+                });
+            })
+            .catch(e => {
+                if (import.meta.env.DEV) console.warn('Failed to fetch gallery previews', e);
+            });
+        return () => {
+            active = false;
+        };
+    }, [missingKey]);
+
+    const addPreviews = useCallback((entries: Array<[string, string]>) => {
+        setPreviews(prev => new Map([...prev, ...entries]));
+    }, []);
+
+    return { previews, addPreviews };
+}
+
 function ImageGalleryEditor({ block, index, onFieldChange }: {
     block: any;
     index: number;
@@ -1560,8 +1589,8 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
 }) {
     const { t } = useLingui();
     const [pickerOpen, setPickerOpen] = useState(false);
-    const assetIds: string[] = block.metadata?.assetIds ?? [];
-    const assetPreviews: string[] = block.metadata?.assetPreviews ?? [];
+    const assetIds: string[] = (block.metadata?.assetIds ?? []).map(String);
+    const { previews, addPreviews } = useAssetPreviews(assetIds);
     // Per-image alt/description keyed by asset id (default language). Survives
     // reorder/removal because it is keyed by id, not array index.
     const imageMeta: Record<string, { alt?: string; description?: string }> =
@@ -1569,13 +1598,14 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
 
     const updateGallery = (
         newIds: string[],
-        newPreviews: string[],
         newImageMeta: Record<string, { alt?: string; description?: string }> = imageMeta,
     ) => {
+        // `assetPreviews` is a legacy positional cache the server strips; previews are
+        // now resolved per asset id, so drop it instead of persisting a stale copy.
+        const { assetPreviews: _legacyPreviews, ...restMetadata } = block.metadata || {};
         const newMetadata = {
-            ...(block.metadata || {}),
+            ...restMetadata,
             assetIds: newIds,
-            assetPreviews: newPreviews,
             imageMeta: newImageMeta,
         };
         onFieldChange(index, 'metadata', newMetadata);
@@ -1584,9 +1614,8 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
     const removeAsset = (assetIndex: number) => {
         const removedId = assetIds[assetIndex];
         const newIds = assetIds.filter((_, i) => i !== assetIndex);
-        const newPreviews = assetPreviews.filter((_, i) => i !== assetIndex);
         const { [removedId]: _removed, ...restMeta } = imageMeta;
-        updateGallery(newIds, newPreviews, restMeta);
+        updateGallery(newIds, restMeta);
     };
 
     const updateImageMeta = (assetId: string, field: 'alt' | 'description', value: string) => {
@@ -1594,7 +1623,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
             ...imageMeta,
             [assetId]: { ...(imageMeta[assetId] || {}), [field]: value },
         };
-        updateGallery(assetIds, assetPreviews, newImageMeta);
+        updateGallery(assetIds, newImageMeta);
     };
 
     return (
@@ -1602,13 +1631,19 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
             <label className="text-sm font-medium"><Trans>Images</Trans></label>
             <div className="space-y-3 mt-2">
                 {assetIds.map((assetId, i) => (
-                    <div key={assetId ?? i} className="flex gap-3 items-start border rounded-md p-2">
+                    <div key={`${assetId}-${i}`} className="flex gap-3 items-start border rounded-md p-2">
                         <div className="relative group shrink-0">
-                            <img
-                                src={`${assetPreviews[i]}?preset=thumb`}
-                                alt=""
-                                className="w-20 h-20 object-cover rounded-md border"
-                            />
+                            {previews.get(assetId) ? (
+                                <img
+                                    src={`${previews.get(assetId)}?preset=thumb`}
+                                    alt=""
+                                    className="w-20 h-20 object-cover rounded-md border"
+                                />
+                            ) : (
+                                <div className="w-20 h-20 rounded-md border bg-muted flex items-center justify-center text-muted-foreground">
+                                    <ImageIcon className="h-5 w-5" />
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1650,9 +1685,8 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
                     multiSelect={true}
                     onSelect={assets => {
                         if (assets.length > 0) {
-                            const newIds = [...assetIds, ...assets.map(a => a.id)];
-                            const newPreviews = [...assetPreviews, ...assets.map(a => a.preview)];
-                            updateGallery(newIds, newPreviews);
+                            addPreviews(assets.map(a => [String(a.id), a.preview]));
+                            updateGallery([...assetIds, ...assets.map(a => String(a.id))]);
                         }
                     }}
                 />
@@ -1666,8 +1700,8 @@ export const cmsPageDetail: DashboardRouteDefinition = {
     loader: detailPageRouteLoader({
         queryDocument: cmsPageDetailDocument,
         breadcrumb: (isNew, entity) => [
-            { path: '/cms-pages', label: 'Pages' },
-            isNew ? 'New Page' : entity?.name,
+            { path: '/cms-pages', label: <Trans>Pages</Trans> },
+            isNew ? <Trans>New Page</Trans> : entity?.name,
         ],
     }),
     component: route => <CmsPageDetailPage route={route} />,

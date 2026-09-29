@@ -1,4 +1,6 @@
 import { graphql } from '@/graphql/graphql';
+import { i18n } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
@@ -46,6 +48,9 @@ function CmsPageListContent({ route }: { route: any }) {
             deleteMutation={deleteCmsPageDocument}
             route={route}
             customizeColumns={{
+                key: {
+                    header: t`Key`,
+                },
                 name: {
                     header: t`Name`,
                     cell: ({ row }) => (
@@ -80,7 +85,8 @@ export const cmsPageList: DashboardRouteDefinition = {
     },
     path: '/cms-pages',
     loader: () => ({
-        breadcrumb: 'Pages',
+        // A function (not <Trans>) so the browser tab title also gets the translated text.
+        breadcrumb: () => i18n._(msg`Pages`),
     }),
     component: route => <CmsPageListContent route={route} />,
 };
