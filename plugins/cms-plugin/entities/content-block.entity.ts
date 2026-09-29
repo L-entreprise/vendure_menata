@@ -9,7 +9,7 @@ import {
     Translation,
     VendureEntity,
 } from '@vendure/core';
-import { Column, ColumnType, Entity, Index, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 
 import { ContentBlockType } from '../constants';
 import { CmsPage } from './cms-page.entity';
@@ -17,10 +17,6 @@ import { ContentBlockTranslation } from './content-block-translation.entity';
 
 export class CustomContentBlockFields {}
 
-// Postgres has no `datetime` type; MySQL/MariaDB `timestamp` caps at 2038 (Y2038)
-// and converts timezones. Pick each dialect's correct date type from the same
-// `DB` env the VendureConfig reads, so this entity is portable across both.
-const dateColumnType: ColumnType = (process.env.DB ?? 'mariadb') === 'postgres' ? 'timestamp' : 'datetime';
 
 @Entity()
 export class ContentBlock extends VendureEntity implements Translatable, HasCustomFields {
@@ -56,7 +52,9 @@ export class ContentBlock extends VendureEntity implements Translatable, HasCust
     @Column({ default: 0 })
     position: number;
 
-    @Column({ type: dateColumnType, nullable: true })
+    // Placeholder type: CmsPlugin's `configuration` hook replaces it with the dialect's
+    // date type (see date-column-type.ts), read from `dbConnectionOptions.type`.
+    @Column({ type: 'timestamp', nullable: true })
     dateValue: Date | null;
 
     @Column('float', { nullable: true })

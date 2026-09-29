@@ -13,6 +13,7 @@ import { CmsPageTranslation } from './entities/cms-page-translation.entity';
 import { CmsPage } from './entities/cms-page.entity';
 import { ContentBlockTranslation } from './entities/content-block-translation.entity';
 import { ContentBlock } from './entities/content-block.entity';
+import { applyDateColumnType } from './entities/date-column-type';
 import { FormSubmission } from './entities/form-submission.entity';
 import { CmsPageService } from './services/cms-page.service';
 import { ContentBlockService } from './services/content-block.service';
@@ -32,6 +33,7 @@ import { FormSubmissionService } from './services/form-submission.service';
     providers: [ContentBlockService, CmsPageService, FormSubmissionService],
     configuration: config => {
         config.authOptions.customPermissions.push(contentBlockPermission, cmsPagePermission);
+        applyDateColumnType(ContentBlock, 'dateValue', config.dbConnectionOptions.type);
         return config;
     },
     compatibility: '^3.0.0',
