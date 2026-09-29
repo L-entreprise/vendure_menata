@@ -516,7 +516,7 @@ function LanguageHeaders({ languages }: { languages: Language[] }) {
                     {lang.name} ({lang.code})
                     {lang.isDefault && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                            (CMS — read-only)
+                            (<Trans>CMS — read-only</Trans>)
                         </span>
                     )}
                 </div>
@@ -1040,10 +1040,8 @@ export const translationDetail: DashboardRouteDefinition = {
     path: '/cms-translations/$id',
     loader: detailPageRouteLoader({
         queryDocument: getCmsPageForTranslationDocument,
-        breadcrumb: (isNew, entity) => [
-            { path: '/cms-translations', label: 'Translations' },
-            entity?.name ?? 'Translation',
-        ],
+        // The nav section crumb already links to the translations list.
+        breadcrumb: (isNew, entity) => [entity?.name ?? <Trans>Translation</Trans>],
     }),
     component: () => <TranslationDetailContent />,
 };

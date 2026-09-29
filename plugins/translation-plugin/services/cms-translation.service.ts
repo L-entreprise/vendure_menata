@@ -10,7 +10,6 @@ import {
 import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 
 import {
-    collectionGalleryFieldName,
     collectionImageMetaKey,
     galleryFieldName,
     GALLERY_IMAGE_FIELDS,
@@ -19,6 +18,8 @@ import {
 } from '../constants';
 import { CmsTranslationEntry } from '../entities/cms-translation-entry.entity';
 import { TranslationLanguage } from '../entities/translation-language.entity';
+
+import { collectionEntryDefaultValues } from './collection-entry-values';
 
 // Import CMS plugin entities directly — they are registered with TypeORM at runtime
 import { CmsPage } from '../../cms-plugin/entities/cms-page.entity';
@@ -473,81 +474,13 @@ export class CmsTranslationService {
             .orderBy('block.position', 'ASC')
             .getMany();
 
-        const entries: Array<{
-            languageCode: string;
-            pageId: ID;
-            contentBlockId: ID | null;
-            fieldName: string;
-            value: string;
-        }> = [];
-
-        for (const block of blocks) {
-            if (!TRANSLATABLE_BLOCK_FIELDS[block.type]) continue;
-
-            // IMAGE_GALLERY: per-image alt/description, keyed by asset id, stored in
-            // `<key>__imageMeta`. The asset id array itself is not translatable text.
-            if (block.type === 'IMAGE_GALLERY') {
-                const assetIds: string[] = Array.isArray(entry.data[block.key])
-                    ? (entry.data[block.key] as string[])
-                    : [];
-                const galleryMeta: Record<string, { alt?: string; description?: string }> =
-                    (entry.data[`${block.key}__imageMeta`] as any) ?? {};
-                for (const assetId of assetIds) {
-                    const meta = galleryMeta[String(assetId)] ?? {};
-                    for (const f of GALLERY_IMAGE_FIELDS) {
-                        const metaValue = meta[f];
-                        if (typeof metaValue === 'string' && metaValue) {
-                            entries.push({
-                                languageCode: defaultCode,
-                                pageId,
-                                contentBlockId: null,
-                                fieldName: collectionGalleryFieldName(block.key, String(assetId), f),
-                                value: metaValue,
-                            });
-                        }
-                    }
-                }
-                continue;
-            }
-
-            const raw = entry.data[block.key];
-            let value: string | null = null;
-            if (typeof raw === 'string') {
-                value = raw;
-            } else if (Array.isArray(raw)) {
-                // Options List (ENUM) stores a string[]; serialise it so the default
-                // language column seeds and round-trips through the list editor.
-                value = JSON.stringify(raw);
-            }
-            if (value != null) {
-                entries.push({
-                    languageCode: defaultCode,
-                    pageId,
-                    contentBlockId: null,
-                    fieldName: block.key,
-                    value,
-                });
-            }
-
-            // IMAGE fields: seed the per-image alt text + description companions.
-            if (block.type === 'IMAGE') {
-                for (const f of GALLERY_IMAGE_FIELDS) {
-                    const metaKey = collectionImageMetaKey(block.key, f);
-                    const metaValue = entry.data[metaKey];
-                    if (typeof metaValue === 'string' && metaValue) {
-                        entries.push({
-                            languageCode: defaultCode,
-                            pageId,
-                            contentBlockId: null,
-                            fieldName: metaKey,
-                            value: metaValue,
-                        });
-                    }
-                }
-            }
-        }
-
-        return entries;
+        return collectionEntryDefaultValues(blocks, entry.data).map(({ fieldName, value }) => ({
+            languageCode: defaultCode,
+            pageId,
+            contentBlockId: null,
+            fieldName,
+            value,
+        }));
     }
 
     async findByEntry(
@@ -693,7 +626,7 @@ export class CmsTranslationService {
             .execute();
     }
 
-    private async getDefaultLanguageCode(ctx: RequestContext): Promise<string | null> {
+    async getDefaultLanguageCode(ctx: RequestContext): Promise<string | null> {
         const lang = await this.connection
             .getRepository(ctx, TranslationLanguage)
             .createQueryBuilder('lang')

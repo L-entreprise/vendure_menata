@@ -125,3 +125,11 @@ msgstr "Add"
 
 msgid "Add an option and press Enter"
 msgstr "Add an option and press Enter"
+
+#. js-lingui-explicit-id
+msgid "Translations"
+msgstr "Translations"
+
+#. js-lingui-explicit-id
+msgid "Languages"
+msgstr "Languages"

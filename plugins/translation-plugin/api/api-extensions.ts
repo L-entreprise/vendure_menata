@@ -101,8 +101,15 @@ export const shopApiExtensions = gql`
         languageCode: String!
         pageId: ID!
         contentBlockId: ID
+        "Collection entry (FormSubmission) id, for collection-entry values."
+        entryId: ID
         fieldName: String!
+        "JSON array of asset ids for IMAGE_GALLERY structure entries, plain text otherwise."
         value: String!
+        "Key of the content block the value belongs to. Null for page-level fields (name, slug)."
+        blockKey: String
+        "ContentBlockType of that block (TEXT_SHORT, IMAGE_GALLERY...)."
+        blockType: String
     }
 
     type PageTranslations {
@@ -111,9 +118,18 @@ export const shopApiExtensions = gql`
         entries: [CmsTranslationEntry!]!
     }
 
+    type CollectionEntryTranslations {
+        pageId: ID!
+        entryId: ID!
+        languageCode: String!
+        entries: [CmsTranslationEntry!]!
+    }
+
     extend type Query {
         cmsPageTranslations(pageId: ID!, languageCode: String!): PageTranslations
         cmsPageTranslationsByKey(pageKey: String!, languageCode: String!): PageTranslations
         collectionEntryTranslations(pageId: ID!, entryId: ID!, languageCode: String!): PageTranslations
+        "Every entry of a collection page with its values in the given language, in entry creation order."
+        collectionTranslationsByKey(pageKey: String!, languageCode: String!): [CollectionEntryTranslations!]!
     }
 `;

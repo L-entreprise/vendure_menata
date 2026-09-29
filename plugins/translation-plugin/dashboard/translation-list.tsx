@@ -1,4 +1,6 @@
 import { graphql } from '@/graphql/graphql';
+import { i18n } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
 import { InfoIcon, SettingsIcon } from 'lucide-react';
@@ -110,7 +112,8 @@ export const translationList: DashboardRouteDefinition = {
     },
     path: '/cms-translations',
     loader: () => ({
-        breadcrumb: 'Translations',
+        // A function (not <Trans>) so the browser tab title also gets the translated text.
+        breadcrumb: () => i18n._(msg`Translations`),
     }),
     component: route => <TranslationListContent route={route} />,
 };

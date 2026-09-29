@@ -15,6 +15,7 @@ import { TranslationShopResolver } from './api/translation-shop.resolver';
 import { CmsTranslationEntry } from './entities/cms-translation-entry.entity';
 import { TranslationLanguage } from './entities/translation-language.entity';
 import { CmsTranslationService } from './services/cms-translation.service';
+import { ShopTranslationService } from './services/shop-translation.service';
 import { TranslationLanguageService, LanguageInput } from './services/translation-language.service';
 
 interface TranslationPluginOptions {
@@ -32,7 +33,7 @@ interface TranslationPluginOptions {
         schema: shopApiExtensions,
         resolvers: [TranslationShopResolver],
     },
-    providers: [TranslationLanguageService, CmsTranslationService],
+    providers: [TranslationLanguageService, CmsTranslationService, ShopTranslationService],
     compatibility: '^3.0.0',
     dashboard: './dashboard/index.tsx',
 })
