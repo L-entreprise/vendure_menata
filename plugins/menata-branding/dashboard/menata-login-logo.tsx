@@ -1,9 +1,10 @@
 import { i18n } from '@lingui/core';
 import { useEffect, useRef } from 'react';
 
+import { MENATA_LOGIN_LOGO_DATA_URI } from './menata-logo-data';
+
 export function MenataLoginBeforeForm() {
     const containerRef = useRef<HTMLDivElement>(null);
-    const logoUrl = new URL('../ui/logos/menata_deux_lignes.webp', import.meta.url).href;
     const isFrench = i18n.locale === 'fr';
 
     // Apply gradient to the login page background
@@ -23,7 +24,7 @@ export function MenataLoginBeforeForm() {
 
     return (
         <div ref={containerRef} className="flex flex-col items-center text-center gap-2">
-            <img src={logoUrl} alt="Menata" className="h-20 w-auto object-contain mb-2" />
+            <img src={MENATA_LOGIN_LOGO_DATA_URI} alt="Menata" className="h-14 w-auto object-contain mb-3" />
             <h1 className="text-2xl font-semibold tracking-tight">
                 {isFrench ? 'Bienvenue' : 'Welcome'}
             </h1>
