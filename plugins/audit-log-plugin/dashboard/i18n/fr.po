@@ -27,3 +27,76 @@ msgstr "Precedent"
 
 msgid "Next"
 msgstr "Suivant"
+
+msgid "Total Events"
+msgstr "Événements au total"
+
+msgid "Today"
+msgstr "Aujourd'hui"
+
+msgid "Active Categories"
+msgstr "Catégories actives"
+
+msgid "Active Users"
+msgstr "Utilisateurs actifs"
+
+msgid "Clear filters"
+msgstr "Effacer les filtres"
+
+msgid "Page {0} of {totalPages}"
+msgstr "Page {0} sur {totalPages}"
+
+#. js-lingui-explicit-id
+msgid "Audit Log"
+msgstr "Journal d'audit"
+
+msgid "All Categories"
+msgstr "Toutes les catégories"
+
+msgid "Authentication"
+msgstr "Authentification"
+
+msgid "Catalog"
+msgstr "Catalogue"
+
+msgid "Orders"
+msgstr "Commandes"
+
+msgid "Payments"
+msgstr "Paiements"
+
+msgid "Fulfillment"
+msgstr "Exécution"
+
+msgid "Customers"
+msgstr "Clients"
+
+msgid "Promotions"
+msgstr "Promotions"
+
+msgid "Stock"
+msgstr "Stock"
+
+msgid "System"
+msgstr "Système"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Translation"
+msgstr "Traduction"
+
+msgid "All Severity"
+msgstr "Toutes les sévérités"
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Warning"
+msgstr "Avertissement"
+
+msgid "Critical"
+msgstr "Critique"

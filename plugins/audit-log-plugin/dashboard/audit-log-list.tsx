@@ -1,4 +1,6 @@
 import { graphql } from '@/graphql/graphql';
+import { i18n } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -63,26 +65,26 @@ const auditLogStatsDocument = graphql(`
 `);
 
 const CATEGORIES = [
-    { value: '', label: 'All Categories' },
-    { value: 'auth', label: 'Authentication' },
-    { value: 'catalog', label: 'Catalog' },
-    { value: 'order', label: 'Orders' },
-    { value: 'payment', label: 'Payments' },
-    { value: 'fulfillment', label: 'Fulfillment' },
-    { value: 'customer', label: 'Customers' },
-    { value: 'promotion', label: 'Promotions' },
-    { value: 'stock', label: 'Stock' },
-    { value: 'system', label: 'System' },
-    { value: 'settings', label: 'Settings' },
-    { value: 'cms', label: 'CMS' },
-    { value: 'translation', label: 'Translation' },
+    { value: '', label: msg`All Categories` },
+    { value: 'auth', label: msg`Authentication` },
+    { value: 'catalog', label: msg`Catalog` },
+    { value: 'order', label: msg`Orders` },
+    { value: 'payment', label: msg`Payments` },
+    { value: 'fulfillment', label: msg`Fulfillment` },
+    { value: 'customer', label: msg`Customers` },
+    { value: 'promotion', label: msg`Promotions` },
+    { value: 'stock', label: msg`Stock` },
+    { value: 'system', label: msg`System` },
+    { value: 'settings', label: msg`Settings` },
+    { value: 'cms', label: msg`CMS` },
+    { value: 'translation', label: msg`Translation` },
 ];
 
 const SEVERITY_OPTIONS = [
-    { value: '', label: 'All Severity' },
-    { value: 'info', label: 'Info' },
-    { value: 'warning', label: 'Warning' },
-    { value: 'critical', label: 'Critical' },
+    { value: '', label: msg`All Severity` },
+    { value: 'info', label: msg`Info` },
+    { value: 'warning', label: msg`Warning` },
+    { value: 'critical', label: msg`Critical` },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -287,7 +289,7 @@ function AuditLogListPage() {
                                     className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 >
                                     {CATEGORIES.map(c => (
-                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                        <option key={c.value} value={c.value}>{t(c.label)}</option>
                                     ))}
                                 </select>
                                 <select
@@ -299,7 +301,7 @@ function AuditLogListPage() {
                                     className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 >
                                     {SEVERITY_OPTIONS.map(s => (
-                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                        <option key={s.value} value={s.value}>{t(s.label)}</option>
                                     ))}
                                 </select>
                                 {(filterAction || filterCategory || filterSeverity) && (
@@ -425,6 +427,9 @@ function AuditLogListPage() {
 
 export const auditLogList: DashboardRouteDefinition = {
     path: '/audit-log',
+    loader: () => ({
+        breadcrumb: () => i18n._(msg`Audit Log`),
+    }),
     component: () => <AuditLogListPage />,
     navMenuItem: {
         id: 'audit-log',

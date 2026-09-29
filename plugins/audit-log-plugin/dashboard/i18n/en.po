@@ -1,8 +1,99 @@
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2026-03-30 00:00+0000\n"
+"POT-Creation-Date: 2026-09-29 00:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
+
+msgid "Audit Log"
+msgstr "Audit Log"
+
+msgid "Total Events"
+msgstr "Total Events"
+
+msgid "Today"
+msgstr "Today"
+
+msgid "Active Categories"
+msgstr "Active Categories"
+
+msgid "Active Users"
+msgstr "Active Users"
+
+msgid "Activity Log"
+msgstr "Activity Log"
+
+msgid "Clear filters"
+msgstr "Clear filters"
+
+msgid "No audit log entries found."
+msgstr "No audit log entries found."
+
+msgid "Page {0} of {totalPages}"
+msgstr "Page {0} of {totalPages}"
+
+msgid "Previous"
+msgstr "Previous"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "Filter by action..."
+msgstr "Filter by action..."
+
+#. js-lingui-explicit-id
+msgid "Audit Log"
+msgstr "Audit Log"
+
+msgid "All Categories"
+msgstr "All Categories"
+
+msgid "Authentication"
+msgstr "Authentication"
+
+msgid "Catalog"
+msgstr "Catalog"
+
+msgid "Orders"
+msgstr "Orders"
+
+msgid "Payments"
+msgstr "Payments"
+
+msgid "Fulfillment"
+msgstr "Fulfillment"
+
+msgid "Customers"
+msgstr "Customers"
+
+msgid "Promotions"
+msgstr "Promotions"
+
+msgid "Stock"
+msgstr "Stock"
+
+msgid "System"
+msgstr "System"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Translation"
+msgstr "Translation"
+
+msgid "All Severity"
+msgstr "All severities"
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Warning"
+msgstr "Warning"
+
+msgid "Critical"
+msgstr "Critical"
