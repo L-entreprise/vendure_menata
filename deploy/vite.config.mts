@@ -12,7 +12,7 @@ const dashboardApiHost = process.env.VENDURE_API_HOST ?? 'auto';
 const dashboardApiPort = Number.isFinite(parsedApiPort) && parsedApiPort > 0 ? parsedApiPort : 'auto';
 
 /**
- * Builds the dashboard SPA (with the 4 Menata plugin extensions baked in) into ./dist,
+ * Builds the dashboard SPA (with the 5 Menata plugin extensions baked in) into ./dist,
  * which DashboardPlugin serves at /dashboard. This is the only compile step the deploy
  * image performs — @vendure/* themselves come precompiled from npm.
  */
