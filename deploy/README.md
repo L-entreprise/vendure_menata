@@ -110,6 +110,14 @@ To pull in upstream updates:
    docker run --rm -v "$PWD/deploy:/w" -w /w node:20-bookworm \
      npm install --package-lock-only --no-audit --no-fund
    ```
+
+   Without Docker, use the npm major bundled with Node 20 (npm 10). A lock written by
+   npm 11 prunes nested entries that npm 10's `npm ci` still requires, which fails the
+   image build and the CI:
+
+   ```bash
+   cd deploy && npx -y npm@10 install --package-lock-only --no-audit --no-fund
+   ```
 4. Rebuild locally once (`docker build -f deploy/Dockerfile -t menata .` from the
    repo root) to confirm green, then push. The plugins are shared — nothing else to sync.
 
