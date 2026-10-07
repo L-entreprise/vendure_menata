@@ -98,7 +98,9 @@ export class FormSubmissionService {
             category: 'cms',
             entityType: 'FormSubmission',
             entityId: submission.id?.toString(),
-            detail: { pageKey: input.pageKey, data: sanitized },
+            // Field names only: a contact form carries personal data under free-form
+            // keys (nom, mail, tel…) that key-based redaction cannot recognise.
+            detail: { pageKey: input.pageKey, fields: Object.keys(sanitized) },
         }).catch(() => {});
         return { success: true };
     }
