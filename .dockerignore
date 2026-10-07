@@ -39,3 +39,7 @@ image.png
 .env.*
 **/.env
 **/.env.*
+
+# Plugin e2e test harness (deploy/e2e, vitest config): not needed at runtime
+deploy/e2e
+deploy/vitest.config.mts

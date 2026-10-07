@@ -13,3 +13,6 @@ _build*.log
 .env
 .env.*
 !.env.example
+
+# sql.js databases cached by the plugin e2e specs
+e2e/__data__/
