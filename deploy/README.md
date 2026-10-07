@@ -36,7 +36,7 @@ Diagnostics registers only when `MENATA_DIAGNOSTIC_API_KEY` is set. Once it is s
 other two `MENATA_*` vars become **required** — `requireEnv()` throws at boot without them.
 
 They all import `@vendure/*` cleanly, so they work unchanged against the npm packages.
-To run them in a fresh, independent Vendure project, see `../ADD-PLUGINS-TO-NEW-VENDURE.md`.
+To run them in a fresh, independent Vendure project, see `../menata-docs/ADD-PLUGINS-TO-NEW-VENDURE.md` (local, untracked).
 
 ## Why the build is still not instant
 

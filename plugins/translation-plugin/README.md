@@ -124,7 +124,7 @@ These queries are enough to render a page without the `cms-plugin` Shop API:
 - Default language = CMS content; other languages = only the stored translations, so
   merge them over the default-language result.
 
-Full request/response examples: **`docs/translation-api-guide.md`**.
+Full request/response examples: **`menata-docs/docs/translation-api-guide.md`** (local, untracked).
 
 ## Dashboard
 
@@ -139,7 +139,7 @@ are localized with Lingui PO files in `dashboard/i18n/`.
 
 ## See also
 
-- `docs/translation-api-guide.md` — Shop API reference for the storefront
-- `STOREFRONT_CMS_TRANSLATIONS.md` — storefront integration notes
+- `menata-docs/docs/translation-api-guide.md` (local, untracked) — Shop API reference for the storefront
+- `menata-docs/STOREFRONT_CMS_TRANSLATIONS.md` (local, untracked) — storefront integration notes
 - `../cms-plugin/CMS_PLUGIN_API.md` — the content this plugin translates
-- `../../ADD-PLUGINS-TO-NEW-VENDURE.md` — installing this plugin in another Vendure
+- `menata-docs/ADD-PLUGINS-TO-NEW-VENDURE.md` (local, untracked) — installing this plugin in another Vendure

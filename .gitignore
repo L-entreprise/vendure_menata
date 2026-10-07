@@ -410,3 +410,6 @@ package-lock.json
 
 # Agentic engineering
 plans/
+
+# Menata internal docs (guides, plans): kept local, never pushed
+menata-docs/

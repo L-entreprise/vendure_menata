@@ -75,7 +75,7 @@ diagnostic simply don't show the nav item.
 ## Menata-side work
 
 This plugin depends on **one new authenticated endpoint** on the Menata Nuxt site:
-`POST /api/client/diagnostic`. See `MENATA-DIAGNOSTICS-ENDPOINT.md` at the repo root for
+`POST /api/client/diagnostic`. See `menata-docs/MENATA-DIAGNOSTICS-ENDPOINT.md` (local, untracked) for
 the full implementation spec.
 
 ## API
