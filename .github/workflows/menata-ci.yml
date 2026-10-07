@@ -82,6 +82,6 @@ jobs:
                       echo "::notice::Coolify deploy gate not configured yet (COOLIFY_TOKEN / COOLIFY_URL / COOLIFY_APP_UUID), skipping."
                       exit 0
                   fi
-                  curl --fail-with-body --silent --show-error \
+                  curl --fail-with-body --silent --show-error -X POST \
                       -H "Authorization: Bearer $COOLIFY_TOKEN" \
                       "$COOLIFY_URL/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=false"
