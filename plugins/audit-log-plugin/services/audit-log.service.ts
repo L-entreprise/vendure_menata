@@ -10,6 +10,8 @@ import {
 
 import { AuditLogEntry } from '../entities/audit-log-entry.entity';
 
+import { redactPersonalData } from './redact';
+
 export interface AuditLogInput {
     action: string;
     category?: string;
@@ -22,6 +24,8 @@ export interface AuditLogInput {
 
 @Injectable()
 export class AuditLogService {
+    private writeQueue: Promise<void> = Promise.resolve();
+
     constructor(
         private connection: TransactionalConnection,
         private channelService: ChannelService,
@@ -53,11 +57,26 @@ export class AuditLogService {
         entry.userName = this.extractUserName(ctx);
         entry.apiType = ctx?.apiType ?? '';
         entry.ipAddress = this.extractIpAddress(ctx) ?? '';
-        entry.detail = input.detail ?? ({} as any);
+        entry.detail = (input.detail ? redactPersonalData(input.detail) : {}) as Record<string, unknown>;
         if (ctx) {
             await this.channelService.assignToCurrentChannel(entry, ctx);
         }
-        await this.connection.rawConnection.getRepository(AuditLogEntry).save(entry);
+        await this.enqueueWrite(() => this.connection.rawConnection.getRepository(AuditLogEntry).save(entry));
+    }
+
+    /**
+     * Writes are chained one after another: a burst of events (a bulk import, an order
+     * placing several events at once) then neither exhausts the DB pool nor interleaves
+     * inserts on single-connection drivers, and entries land in the order they happened.
+     * A failed write is reported to its caller but never blocks the ones after it.
+     */
+    private enqueueWrite<T>(write: () => Promise<T>): Promise<T> {
+        const result = this.writeQueue.then(write);
+        this.writeQueue = result.then(
+            () => undefined,
+            () => undefined,
+        );
+        return result;
     }
 
     async clearAll(): Promise<number> {

@@ -7,7 +7,7 @@ dashboard page.
 - **Entity:** `AuditLogEntry`
 - **Service:** `AuditLogService` (exported — other plugins can log into the trail)
 - **Dashboard route:** `/audit-log`, nav item under **Settings**, SuperAdmin only
-- **Compatibility:** Vendure `^3.0.0`
+- **Compatibility:** Vendure `^3.3.0`
 - **Extra npm deps:** none
 
 ## Register
@@ -25,14 +25,35 @@ plugins: [
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `retentionDays` | `number` | `90` | Age cutoff used by `AuditLogService.pruneOldEntries()` |
+| `retentionDays` | `number` | `90` | Entries older than this are deleted every night |
 
 Env var used by `deploy/vendure-config.ts`: `AUDIT_LOG_RETENTION_DAYS`.
 
-> **Note:** `pruneOldEntries(retentionDays)` exists on the service but is **not yet
-> scheduled** — nothing calls it automatically. The option is currently only a stored
-> setting. Wire it to a scheduled task (`DefaultSchedulerPlugin`) if you need the trail
-> to self-trim.
+The plugin registers a `prune-audit-log` scheduled task (daily at 03:00) that calls
+`pruneOldEntries(retentionDays)`. It needs `DefaultSchedulerPlugin` (or another scheduler
+strategy) to be registered, hence Vendure `^3.3.0`.
+
+## GDPR (RGPD)
+
+The trail is a security log kept under legitimate interest (art. 6.1.f). To keep it
+compliant:
+
+- **Storage limitation (art. 5.1.e):** entries are purged after `retentionDays`
+  (default 90, CNIL recommends 6 to 12 months max for security logs).
+- **Data minimisation (art. 5.1.c):** subjects are referenced by id only (`userId`,
+  `entityId`, `customerId`). Names, emails, phone numbers and postal addresses in
+  mutation input are stored as `[redacted]` (the field name stays, so you still see
+  *what* changed). Login identifiers are masked (`j***@example.com`).
+- **Secrets:** passwords, hashes and tokens are dropped from the payload entirely.
+- **Access:** SuperAdmin only.
+- **IP address** is kept (personal data) for security investigation; it expires with
+  the entry.
+- **Erasure requests:** once a customer is deleted, remaining entries only hold ids and
+  IPs and expire with the retention window. Use `clearAuditLog` if an immediate purge
+  is required.
+
+Entries written before this change may still contain clear personal data; they are
+removed by the first nightly purge past the retention window.
 
 ## What it records
 
@@ -141,8 +162,8 @@ via Lingui PO files in `dashboard/i18n/{en,fr}.po`.
 
 ## See also
 
-- `docs/cms-plugin-guide.md` §8
-- `../../ADD-PLUGINS-TO-NEW-VENDURE.md` — installing this plugin in another Vendure
+- `menata-docs/docs/cms-plugin-guide.md` §8 (local, untracked)
+- `menata-docs/ADD-PLUGINS-TO-NEW-VENDURE.md` (local, untracked) — installing this plugin in another Vendure
 
 ## Used by other plugins
 

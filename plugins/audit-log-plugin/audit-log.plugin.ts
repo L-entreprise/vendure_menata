@@ -23,6 +23,7 @@ import {
     GlobalSettingsEvent,
     IdentifierChangeEvent,
     IdentifierChangeRequestEvent,
+    Logger,
     LoginEvent,
     LogoutEvent,
     OrderEvent,
@@ -47,6 +48,7 @@ import {
     RefundStateTransitionEvent,
     RoleChangeEvent,
     RoleEvent,
+    ScheduledTask,
     SellerEvent,
     ShippingMethodEvent,
     StockLocationEvent,
@@ -71,22 +73,40 @@ interface AuditLogPluginOptions {
     retentionDays?: number;
 }
 
+const loggerCtx = 'AuditLogPlugin';
+const DEFAULT_RETENTION_DAYS = 90;
+
+/** Deletes entries older than `retentionDays` every night, so the trail self-trims. */
+const pruneAuditLogTask = new ScheduledTask({
+    id: 'prune-audit-log',
+    description: 'Delete audit log entries older than the configured retention period',
+    schedule: cron => cron.everyDayAt(3, 0),
+    async execute({ injector }) {
+        const retentionDays = AuditLogPlugin.retentionDays();
+        const deleted = await injector.get(AuditLogService).pruneOldEntries(retentionDays);
+        return { retentionDays, deleted };
+    },
+});
+
 @VendurePlugin({
     imports: [PluginCommonModule],
     entities: [AuditLogEntry],
+    configuration: config => {
+        config.schedulerOptions.tasks.push(pruneAuditLogTask);
+        return config;
+    },
     adminApiExtensions: {
         schema: adminApiExtensions,
         resolvers: [AuditLogAdminResolver],
     },
     providers: [AuditLogService],
     exports: [AuditLogService],
-    compatibility: '^3.0.0',
+    compatibility: '^3.3.0',
     dashboard: './dashboard/index.tsx',
 })
 export class AuditLogPlugin implements OnApplicationBootstrap {
     private static options: AuditLogPluginOptions = {};
     private subscriptions: Subscription[] = [];
-    private logging = false;
 
     constructor(
         private eventBus: EventBus,
@@ -98,6 +118,11 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
         return AuditLogPlugin;
     }
 
+    static retentionDays(): number {
+        const days = AuditLogPlugin.options.retentionDays;
+        return days && days > 0 ? days : DEFAULT_RETENTION_DAYS;
+    }
+
     onApplicationBootstrap() {
         this.subscribeToEvents();
     }
@@ -107,16 +132,22 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
         extractor: (event: T) => { ctx?: any } & AuditLogInput,
     ) {
         const subscription = this.eventBus.ofType(eventType).subscribe(event => {
-            if (this.logging) return;
+            // Writing an entry must never produce another entry (no feedback loop).
+            if ((event as any).entity instanceof AuditLogEntry) return;
             try {
                 const { ctx, ...input } = extractor(event);
                 const reqCtx = ctx ?? (event as any).ctx;
-                this.logging = true;
-                this.auditLogService.log(reqCtx, input)
-                    .catch(() => {})
-                    .finally(() => { this.logging = false; });
-            } catch {
-                this.logging = false;
+                this.auditLogService.log(reqCtx, input).catch(err =>
+                    Logger.error(
+                        `Failed to write audit entry for ${eventType.name}: ${String(err?.message ?? err)}`,
+                        loggerCtx,
+                    ),
+                );
+            } catch (err: any) {
+                Logger.error(
+                    `Failed to build audit entry for ${eventType.name}: ${String(err?.message ?? err)}`,
+                    loggerCtx,
+                );
             }
         });
         this.subscriptions.push(subscription);
@@ -180,7 +211,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
             category: 'auth',
             entityType: 'User',
             entityId: this.entityId(e.user),
-            detail: { identifier: e.user?.identifier },
+            detail: { identifier: this.maskIdentifier(e.user?.identifier) },
         }));
 
         this.sub(LogoutEvent, e => ({
@@ -195,7 +226,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
             category: 'auth',
             entityType: 'User',
             severity: 'warning' as const,
-            detail: { strategy: e.strategy, identifier: e.identifier },
+            detail: { strategy: e.strategy, identifier: this.maskIdentifier(e.identifier) },
         }));
 
         this.sub(AccountRegistrationEvent, e => ({
@@ -421,7 +452,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
                 code: e.order?.code,
                 total: (e.order as any)?.totalWithTax,
                 currencyCode: (e.order as any)?.currencyCode,
-                customerEmail: (e.order as any)?.customer?.emailAddress,
+                customerId: this.entityId((e.order as any)?.customer),
                 itemCount: (e.order as any)?.lines?.length,
             },
         }));
@@ -532,11 +563,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
             category: 'customer',
             entityType: 'Customer',
             entityId: this.entityId(e.entity),
-            detail: this.entityDetail(e.type, e.entity, e.input, {
-                email: (e.entity as any)?.emailAddress,
-                firstName: (e.entity as any)?.firstName,
-                lastName: (e.entity as any)?.lastName,
-            }),
+            detail: this.entityDetail(e.type, e.entity, e.input),
         }));
 
         this.sub(CustomerAddressEvent, e => ({
@@ -545,8 +572,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
             entityType: 'Address',
             entityId: this.entityId(e.entity),
             detail: this.entityDetail(e.type, e.entity, e.input, {
-                city: (e.entity as any)?.city,
-                country: (e.entity as any)?.country?.name,
+                country: (e.entity as any)?.country?.code,
             }),
         }));
 
@@ -653,11 +679,7 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
             entityType: 'Administrator',
             entityId: this.entityId(e.entity),
             severity: 'critical' as const,
-            detail: this.entityDetail(e.type, e.entity, e.input, {
-                firstName: (e.entity as any)?.firstName,
-                lastName: (e.entity as any)?.lastName,
-                email: (e.entity as any)?.emailAddress,
-            }),
+            detail: this.entityDetail(e.type, e.entity, e.input),
         }));
 
         this.sub(GlobalSettingsEvent, e => ({
@@ -755,6 +777,17 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
         // NOTE: SearchEvent excluded — fires hundreds of times during reindexing.
     }
 
+    /**
+     * Keeps a login identifier useful for spotting brute-force patterns without storing
+     * it in clear: `jane.doe@example.com` becomes `j***@example.com`.
+     */
+    private maskIdentifier(identifier?: string): string | undefined {
+        if (!identifier) return undefined;
+        const at = identifier.indexOf('@');
+        if (at > 0) return `${identifier.charAt(0)}***${identifier.slice(at)}`;
+        return `${identifier.charAt(0)}***`;
+    }
+
     private capitalize(str: string): string {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
@@ -781,8 +814,8 @@ export class AuditLogPlugin implements OnApplicationBootstrap {
                 }
                 const result: Record<string, any> = {};
                 const keys = Object.keys(obj);
+                // Secrets and personal data are stripped by AuditLogService.log (redact.ts).
                 for (const key of keys.slice(0, 30)) {
-                    if (['password', 'currentPassword', 'newPassword', 'token'].includes(key)) continue;
                     result[key] = safeStringify(obj[key], depth + 1);
                 }
                 return result;
