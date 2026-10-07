@@ -15,16 +15,16 @@
         "migration:revert": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts revert",
         "test:e2e": "vitest run --config vitest.config.mts"
     },
-    "//": "Version ranges (~3.7.3) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.8.0) when the monorepo fork merges a new upstream minor.",
+    "//": "Version ranges (~3.7.4) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.8.0) when the monorepo fork merges a new upstream minor.",
     "dependencies": {
         "@vendure-community/sentry-plugin": "^1.0.0",
-        "@vendure/asset-server-plugin": "~3.7.3",
-        "@vendure/common": "~3.7.3",
-        "@vendure/core": "~3.7.3",
-        "@vendure/dashboard": "~3.7.3",
-        "@vendure/email-plugin": "~3.7.3",
-        "@vendure/graphiql-plugin": "~3.7.3",
-        "@vendure/job-queue-plugin": "~3.7.3",
+        "@vendure/asset-server-plugin": "~3.7.4",
+        "@vendure/common": "~3.7.4",
+        "@vendure/core": "~3.7.4",
+        "@vendure/dashboard": "~3.7.4",
+        "@vendure/email-plugin": "~3.7.4",
+        "@vendure/graphiql-plugin": "~3.7.4",
+        "@vendure/job-queue-plugin": "~3.7.4",
         "bullmq": "^5.4.2",
         "dotenv": "^16.6.1",
         "ioredis": "^5.9.1",
@@ -34,7 +34,7 @@
     "devDependencies": {
         "@swc/core": "^1.16.13",
         "@types/sanitize-html": "^2.16.2",
-        "@vendure/testing": "~3.7.3",
+        "@vendure/testing": "~3.7.4",
         "sql.js": "^1.14.2",
         "ts-node": "^10.9.2",
         "typescript": "5.8.2",
@@ -42,7 +42,7 @@
         "vite": "^7.3.1",
         "vitest": "^3.2.7"
     },
-    "//overrides": "Pin the TanStack Router family to the exact versions the upstream v3.7.3 monorepo lockfile (bun.lock) resolves. Newer releases have tightened route-id parsing and changed dev-mode loading, which broke the dashboard before. The committed package-lock.json freezes the rest.",
+    "//overrides": "Pin the TanStack Router family to the exact versions the upstream v3.7.4 monorepo lockfile (bun.lock) resolves. Newer releases have tightened route-id parsing and changed dev-mode loading, which broke the dashboard before. The committed package-lock.json freezes the rest.",
     "overrides": {
         "@tanstack/react-router": "1.168.1",
         "@tanstack/react-router-devtools": "1.166.10",
