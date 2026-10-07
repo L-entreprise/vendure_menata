@@ -1,0 +1,59 @@
+# Weekly early warning: runs the plugin checks against the LATEST published Vendure,
+# ignoring the lockfile, so a breaking upstream release shows up here before a
+# dependency bump reaches production. Never deploys anything.
+#
+# Scheduled workflows only run from the default branch (menata_branding).
+name: Menata Vendure canary
+
+on:
+    schedule:
+        - cron: '0 6 * * 1' # Mondays 06:00 UTC
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    canary:
+        name: Plugins vs latest Vendure
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+                  cache-dependency-path: deploy/package-lock.json
+
+            - name: Install deploy dependencies
+              working-directory: deploy
+              run: npm ci --no-audit --no-fund
+
+            - name: Upgrade every @vendure package to latest
+              working-directory: deploy
+              run: |
+                  npm install --no-save --no-audit --no-fund \
+                      @vendure/core@latest @vendure/common@latest @vendure/testing@latest \
+                      @vendure/dashboard@latest @vendure/asset-server-plugin@latest \
+                      @vendure/email-plugin@latest @vendure/graphiql-plugin@latest \
+                      @vendure/job-queue-plugin@latest
+                  npm ls @vendure/core
+
+            - name: Expose deploy/node_modules to the plugins
+              run: ln -s deploy/node_modules node_modules
+
+            - name: Typecheck
+              working-directory: deploy
+              run: npx tsc --noEmit -p tsconfig.json
+
+            - name: Plugin e2e tests
+              working-directory: deploy
+              run: npm run test:e2e
+              env:
+                  CI: true
+
+            - name: Build dashboard
+              working-directory: deploy
+              run: npx vite build

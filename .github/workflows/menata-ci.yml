@@ -1,0 +1,87 @@
+# Menata CI: typecheck, plugin e2e tests, dashboard build and Docker build of deploy/,
+# then deploys to Coolify only when everything is green.
+#
+# Not part of upstream Vendure: this file never conflicts with an upstream merge.
+#
+# Deploy gate setup (repo Settings > Secrets and variables > Actions):
+#   secrets.COOLIFY_TOKEN     Coolify API token with the "deploy" ability
+#   vars.COOLIFY_URL          e.g. https://coolify.example.com (no trailing slash)
+#   vars.COOLIFY_APP_UUID     uuid of the Coolify application to deploy
+# and turn OFF "Auto Deploy" on that application in Coolify, otherwise it deploys on
+# every push before the tests have run.
+name: Menata CI
+
+on:
+    push:
+        branches: [menata_branding]
+    pull_request:
+        branches: [menata_branding]
+    workflow_dispatch:
+
+concurrency:
+    group: menata-ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        name: Typecheck, e2e tests, builds
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  # Same major as the production image (deploy/Dockerfile).
+                  node-version: 20
+                  cache: npm
+                  cache-dependency-path: deploy/package-lock.json
+
+            - name: Install deploy dependencies
+              working-directory: deploy
+              run: npm ci --no-audit --no-fund
+
+            # Same layout as the Docker image: ../plugins resolve their deps from deploy/.
+            - name: Expose deploy/node_modules to the plugins
+              run: ln -s deploy/node_modules node_modules
+
+            - name: Typecheck (deploy + plugins + specs)
+              working-directory: deploy
+              run: npx tsc --noEmit -p tsconfig.json
+
+            - name: Plugin e2e tests
+              working-directory: deploy
+              run: npm run test:e2e
+              env:
+                  CI: true
+
+            - name: Build dashboard
+              working-directory: deploy
+              run: npx vite build
+
+            - name: Build production image
+              run: docker build -f deploy/Dockerfile -t menata-vendure:ci .
+
+    deploy:
+        name: Deploy to Coolify
+        needs: test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/menata_branding'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Trigger Coolify deployment
+              env:
+                  COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+                  COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+                  COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+              run: |
+                  if [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_APP_UUID" ]; then
+                      echo "::notice::Coolify deploy gate not configured yet (COOLIFY_TOKEN / COOLIFY_URL / COOLIFY_APP_UUID), skipping."
+                      exit 0
+                  fi
+                  curl --fail-with-body --silent --show-error \
+                      -H "Authorization: Bearer $COOLIFY_TOKEN" \
+                      "$COOLIFY_URL/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=false"
