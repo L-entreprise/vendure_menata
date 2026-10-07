@@ -2174,6 +2174,11 @@ msgstr "Kund"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "Kundens e-post"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Kundgrupp"
 
@@ -2219,6 +2224,21 @@ msgstr "Beskrivning"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Rabatterat radpris"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Rabatterat radpris med skatt"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Rabatter"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Varaktighet"
 
@@ -2259,6 +2279,11 @@ msgstr "Leveranshanterarkod"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Leveransrader"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2284,6 +2309,21 @@ msgstr "Efternamn"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Radpris"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Radpris med skatt"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Radskatt"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Namn"
 
@@ -2291,6 +2331,11 @@ msgstr "Namn"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Beställning lagd"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Antal vid beställning"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2329,6 +2374,11 @@ msgstr "Pris med skatt"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Produktvariant"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Produktvarianter"
 
@@ -2336,6 +2386,21 @@ msgstr "Produktvarianter"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Framsteg"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Fördelat enhetspris"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Fördelat enhetspris med skatt"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Antal"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2416,6 +2481,16 @@ msgstr "Totalt med skatt"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Typ"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Enhetspris"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Enhetspris med skatt"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3244,6 +3319,7 @@ msgstr "Ange filterkriterier för kolumnen {columnId}"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Land"
@@ -3464,7 +3540,7 @@ msgstr "Betalning auktoriserad"
 msgid "Successfully updated role"
 msgstr "Roll uppdaterad"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Välj ett land"
 
@@ -4880,7 +4956,7 @@ msgstr ""
 #: src/app/routes/_authenticated/_orders/orders.tsx
 #: src/app/routes/_authenticated/_system/job-queue.tsx
 msgid "State"
-msgstr "Region"
+msgstr "Tillstånd"
 
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
@@ -5916,6 +5992,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters måste användas inom en WidgetFiltersProvider"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Redigera adress"
 
@@ -6082,6 +6159,7 @@ msgstr "Aktiv"
 msgid "Tax base"
 msgstr "Skattebas"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

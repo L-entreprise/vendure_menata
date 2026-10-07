@@ -2156,6 +2156,11 @@ msgstr "고객"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "고객 이메일"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "고객 그룹"
 
@@ -2201,6 +2206,21 @@ msgstr "설명"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "할인된 항목 가격"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "세금 포함 할인된 항목 가격"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "할인"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "기간"
 
@@ -2241,6 +2261,11 @@ msgstr "배송 처리 코드"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "이행 항목"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2266,6 +2291,21 @@ msgstr "성"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "항목 가격"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "세금 포함 항목 가격"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "항목 세금"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "이름"
 
@@ -2273,6 +2313,11 @@ msgstr "이름"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "주문 일시"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "주문 시 수량"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2311,6 +2356,11 @@ msgstr "세금 포함 가격"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "상품 변형"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "상품 변형"
 
@@ -2318,6 +2368,21 @@ msgstr "상품 변형"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "진행률"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "안분 단가"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "세금 포함 안분 단가"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "수량"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2398,6 +2463,16 @@ msgstr "세금 포함 합계"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "유형"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "단가"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "세금 포함 단가"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3218,6 +3293,7 @@ msgstr "{columnId} 열의 필터 조건 설정"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "국가"
@@ -3434,7 +3510,7 @@ msgstr "결제가 승인되었습니다"
 msgid "Successfully updated role"
 msgstr "역할이 업데이트되었습니다"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "국가 선택"
 
@@ -5831,6 +5907,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters는 WidgetFiltersProvider 내에서 사용해야 합니다"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "주소 편집"
 
@@ -5997,6 +6074,7 @@ msgstr "활성"
 msgid "Tax base"
 msgstr "과세 기준"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

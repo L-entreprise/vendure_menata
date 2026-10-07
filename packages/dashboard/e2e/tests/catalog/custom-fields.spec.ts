@@ -119,6 +119,46 @@ test.describe('Custom Fields', () => {
         await dp.expectNavigatedToExisting();
     });
 
+    // ─── Non-nullable field with a default ───────────────────────────────
+
+    // #5241 — an untouched non-nullable custom field must not block the create form
+    test('should create a product without touching a non-nullable custom field', async ({ page }) => {
+        const dp = detailPage(page);
+        await dp.gotoNew();
+        await dp.expectNewPageLoaded();
+
+        await dp.fillInput('Product name', 'Default Warranty Product');
+        await expect(dp.formItem('Slug').getByRole('textbox')).not.toHaveValue('', { timeout: 5_000 });
+        await expect(dp.formItem('Warranty Months').getByRole('spinbutton')).toHaveValue('');
+        await expect(dp.createButton).toBeEnabled({ timeout: 10_000 });
+
+        await dp.clickCreate();
+        await dp.expectSuccessToast(/Successfully created product/);
+        await dp.expectNavigatedToExisting();
+
+        // The empty field is omitted from the payload, so the column's SQL DEFAULT is what lands.
+        await page.reload();
+        await expect(dp.formItem('Warranty Months').getByRole('spinbutton')).toHaveValue('12', {
+            timeout: 10_000,
+        });
+    });
+
+    // #5241 — the update form still requires a value for a non-nullable custom field
+    test('should keep the Update button disabled after clearing a non-nullable custom field', async ({
+        page,
+    }) => {
+        await goToFirstProduct(page);
+        const dp = detailPage(page);
+        const warrantyInput = dp.formItem('Warranty Months').getByRole('spinbutton');
+
+        // A valid edit enables the button, so the assertion below is about validity, not dirtiness.
+        await warrantyInput.fill('24');
+        await expect(dp.updateButton).toBeEnabled({ timeout: 10_000 });
+
+        await warrantyInput.fill('');
+        await expect(dp.updateButton).toBeDisabled({ timeout: 10_000 });
+    });
+
     // ─── Tab grouping ────────────────────────────────────────────────────
 
     test('should display custom field tabs', async ({ page }) => {
@@ -157,6 +197,18 @@ test.describe('Custom Fields', () => {
         await page.locator('[data-slot="tabs-trigger"]', { hasText: 'General' }).click();
         await expect(dp.formItem('Info URL').getByRole('textbox')).toBeVisible();
         await expect(dp.formItem('Weight').getByRole('spinbutton')).toBeVisible();
+    });
+
+    // #5246 — a localized custom field with no label falls back to the field's own
+    // name, not the internal form path (which also changes with the content language).
+    test('should label an unlabelled locale custom field with its field name', async ({ page }) => {
+        await goToFirstProduct(page);
+
+        await page.locator('[data-slot="tabs-trigger"]', { hasText: 'SEO' }).click();
+
+        const labels = page.locator('[data-slot="field-label"]');
+        await expect(labels.getByText('seoKeywords', { exact: true })).toBeVisible();
+        await expect(labels.filter({ hasText: 'customFields.seoKeywords' })).toHaveCount(0);
     });
 
     test('should render locale fields with language selector', async ({ page }) => {

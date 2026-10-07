@@ -2174,6 +2174,11 @@ msgstr "Клиент"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "Эл. почта клиента"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Группа клиентов"
 
@@ -2219,6 +2224,21 @@ msgstr "Описание"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Цена строки со скидкой"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Цена строки со скидкой и налогом"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Скидки"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Длительность"
 
@@ -2259,6 +2279,11 @@ msgstr "Код обработчика выполнения"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Строки выполнения"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2284,6 +2309,21 @@ msgstr "Фамилия"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Цена строки"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Цена строки с налогом"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Налог строки"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Название"
 
@@ -2291,6 +2331,11 @@ msgstr "Название"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Заказ размещён"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Количество при оформлении заказа"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2329,6 +2374,11 @@ msgstr "Цена с налогом"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Вариант товара"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Варианты товара"
 
@@ -2336,6 +2386,21 @@ msgstr "Варианты товара"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Прогресс"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Пропорциональная цена за единицу"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Пропорциональная цена за единицу с налогом"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Количество"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2416,6 +2481,16 @@ msgstr "Итого с налогом"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Тип"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Цена за единицу"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Цена за единицу с налогом"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3244,6 +3319,7 @@ msgstr "Задать критерии фильтрации для столбца
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Страна"
@@ -3464,7 +3540,7 @@ msgstr "Платёж авторизован"
 msgid "Successfully updated role"
 msgstr "Роль успешно обновлена"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Выберите страну"
 
@@ -4880,7 +4956,7 @@ msgstr ""
 #: src/app/routes/_authenticated/_orders/orders.tsx
 #: src/app/routes/_authenticated/_system/job-queue.tsx
 msgid "State"
-msgstr "Регион"
+msgstr "Состояние"
 
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
@@ -5916,6 +5992,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters должен использоваться внутри WidgetFiltersProvider"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Редактировать адрес"
 
@@ -6082,6 +6159,7 @@ msgstr "Активный"
 msgid "Tax base"
 msgstr "Налоговая база"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

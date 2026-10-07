@@ -2174,6 +2174,11 @@ msgstr "Kupac"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "E-pošta kupca"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Grupa kupaca"
 
@@ -2219,6 +2224,21 @@ msgstr "Opis"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Snižena cijena retka"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Snižena cijena retka s porezom"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Popusti"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Trajanje"
 
@@ -2259,6 +2279,11 @@ msgstr "Kod rukovatelja izvršenja"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Redci izvršenja"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2284,6 +2309,21 @@ msgstr "Prezime"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Cijena retka"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Cijena retka s porezom"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Porez retka"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Ime"
 
@@ -2291,6 +2331,11 @@ msgstr "Ime"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Narudžba postavljena"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Količina pri narudžbi"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2329,6 +2374,11 @@ msgstr "Cijena s porezom"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Varijanta proizvoda"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Varijante proizvoda"
 
@@ -2336,6 +2386,21 @@ msgstr "Varijante proizvoda"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Napredak"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Proporcionalna jedinična cijena"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Proporcionalna jedinična cijena s porezom"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Količina"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2416,6 +2481,16 @@ msgstr "Ukupno s porezom"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Tip"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Jedinična cijena"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Jedinična cijena s porezom"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3244,6 +3319,7 @@ msgstr "Postavi kriterije filtriranja za stupac {columnId}"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Država"
@@ -3464,7 +3540,7 @@ msgstr "Plaćanje autorizirano"
 msgid "Successfully updated role"
 msgstr "Uloga uspješno ažurirana"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Odaberite državu"
 
@@ -5916,6 +5992,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters mora se koristiti unutar WidgetFiltersProvider"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Uredi adresu"
 
@@ -6082,6 +6159,7 @@ msgstr "Aktivan"
 msgid "Tax base"
 msgstr "Porezna osnovica"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

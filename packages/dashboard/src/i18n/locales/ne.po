@@ -2174,6 +2174,11 @@ msgstr "ग्राहक"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "ग्राहकको इमेल"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "ग्राहक समूह"
 
@@ -2219,6 +2224,21 @@ msgstr "विवरण"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "छुटपछिको लाइन मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "कर सहितको छुटपछिको लाइन मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "छुटहरू"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "अवधि"
 
@@ -2259,6 +2279,11 @@ msgstr "पूर्ति ह्यान्डलर कोड"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "पूर्ति लाइनहरू"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2284,6 +2309,21 @@ msgstr "थर"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "लाइन मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "कर सहितको लाइन मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "लाइन कर"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "नाम"
 
@@ -2291,6 +2331,11 @@ msgstr "नाम"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "अर्डर राखिएको मिति"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "अर्डर गर्दाको मात्रा"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2329,6 +2374,11 @@ msgstr "कर सहितको मूल्य"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "उत्पादन भेरियन्ट"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "उत्पादन भेरियन्टहरू"
 
@@ -2336,6 +2386,21 @@ msgstr "उत्पादन भेरियन्टहरू"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "प्रगति"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "समानुपातिक एकाइ मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "कर सहितको समानुपातिक एकाइ मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "मात्रा"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2416,6 +2481,16 @@ msgstr "कर सहितको कुल"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "प्रकार"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "एकाइ मूल्य"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "कर सहितको एकाइ मूल्य"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3244,6 +3319,7 @@ msgstr "{columnId} स्तम्भको लागि फिल्टर म�
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "देश"
@@ -3464,7 +3540,7 @@ msgstr "भुक्तानी अधिकृत गरियो"
 msgid "Successfully updated role"
 msgstr "भूमिका सफलतापूर्वक अपडेट गरियो"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "देश चयन गर्नुहोस्"
 
@@ -4880,7 +4956,7 @@ msgstr ""
 #: src/app/routes/_authenticated/_orders/orders.tsx
 #: src/app/routes/_authenticated/_system/job-queue.tsx
 msgid "State"
-msgstr "राज्य"
+msgstr "अवस्था"
 
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
@@ -5916,6 +5992,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters लाई WidgetFiltersProvider भित्र प्रयोग गर्नुपर्छ"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "ठेगाना सम्पादन गर्नुहोस्"
 
@@ -6082,6 +6159,7 @@ msgstr "सक्रिय"
 msgid "Tax base"
 msgstr "कर आधार"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

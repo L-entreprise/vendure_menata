@@ -2174,6 +2174,11 @@ msgstr "Client"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "E-mail du client"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Groupe de clients"
 
@@ -2219,6 +2224,21 @@ msgstr "Description"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Prix de la ligne remisé"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Prix de la ligne remisé avec taxe"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Remises"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Durée"
 
@@ -2259,6 +2279,11 @@ msgstr "Code gestionnaire d'exécution"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Lignes d'exécution"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2284,6 +2309,21 @@ msgstr "Nom de famille"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Prix de la ligne"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Prix de la ligne avec taxe"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Taxe de la ligne"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Nom"
 
@@ -2291,6 +2331,11 @@ msgstr "Nom"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Commande passée le"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Quantité à la commande"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2329,6 +2374,11 @@ msgstr "Prix avec taxe"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Variante de produit"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Variantes de produit"
 
@@ -2336,6 +2386,21 @@ msgstr "Variantes de produit"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Progrès"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Prix unitaire proratisé"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Prix unitaire proratisé avec taxe"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Quantité"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2416,6 +2481,16 @@ msgstr "Total avec taxe"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Type"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Prix unitaire"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Prix unitaire avec taxe"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3244,6 +3319,7 @@ msgstr "Définir les critères de filtre pour la colonne {columnId}"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Pays"
@@ -3464,7 +3540,7 @@ msgstr "Paiement autorisé"
 msgid "Successfully updated role"
 msgstr "Rôle mis à jour avec succès"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Sélectionner un pays"
 
@@ -4208,7 +4284,7 @@ msgstr "Widget Résumé des Commandes"
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.AddingItems"
-msgstr "orderState.Ajout d'articles"
+msgstr "Ajout d'articles"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -4218,17 +4294,17 @@ msgstr "Organisation de paiement supplémentaire"
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.ArrangingPayment"
-msgstr "orderState.Organisation du paiement"
+msgstr "Organisation du paiement"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.Cancelled"
-msgstr "orderState.Annulé"
+msgstr "Annulé"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.Created"
-msgstr "orderState.Créé"
+msgstr "Créé"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -4238,7 +4314,7 @@ msgstr "Livré"
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.Draft"
-msgstr "orderState.Brouillon"
+msgstr "Brouillon"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -4258,12 +4334,12 @@ msgstr "Partiellement expédié"
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.PaymentAuthorized"
-msgstr "orderState.Paiement autorisé"
+msgstr "Paiement autorisé"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
 msgid "orderState.PaymentSettled"
-msgstr "orderState.Paiement réglé"
+msgstr "Paiement réglé"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -5916,6 +5992,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters doit être utilisé dans un WidgetFiltersProvider"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Modifier l'adresse"
 
@@ -6082,6 +6159,7 @@ msgstr "Actif"
 msgid "Tax base"
 msgstr "Base de taxe"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

@@ -2107,6 +2107,11 @@ msgstr "Mijoz"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "Mijozning elektron pochtasi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Mijozlar guruhi"
 
@@ -2152,6 +2157,21 @@ msgstr "Tavsif"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Chegirmali qator narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Soliqli chegirmali qator narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Chegirmalar"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Davomiyligi"
 
@@ -2192,6 +2212,11 @@ msgstr "Bajarish ishlovchisi kodi"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Bajarish qatorlari"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2217,6 +2242,21 @@ msgstr "Familiya"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Qator narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Soliqli qator narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Qator solig'i"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Nomi"
 
@@ -2224,6 +2264,11 @@ msgstr "Nomi"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Buyurtma berilgan vaqt"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Buyurtma berilgandagi miqdor"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2262,6 +2307,11 @@ msgstr "Soliqli narx"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Mahsulot varianti"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Mahsulot variantlari"
 
@@ -2269,6 +2319,21 @@ msgstr "Mahsulot variantlari"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Jarayon"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Mutanosib birlik narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Soliqli mutanosib birlik narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Miqdor"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2349,6 +2414,16 @@ msgstr "Soliqli jami"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Turi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Birlik narxi"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Soliqli birlik narxi"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3152,6 +3227,7 @@ msgstr "{columnId} ustuni uchun filtr mezonlarini belgilang"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Mamlakat"
@@ -3372,7 +3448,7 @@ msgstr "To'lov tasdiqlandi"
 msgid "Successfully updated role"
 msgstr "Rol yangilandi"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Mamlakatni tanlang"
 
@@ -5716,6 +5792,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters WidgetFiltersProvider ichida ishlatilishi kerak"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Manzilni tahrirlash"
 
@@ -5874,6 +5951,7 @@ msgstr "Faol"
 msgid "Tax base"
 msgstr "Soliq asosi"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

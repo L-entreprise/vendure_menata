@@ -2168,6 +2168,11 @@ msgstr "Vásárló"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "Vásárló e-mail címe"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Vásárlói csoport"
 
@@ -2213,6 +2218,21 @@ msgstr "Leírás"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Kedvezményes tételár"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Kedvezményes tételár adóval"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Kedvezmények"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Időtartam"
 
@@ -2253,6 +2273,11 @@ msgstr "Teljesítési kezelőkód"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Teljesítési sorok"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2278,6 +2303,21 @@ msgstr "Vezetéknév"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Tételár"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Tételár adóval"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Tétel adója"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Név"
 
@@ -2285,6 +2325,11 @@ msgstr "Név"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Megrendelés dátuma"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Megrendeléskori mennyiség"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2323,6 +2368,11 @@ msgstr "Ár adóval"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Termékváltozat"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Termékváltozatok"
 
@@ -2330,6 +2380,21 @@ msgstr "Termékváltozatok"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Folyamat"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Arányosított egységár"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Arányosított egységár adóval"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Mennyiség"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2410,6 +2475,16 @@ msgstr "Összesen adóval"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Típus"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Egységár"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Egységár adóval"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3234,6 +3309,7 @@ msgstr "Szűrési feltételek beállítása a(z) {columnId} oszlophoz"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Ország"
@@ -3454,7 +3530,7 @@ msgstr "Fizetés engedélyezve"
 msgid "Successfully updated role"
 msgstr "Szerepkör sikeresen frissítve"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Ország kiválasztása"
 
@@ -5903,6 +5979,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "A useWidgetFilters csak WidgetFiltersProvider-en belül használható"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Cím szerkesztése"
 
@@ -6065,6 +6142,7 @@ msgstr "Aktív"
 msgid "Tax base"
 msgstr "Adóalap"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

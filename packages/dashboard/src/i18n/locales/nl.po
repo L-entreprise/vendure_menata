@@ -2172,6 +2172,11 @@ msgstr "Klant"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.customerEmailAddress"
+msgstr "E-mailadres klant"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.customerGroup"
 msgstr "Klantengroep"
 
@@ -2217,6 +2222,21 @@ msgstr "Beschrijving"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePrice"
+msgstr "Regelprijs na korting"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discountedLinePriceWithTax"
+msgstr "Regelprijs na korting incl. BTW"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.discounts"
+msgstr "Kortingen"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.duration"
 msgstr "Duur"
 
@@ -2257,6 +2277,11 @@ msgstr "Afhandelingscode"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.fulfillmentLines"
+msgstr "Afhandelingsregels"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.id"
 msgstr "ID"
 
@@ -2282,6 +2307,21 @@ msgstr "Achternaam"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.linePrice"
+msgstr "Regelprijs"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.linePriceWithTax"
+msgstr "Regelprijs incl. BTW"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.lineTax"
+msgstr "Regel-BTW"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.name"
 msgstr "Naam"
 
@@ -2289,6 +2329,11 @@ msgstr "Naam"
 #: src/i18n/common-strings.ts
 msgid "fieldName.orderPlacedAt"
 msgstr "Bestelling geplaatst op"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.orderPlacedQuantity"
+msgstr "Aantal bij bestelling"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2327,6 +2372,11 @@ msgstr "Prijs incl. BTW"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
+msgid "fieldName.productVariant"
+msgstr "Productvariant"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
 msgid "fieldName.productVariants"
 msgstr "Productvarianten"
 
@@ -2334,6 +2384,21 @@ msgstr "Productvarianten"
 #: src/i18n/common-strings.ts
 msgid "fieldName.progress"
 msgstr "Voortgang"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPrice"
+msgstr "Naar rato verdeelde stukprijs"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.proratedUnitPriceWithTax"
+msgstr "Naar rato verdeelde stukprijs incl. BTW"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.quantity"
+msgstr "Aantal"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -2414,6 +2479,16 @@ msgstr "Totaal incl. BTW"
 #: src/i18n/common-strings.ts
 msgid "fieldName.type"
 msgstr "Type"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPrice"
+msgstr "Stukprijs"
+
+#. js-lingui-explicit-id
+#: src/i18n/common-strings.ts
+msgid "fieldName.unitPriceWithTax"
+msgstr "Stukprijs incl. BTW"
 
 #. js-lingui-explicit-id
 #: src/i18n/common-strings.ts
@@ -3238,6 +3313,7 @@ msgstr "Filtercriteria instellen voor de kolom {columnId}"
 
 #: src/app/routes/_authenticated/_shipping-methods/components/test-address-form.tsx
 #: src/app/routes/_authenticated/_zones/components/zone-countries-table.tsx
+#: src/lib/components/shared/address-country-select.tsx
 #: src/lib/components/shared/customer-address-form.tsx
 msgid "Country"
 msgstr "Land"
@@ -3458,7 +3534,7 @@ msgstr "Betaling geautoriseerd"
 msgid "Successfully updated role"
 msgstr "Rol succesvol bijgewerkt"
 
-#: src/lib/components/shared/customer-address-form.tsx
+#: src/lib/components/shared/address-country-select.tsx
 msgid "Select a country"
 msgstr "Selecteer een land"
 
@@ -4871,7 +4947,7 @@ msgstr ""
 #: src/app/routes/_authenticated/_orders/orders.tsx
 #: src/app/routes/_authenticated/_system/job-queue.tsx
 msgid "State"
-msgstr "Staat"
+msgstr "Status"
 
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
 #: src/app/routes/_authenticated/_product-variants/product-variants_.$id.tsx
@@ -5911,6 +5987,7 @@ msgid "useWidgetFilters must be used within a WidgetFiltersProvider"
 msgstr "useWidgetFilters moet binnen een WidgetFiltersProvider worden gebruikt"
 
 #: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
+#: src/app/routes/_authenticated/_customers/components/customer-address-card.tsx
 msgid "Edit Address"
 msgstr "Adres bewerken"
 
@@ -6077,6 +6154,7 @@ msgstr "Actief"
 msgid "Tax base"
 msgstr "Belastinggrondslag"
 
+#: src/app/routes/_authenticated/_collections/components/move-collections-dialog.tsx
 #: src/app/routes/_authenticated/_customers/components/customer-history/customer-history-container.tsx
 #: src/app/routes/_authenticated/_orders/components/order-history/order-history-container.tsx
 msgid "Load more"

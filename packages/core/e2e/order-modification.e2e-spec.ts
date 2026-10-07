@@ -23,10 +23,11 @@ import {
     ProductVariant,
     RequestContext,
     ShippingCalculator,
+    StockLevelService,
 } from '@vendure/core';
 import { createErrorResultGuard, createTestEnvironment, ErrorResultGuard } from '@vendure/testing';
 import path from 'path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { initialData } from '../../../e2e-common/e2e-initial-data';
 import { TEST_SETUP_TIMEOUT_MS, testConfig } from '../../../e2e-common/test-config';
@@ -847,6 +848,38 @@ describe('Order modification', () => {
                 },
             ]);
             await assertOrderIsUnchanged(order!);
+        });
+
+        // GHSA-8ghm-q833-cmgp: a dry run allocates in the same transaction before rolling back, so
+        // it must take its stock locks up front in the shared order, like a wet run.
+        it('locks the stock of every added variant up front, in ascending id order', async () => {
+            const stockLevelService = server.app.get(StockLevelService);
+            const lockedIds: string[] = [];
+            const lockStockLevels = stockLevelService.getLockedStockLevelsForVariant.bind(stockLevelService);
+            const lockSpy = vi
+                .spyOn(stockLevelService, 'getLockedStockLevelsForVariant')
+                .mockImplementation((ctx, productVariantId) => {
+                    lockedIds.push(String(productVariantId));
+                    return lockStockLevels(ctx, productVariantId);
+                });
+            try {
+                const { modifyOrder } = await adminClient.query(modifyOrderDocument, {
+                    input: {
+                        dryRun: true,
+                        orderId,
+                        addItems: [
+                            { productVariantId: 'T_3', quantity: 1 },
+                            { productVariantId: 'T_1', quantity: 1 },
+                        ],
+                    },
+                });
+                orderWithModificationsGuard.assertSuccess(modifyOrder);
+
+                // The first two locks are the up-front ones; the per-line checks follow in line order.
+                expect(lockedIds.slice(0, 2)).toEqual(['1', '3']);
+            } finally {
+                lockSpy.mockRestore();
+            }
         });
 
         it('does not add a history entry', async () => {
