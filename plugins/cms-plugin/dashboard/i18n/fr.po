@@ -1,0 +1,424 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-03-30 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr\n"
+
+#. CMS Page List
+msgid "CMS Pages"
+msgstr "Pages CMS"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "New Page"
+msgstr "Nouvelle page"
+
+#. Content Block List
+msgid "Content Blocks"
+msgstr "Blocs de contenu"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "New Content Block"
+msgstr "Nouveau bloc de contenu"
+
+#. Content Block Detail
+msgid "New content block"
+msgstr "Nouveau bloc de contenu"
+
+#. Block Types
+msgid "Short Text"
+msgstr "Texte court"
+
+msgid "Long Text"
+msgstr "Texte long"
+
+msgid "Rich Text"
+msgstr "Texte riche"
+
+msgid "Boolean"
+msgstr "Booléen"
+
+msgid "Options List"
+msgstr "Liste d'options"
+
+msgid "Image"
+msgstr "Image"
+
+msgid "Image Gallery"
+msgstr "Galerie d'images"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Number"
+msgstr "Nombre"
+
+#. Block Type Descriptions
+msgid "Single-line text with character limit"
+msgstr "Texte sur une ligne avec limite de caractères"
+
+msgid "Multi-line text for paragraphs"
+msgstr "Texte multiligne pour les paragraphes"
+
+msgid "WYSIWYG editor with formatting"
+msgstr "Éditeur WYSIWYG avec mise en forme"
+
+msgid "Toggle with custom labels"
+msgstr "Interrupteur avec libellés personnalisés"
+
+msgid "List of values, one per line"
+msgstr "Liste de valeurs, une par ligne"
+
+msgid "Single image with alt text"
+msgstr "Image unique avec texte alternatif"
+
+msgid "Multiple images"
+msgstr "Plusieurs images"
+
+msgid "Date and time picker"
+msgstr "Sélecteur de date et heure"
+
+msgid "Numeric value"
+msgstr "Valeur numérique"
+
+#. Block Type Groups
+msgid "Text"
+msgstr "Texte"
+
+msgid "Media"
+msgstr "Média"
+
+msgid "Data"
+msgstr "Données"
+
+#. Block Summary
+msgid "Empty"
+msgstr "Vide"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "No"
+msgstr "Non"
+
+msgid "{0} options"
+msgstr "{0} options"
+
+msgid "Image selected"
+msgstr "Image sélectionnée"
+
+msgid "No image"
+msgstr "Aucune image"
+
+msgid "{0} images"
+msgstr "{0} images"
+
+msgid "No images"
+msgstr "Aucune image"
+
+msgid "Not set"
+msgstr "Non défini"
+
+#. CMS Page Detail - Main
+msgid "Page created"
+msgstr "Page créée"
+
+msgid "Page updated"
+msgstr "Page mise à jour"
+
+msgid "Failed to save page"
+msgstr "Échec de l'enregistrement de la page"
+
+msgid "Unknown error"
+msgstr "Erreur inconnue"
+
+msgid "Content Sections"
+msgstr "Sections de contenu"
+
+msgid "No sections yet. Add one below."
+msgstr "Aucune section pour le moment. Ajoutez-en une ci-dessous."
+
+msgid "No sections yet."
+msgstr "Aucune section pour le moment."
+
+msgid "Add Section"
+msgstr "Ajouter une section"
+
+msgid "Key"
+msgstr "Clé"
+
+msgid "e.g. hero-title"
+msgstr "ex. titre-principal"
+
+msgid "Section name"
+msgstr "Nom de la section"
+
+msgid "Page Details"
+msgstr "Détails de la page"
+
+msgid "Page name"
+msgstr "Nom de la page"
+
+msgid "Slug"
+msgstr "Slug"
+
+msgid "page-slug"
+msgstr "slug-de-page"
+
+msgid "e.g. homepage"
+msgstr "ex. page-accueil"
+
+msgid "Enabled"
+msgstr "Activé"
+
+msgid "Accepts Submissions"
+msgstr "Accepte les soumissions"
+
+msgid "Collection"
+msgstr "Collection"
+
+msgid "Pin to Sidebar"
+msgstr "Épingler dans la barre latérale"
+
+msgid "Allow Customer Creation"
+msgstr "Autoriser la création de clients"
+
+msgid "When enabled, submissions can be converted to customers. Use these block keys:"
+msgstr "Lorsque activé, les soumissions peuvent être converties en clients. Utilisez ces clés de bloc :"
+
+msgid "required"
+msgstr "obligatoire"
+
+msgid "Create"
+msgstr "Créer"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+#. Submissions Panel
+msgid "Submissions"
+msgstr "Soumissions"
+
+msgid "Submission"
+msgstr "Soumission"
+
+msgid "No submissions yet."
+msgstr "Aucune soumission pour le moment."
+
+msgid "Submission deleted"
+msgstr "Soumission supprimée"
+
+msgid "Customer created"
+msgstr "Client créé"
+
+msgid "Failed to create customer"
+msgstr "Échec de la création du client"
+
+msgid "Create Customer"
+msgstr "Créer un client"
+
+msgid "View Customer"
+msgstr "Voir le client"
+
+msgid "Page {0} of {1}"
+msgstr "Page {0} sur {1}"
+
+msgid "Previous"
+msgstr "Précédent"
+
+msgid "Next"
+msgstr "Suivant"
+
+#. Collection Entries Panel
+msgid "Collection Entries"
+msgstr "Entrées de collection"
+
+msgid "Add Entry"
+msgstr "Ajouter une entrée"
+
+msgid "Edit Entry"
+msgstr "Modifier l'entrée"
+
+msgid "New Entry"
+msgstr "Nouvelle entrée"
+
+msgid "Update"
+msgstr "Mettre à jour"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "No entries yet. Add one above."
+msgstr "Aucune entrée pour le moment. Ajoutez-en une ci-dessus."
+
+msgid "Entry deleted"
+msgstr "Entrée supprimée"
+
+msgid "Entry updated"
+msgstr "Entrée mise à jour"
+
+msgid "Entry created"
+msgstr "Entrée créée"
+
+msgid "Failed to save entry"
+msgstr "Échec de l'enregistrement de l'entrée"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Select..."
+msgstr "Sélectionner..."
+
+#. Block Editors
+msgid "Enter text"
+msgstr "Saisir du texte"
+
+msgid "Enter text content..."
+msgstr "Saisir le contenu du texte..."
+
+msgid "Rich Text Content"
+msgstr "Contenu en texte riche"
+
+msgid "True Label"
+msgstr "Libellé Vrai"
+
+msgid "False Label"
+msgstr "Libellé Faux"
+
+msgid "e.g. Show Banner"
+msgstr "ex. Afficher la bannière"
+
+msgid "e.g. Hide Banner"
+msgstr "ex. Masquer la bannière"
+
+msgid "Options"
+msgstr "Options"
+
+msgid "Enter one option per line"
+msgstr "Saisissez une option par ligne"
+
+msgid "Small\nMedium\nLarge\nExtra Large"
+msgstr "Petit\nMoyen\nGrand\nTrès grand"
+
+msgid "Change Image"
+msgstr "Changer l'image"
+
+msgid "Select Image"
+msgstr "Sélectionner une image"
+
+msgid "Alt Text"
+msgstr "Texte alternatif"
+
+msgid "Image description"
+msgstr "Description de l'image"
+
+msgid "Images"
+msgstr "Images"
+
+msgid "Click + to add images"
+msgstr "Cliquez sur + pour ajouter des images"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Short text for screen readers / SEO"
+msgstr "Texte court pour lecteurs d'écran / SEO"
+
+msgid "Visible caption shown next to the image"
+msgstr "Légende visible affichée à côté de l'image"
+
+msgid "Alt text (screen readers / SEO)"
+msgstr "Texte alternatif (lecteurs d'écran / SEO)"
+
+msgid "Description / caption"
+msgstr "Description / légende"
+
+#. Collection schema view
+msgid "Schema Fields"
+msgstr "Champs du schéma"
+
+msgid "These fields define the columns for collection entries."
+msgstr "Ces champs définissent les colonnes des entrées de collection."
+
+msgid "These fields define the form structure for submissions."
+msgstr "Ces champs définissent la structure du formulaire pour les soumissions."
+
+msgid "Unnamed"
+msgstr "Sans nom"
+
+#. Customer creation
+msgid "Customer already exists"
+msgstr "Le client existe déjà"
+
+#. Collection entry page
+msgid "Loading..."
+msgstr "Chargement..."
+
+msgid "Additional Fields"
+msgstr "Champs supplémentaires"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Entry"
+msgstr "Entrée"
+
+msgid "Sidebar Order"
+msgstr "Ordre dans la barre latérale"
+
+msgid "Submission Details"
+msgstr "Détails de la soumission"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Add an option and press Enter"
+msgstr "Ajoutez une option et appuyez sur Entrée"
+
+msgid "Visible"
+msgstr "Visible"
+
+msgid "Hidden"
+msgstr "Masquée"
+
+msgid "Disabled sections are hidden from the Shop API"
+msgstr "Les sections désactivées ne sont pas exposées par la Shop API"
+
+msgid "{count} options"
+msgstr "{count} options"
+
+msgid "{count} images"
+msgstr "{count} images"
+
+msgid "images"
+msgstr "images"
+
+msgid "Submission not found"
+msgstr "Soumission introuvable"
+
+msgid "Back"
+msgstr "Retour"
+
+msgid "Small\nMedium\nLarge\nExtra Large"
+msgstr "Petit\nMoyen\nGrand\nTrès grand"
+
+#. js-lingui-explicit-id
+msgid "CMS"
+msgstr "CMS"
+
+#. js-lingui-explicit-id
+msgid "Pages"
+msgstr "Pages"
+
+#. js-lingui-explicit-id
+msgid "Content Blocks"
+msgstr "Blocs de contenu"

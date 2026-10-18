@@ -1,0 +1,595 @@
+import { graphql } from '@/graphql/graphql';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { Link, useNavigate } from '@tanstack/react-router';
+import {
+    ArrowLeftIcon,
+    PlusIcon,
+    XIcon,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    api,
+    AssetPickerDialog,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    DashboardRouteDefinition,
+    Input,
+    Page,
+    PageActionBar,
+    PageActionBarRight,
+    PageTitle,
+    RichTextEditor,
+    Switch,
+    Textarea,
+} from '@vendure/dashboard';
+import { toast } from 'sonner';
+
+const cmsPageForEntryDocument = graphql(`
+    query GetCmsPageForEntry($id: ID!) {
+        cmsPage(id: $id) {
+            id
+            name
+            key
+            contentBlocks {
+                id
+                key
+                type
+                enabled
+                position
+                metadata
+                translations {
+                    id
+                    languageCode
+                    name
+                    textContent
+                    altText
+                }
+            }
+        }
+    }
+`);
+
+const formSubmissionDocument = graphql(`
+    query GetFormSubmission($pageId: ID!, $options: FormSubmissionListOptions) {
+        formSubmissions(pageId: $pageId, options: $options) {
+            items {
+                id
+                createdAt
+                data
+            }
+            totalItems
+        }
+    }
+`);
+
+const getAssetDocument = graphql(`
+    query GetAssetPreview($id: ID!) {
+        asset(id: $id) {
+            id
+            preview
+        }
+    }
+`);
+
+const createCollectionEntryDocument = graphql(`
+    mutation CreateCollectionEntryFromPage($input: CreateCollectionEntryInput!) {
+        createCollectionEntry(input: $input) {
+            id
+        }
+    }
+`);
+
+const updateCollectionEntryDocument = graphql(`
+    mutation UpdateCollectionEntryFromPage($input: UpdateCollectionEntryInput!) {
+        updateCollectionEntry(input: $input) {
+            id
+        }
+    }
+`);
+
+/**
+ * Formats a stored value (ISO string / Date) into the `YYYY-MM-DDTHH:mm` shape a
+ * `datetime-local` input expects, using LOCAL time. Using `toISOString()` here
+ * (UTC) shifts the displayed time by the timezone offset, which made editing the
+ * minutes appear to change the hour.
+ */
+function toDatetimeLocalValue(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Per-entry "Options List" editor: each collection entry builds its OWN list of
+ * options (option1, option2, …). Type an option and press Enter (or click Add) to
+ * append it; click the × on a chip to remove it. Stored as a string[] on the entry.
+ * Accepts a legacy string value (newline/comma separated) for backwards compat.
+ */
+function OptionsListField({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: any;
+    onChange: (options: string[]) => void;
+}) {
+    const { t } = useLingui();
+    const options: string[] = Array.isArray(value)
+        ? value
+        : typeof value === 'string' && value
+          ? value.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean)
+          : [];
+    const [draft, setDraft] = useState('');
+
+    const addOption = () => {
+        const next = draft.trim();
+        if (!next) return;
+        onChange([...options, next]);
+        setDraft('');
+    };
+    const removeOption = (index: number) => onChange(options.filter((_, i) => i !== index));
+
+    return (
+        <div>
+            <label className="text-sm font-medium">{label}</label>
+            <div className="flex gap-2 mt-1">
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addOption();
+                        }
+                    }}
+                    placeholder={t`Add an option and press Enter`}
+                />
+                <Button type="button" variant="outline" onClick={addOption}>
+                    <Trans>Add</Trans>
+                </Button>
+            </div>
+            {options.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mt-2">
+                    {options.map((opt, i) => (
+                        <Badge key={i} variant="secondary" className="flex items-center gap-1">
+                            {opt}
+                            <button
+                                type="button"
+                                onClick={() => removeOption(i)}
+                                className="ml-0.5 text-muted-foreground hover:text-foreground"
+                            >
+                                <XIcon className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function CollectionEntryPage({ route }: { route: any }) {
+    const params = route.useParams();
+    const { pageId, entryId } = params;
+    const isNew = entryId === 'new';
+    const navigate = useNavigate();
+    const { t } = useLingui();
+
+    const [schema, setSchema] = useState<any[]>([]);
+    const [pageName, setPageName] = useState('');
+    const [formData, setFormData] = useState<Record<string, any>>({});
+    const [loading, setLoading] = useState(true);
+    const [pickerOpen, setPickerOpen] = useState<string | null>(null);
+    const [galleryPicker, setGalleryPicker] = useState<string | null>(null);
+    const [assetPreviews, setAssetPreviews] = useState<Map<string, string>>(new Map());
+
+    const loadAssetPreview = useCallback(async (assetId: string) => {
+        if (!assetId || assetPreviews.has(assetId)) return;
+        try {
+            const result = await api.query(getAssetDocument, { id: assetId });
+            if (result.asset?.preview) {
+                setAssetPreviews(prev => new Map(prev).set(assetId, result.asset!.preview));
+            }
+        } catch {
+            // ignore
+        }
+    }, [assetPreviews]);
+
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const pageResult = await api.query(cmsPageForEntryDocument, { id: pageId });
+            const page = pageResult.cmsPage;
+            if (!page) return;
+            setPageName(page.name || page.key);
+            const blocks = [...(page.contentBlocks || [])].sort((a: any, b: any) => a.position - b.position);
+            setSchema(blocks);
+
+            if (isNew) {
+                const defaults: Record<string, any> = {};
+                for (const block of blocks) {
+                    if (block.key) {
+                        defaults[block.key] =
+                            block.type === 'BOOLEAN'
+                                ? false
+                                : block.type === 'IMAGE_GALLERY'
+                                  ? []
+                                  : '';
+                    }
+                }
+                setFormData(defaults);
+            } else {
+                const entryResult = await api.query(formSubmissionDocument, {
+                    pageId,
+                    options: { filter: { id: { eq: entryId } }, take: 1 },
+                });
+                const entry = entryResult.formSubmissions.items[0];
+                if (entry) {
+                    const data = { ...(entry.data as Record<string, any>) };
+                    setFormData(data);
+                    // Resolve asset previews for IMAGE (single id) and IMAGE_GALLERY
+                    // (array of ids) fields.
+                    const assetIdsToLoad: string[] = [];
+                    for (const block of blocks) {
+                        if (block.type === 'IMAGE' && data[block.key]) {
+                            assetIdsToLoad.push(String(data[block.key]));
+                        } else if (block.type === 'IMAGE_GALLERY' && Array.isArray(data[block.key])) {
+                            assetIdsToLoad.push(...(data[block.key] as string[]).map(String));
+                        }
+                    }
+                    for (const assetId of [...new Set(assetIdsToLoad)]) {
+                        api.query(getAssetDocument, { id: assetId }).then(r => {
+                            if (r.asset?.preview) {
+                                setAssetPreviews(prev => new Map(prev).set(assetId, r.asset!.preview));
+                            }
+                        }).catch(() => {});
+                    }
+                }
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [pageId, entryId, isNew]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleSave = async () => {
+        try {
+            if (isNew) {
+                await api.mutate(createCollectionEntryDocument, {
+                    input: { pageId, data: formData },
+                });
+                toast.success(t`Entry created`);
+            } else {
+                await api.mutate(updateCollectionEntryDocument, {
+                    input: { id: entryId, data: formData },
+                });
+                toast.success(t`Entry updated`);
+            }
+            await navigate({ to: `/cms-pages/${pageId}` });
+        } catch (e: any) {
+            toast.error(t`Failed to save entry`, {
+                description: e?.message || t`Unknown error`,
+            });
+        }
+    };
+
+    const schemaFields = schema.filter(b => b.key);
+
+    const renderField = (block: any) => {
+        if (!block.key) return null;
+        const fieldLabel = block.translations?.[0]?.name || block.key;
+        const value = formData[block.key] ?? '';
+
+        switch (block.type) {
+            case 'TEXT_SHORT':
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <Input
+                            value={String(value)}
+                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value }))}
+                            className="mt-1"
+                        />
+                    </div>
+                );
+            case 'TEXT_LONG':
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <Textarea
+                            value={String(value)}
+                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value }))}
+                            rows={4}
+                            className="mt-1"
+                        />
+                    </div>
+                );
+            case 'RICH_TEXT':
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <div className="mt-1">
+                            <RichTextEditor
+                                value={String(value)}
+                                onChange={(val: string) => setFormData(prev => ({ ...prev, [block.key]: val }))}
+                            />
+                        </div>
+                    </div>
+                );
+            case 'BOOLEAN':
+                return (
+                    <div key={block.key} className="flex items-center gap-3">
+                        <Switch
+                            checked={!!value}
+                            onCheckedChange={checked => setFormData(prev => ({ ...prev, [block.key]: checked }))}
+                        />
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                    </div>
+                );
+            case 'NUMBER':
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <Input
+                            type="number"
+                            value={value ?? ''}
+                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value ? Number(e.target.value) : null }))}
+                            className="mt-1"
+                        />
+                    </div>
+                );
+            case 'DATE':
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <Input
+                            type="datetime-local"
+                            value={toDatetimeLocalValue(value)}
+                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value ? new Date(e.target.value).toISOString() : null }))}
+                            className="mt-1"
+                        />
+                    </div>
+                );
+            case 'ENUM':
+                return (
+                    <OptionsListField
+                        key={block.key}
+                        label={fieldLabel}
+                        value={formData[block.key]}
+                        onChange={opts => setFormData(prev => ({ ...prev, [block.key]: opts }))}
+                    />
+                );
+            case 'IMAGE': {
+                const assetId = formData[block.key];
+                const preview = assetId ? assetPreviews.get(assetId) : undefined;
+                // Per-entry image metadata lives alongside the asset id in the entry
+                // data JSON, keyed by `<fieldKey>__alt` / `<fieldKey>__description`.
+                const altKey = `${block.key}__alt`;
+                const descKey = `${block.key}__description`;
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <div className="flex items-center gap-3 mt-1">
+                            {assetId && preview ? (
+                                <img src={`${preview}?preset=thumb`} alt={fieldLabel} className="h-16 w-16 rounded object-cover border" />
+                            ) : assetId ? (
+                                <Badge variant="secondary">{t`Image selected`}</Badge>
+                            ) : null}
+                            <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(block.key)}>
+                                {assetId ? t`Change Image` : t`Select Image`}
+                            </Button>
+                            {assetId && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setFormData(prev => ({ ...prev, [block.key]: null }))}>
+                                    <XIcon className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                        {assetId && (
+                            <div className="mt-2 space-y-2">
+                                <Input
+                                    value={String(formData[altKey] ?? '')}
+                                    onChange={e => setFormData(prev => ({ ...prev, [altKey]: e.target.value }))}
+                                    placeholder={t`Alt text (screen readers / SEO)`}
+                                />
+                                <Textarea
+                                    value={String(formData[descKey] ?? '')}
+                                    onChange={e => setFormData(prev => ({ ...prev, [descKey]: e.target.value }))}
+                                    placeholder={t`Description / caption`}
+                                    rows={2}
+                                />
+                            </div>
+                        )}
+                        {pickerOpen === block.key && (
+                            <AssetPickerDialog
+                                open={true}
+                                onClose={() => setPickerOpen(null)}
+                                multiSelect={false}
+                                onSelect={assets => {
+                                    if (assets.length > 0) {
+                                        const asset = assets[0];
+                                        setFormData(prev => ({ ...prev, [block.key]: asset.id }));
+                                        if (asset.preview) {
+                                            setAssetPreviews(prev => new Map(prev).set(asset.id, asset.preview));
+                                        }
+                                    }
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            }
+            case 'IMAGE_GALLERY': {
+                const assetIds: string[] = Array.isArray(formData[block.key]) ? formData[block.key] : [];
+                // Per-image alt/description for an entry gallery, keyed by asset id,
+                // stored under `<fieldKey>__imageMeta`.
+                const metaKey = `${block.key}__imageMeta`;
+                const imageMeta: Record<string, { alt?: string; description?: string }> =
+                    formData[metaKey] ?? {};
+
+                const updateMeta = (assetId: string, field: 'alt' | 'description', val: string) =>
+                    setFormData(prev => {
+                        const prevMeta = (prev[metaKey] as Record<string, any>) || {};
+                        return {
+                            ...prev,
+                            [metaKey]: {
+                                ...prevMeta,
+                                [assetId]: { ...(prevMeta[assetId] || {}), [field]: val },
+                            },
+                        };
+                    });
+                const removeImage = (assetId: string) =>
+                    setFormData(prev => {
+                        const ids = ((prev[block.key] as string[]) || []).filter(id => id !== assetId);
+                        const { [assetId]: _removed, ...restMeta } = (prev[metaKey] as Record<string, any>) || {};
+                        return { ...prev, [block.key]: ids, [metaKey]: restMeta };
+                    });
+
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <div className="space-y-3 mt-2">
+                            {assetIds.map(assetId => {
+                                const preview = assetPreviews.get(assetId);
+                                return (
+                                    <div key={assetId} className="flex gap-3 items-start border rounded-md p-2">
+                                        <div className="relative group shrink-0">
+                                            {preview ? (
+                                                <img src={`${preview}?preset=thumb`} alt="" className="h-20 w-20 rounded object-cover border" />
+                                            ) : (
+                                                <Badge variant="secondary" className="h-20 w-20 flex items-center justify-center">{t`Image`}</Badge>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => removeImage(assetId)}
+                                            >
+                                                <XIcon className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <Input
+                                                value={imageMeta[assetId]?.alt ?? ''}
+                                                onChange={e => updateMeta(assetId, 'alt', e.target.value)}
+                                                placeholder={t`Alt text (screen readers / SEO)`}
+                                            />
+                                            <Textarea
+                                                value={imageMeta[assetId]?.description ?? ''}
+                                                onChange={e => updateMeta(assetId, 'description', e.target.value)}
+                                                placeholder={t`Description / caption`}
+                                                rows={2}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                className="w-20 h-20 border border-dashed rounded-md flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                                onClick={() => setGalleryPicker(block.key)}
+                            >
+                                <PlusIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        {assetIds.length === 0 && (
+                            <p className="text-xs text-muted-foreground mt-1"><Trans>Click + to add images</Trans></p>
+                        )}
+                        {galleryPicker === block.key && (
+                            <AssetPickerDialog
+                                open={true}
+                                onClose={() => setGalleryPicker(null)}
+                                multiSelect={true}
+                                onSelect={assets => {
+                                    if (assets.length > 0) {
+                                        const newIds = [...assetIds, ...assets.map(a => a.id)];
+                                        setFormData(prev => ({ ...prev, [block.key]: newIds }));
+                                        assets.forEach(a => {
+                                            if (a.preview) {
+                                                setAssetPreviews(prev => new Map(prev).set(a.id, a.preview));
+                                            }
+                                        });
+                                    }
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            }
+            default:
+                return (
+                    <div key={block.key}>
+                        <label className="text-sm font-medium">{fieldLabel}</label>
+                        <Input
+                            value={String(value)}
+                            onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value }))}
+                            className="mt-1"
+                        />
+                    </div>
+                );
+        }
+    };
+
+    if (loading) {
+        return (
+            <Page>
+                <PageTitle><Trans>Loading...</Trans></PageTitle>
+            </Page>
+        );
+    }
+
+    return (
+        <Page>
+            <PageTitle>{isNew ? t`New Entry` : t`Edit Entry`}</PageTitle>
+            <PageActionBar>
+                <Button asChild variant="ghost" size="sm">
+                    <Link to={`/cms-pages/${pageId}`}>
+                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                        {pageName}
+                    </Link>
+                </Button>
+                <PageActionBarRight>
+                    <Button variant="outline" onClick={() => navigate({ to: `/cms-pages/${pageId}` })}>
+                        <Trans>Cancel</Trans>
+                    </Button>
+                    <Button onClick={handleSave}>
+                        {isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}
+                    </Button>
+                </PageActionBarRight>
+            </PageActionBar>
+
+            <div className="w-full mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="text-lg font-semibold">
+                            {isNew ? <Trans>New Entry</Trans> : <Trans>Edit Entry</Trans>}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-6">
+                            {schemaFields.map(renderField)}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </Page>
+    );
+}
+
+export const cmsCollectionEntry: DashboardRouteDefinition = {
+    path: '/cms-pages/$pageId/entries/$entryId',
+    loader: () => ({
+        breadcrumb: [
+            { path: '/cms-pages', label: <Trans>Pages</Trans> },
+            <Trans>Entry</Trans>,
+        ],
+    }),
+    component: route => <CollectionEntryPage route={route} />,
+};

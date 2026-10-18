@@ -1,0 +1,102 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-03-30 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr\n"
+
+msgid "Audit Log"
+msgstr "Journal d'audit"
+
+msgid "Activity Log"
+msgstr "Journal d'activite"
+
+msgid "Filter by action..."
+msgstr "Filtrer par action..."
+
+msgid "No audit log entries found."
+msgstr "Aucune entree de journal d'audit trouvee."
+
+msgid "Page {0} of {1}"
+msgstr "Page {0} sur {1}"
+
+msgid "Previous"
+msgstr "Precedent"
+
+msgid "Next"
+msgstr "Suivant"
+
+msgid "Total Events"
+msgstr "Événements au total"
+
+msgid "Today"
+msgstr "Aujourd'hui"
+
+msgid "Active Categories"
+msgstr "Catégories actives"
+
+msgid "Active Users"
+msgstr "Utilisateurs actifs"
+
+msgid "Clear filters"
+msgstr "Effacer les filtres"
+
+msgid "Page {0} of {totalPages}"
+msgstr "Page {0} sur {totalPages}"
+
+#. js-lingui-explicit-id
+msgid "Audit Log"
+msgstr "Journal d'audit"
+
+msgid "All Categories"
+msgstr "Toutes les catégories"
+
+msgid "Authentication"
+msgstr "Authentification"
+
+msgid "Catalog"
+msgstr "Catalogue"
+
+msgid "Orders"
+msgstr "Commandes"
+
+msgid "Payments"
+msgstr "Paiements"
+
+msgid "Fulfillment"
+msgstr "Exécution"
+
+msgid "Customers"
+msgstr "Clients"
+
+msgid "Promotions"
+msgstr "Promotions"
+
+msgid "Stock"
+msgstr "Stock"
+
+msgid "System"
+msgstr "Système"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "CMS"
+msgstr "CMS"
+
+msgid "Translation"
+msgstr "Traduction"
+
+msgid "All Severity"
+msgstr "Toutes les sévérités"
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Warning"
+msgstr "Avertissement"
+
+msgid "Critical"
+msgstr "Critique"

@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "module": "ESNext",
+        "target": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "esModuleInterop": true,
+        "paths": {
+            "@/*": ["../../../packages/dashboard/src/*"]
+        }
+    },
+    "include": ["./**/*.ts", "./**/*.tsx"]
+}
