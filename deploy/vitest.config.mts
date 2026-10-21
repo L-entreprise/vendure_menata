@@ -33,7 +33,10 @@ export default defineConfig({
     plugins: [
         resolvePluginDepsFromDeploy(),
         // SWC: Vendure entities and resolvers need decorator metadata, which esbuild lacks.
+        // Pin the tsconfig: SWC otherwise searches up from each file, and outside the
+        // monorepo ../plugins has none above it, so decorators would not be enabled.
         swc.vite({
+            tsconfigFile: path.join(deployDir, 'tsconfig.json'),
             jsc: { transform: { useDefineForClassFields: false } },
         }) as any,
     ],
