@@ -1,8 +1,6 @@
-import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
-import { useState } from 'react';
-
 import { BlockValueEditor, HideTypeLabels } from './cms-block-editors';
 import { BlockSection, groupBlocksBySection } from './cms-block-utils';
+import { CollapsibleSection } from './cms-collapsible-section';
 import { HelpText } from './cms-help-text';
 
 export interface BlockEditHandlers {
@@ -34,7 +32,7 @@ export function BlockSections({
                     section.title === null ? (
                         <SectionFields key={`untitled-${i}`} section={section} isSuperAdmin={isSuperAdmin} handlers={handlers} />
                     ) : (
-                        <CollapsibleSection key={section.title} section={section} isSuperAdmin={isSuperAdmin} handlers={handlers} />
+                        <TitledSection key={section.title} section={section} isSuperAdmin={isSuperAdmin} handlers={handlers} />
                     ),
                 )}
             </div>
@@ -42,7 +40,7 @@ export function BlockSections({
     );
 }
 
-function CollapsibleSection({
+function TitledSection({
     section,
     isSuperAdmin,
     handlers,
@@ -51,25 +49,10 @@ function CollapsibleSection({
     isSuperAdmin: boolean;
     handlers: BlockEditHandlers;
 }) {
-    const [open, setOpen] = useState(!section.collapsed);
-    const Chevron = open ? ChevronDownIcon : ChevronRightIcon;
     return (
-        <section className="border rounded-lg">
-            <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpen(!open)}
-                className="flex w-full items-center gap-2 px-5 py-3 text-left text-base font-semibold hover:bg-muted/30 transition-colors"
-            >
-                <Chevron className="h-4 w-4 text-muted-foreground shrink-0" />
-                {section.title}
-            </button>
-            {open && (
-                <div className="border-t px-5 py-5">
-                    <SectionFields section={section} isSuperAdmin={isSuperAdmin} handlers={handlers} />
-                </div>
-            )}
-        </section>
+        <CollapsibleSection title={section.title} defaultOpen={!section.collapsed}>
+            <SectionFields section={section} isSuperAdmin={isSuperAdmin} handlers={handlers} />
+        </CollapsibleSection>
     );
 }
 

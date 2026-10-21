@@ -81,6 +81,9 @@ query {
     collectionEntryTranslatableFields(pageId: ID!) { ... }
     collectionEntryTranslations(pageId: ID!, entryId: ID!, languageCode: String) { ... }
     collectionEntryDefaultContent(pageId: ID!, entryId: ID!) { ... }
+    # Dashboard views, read-only, a fixed number of DB queries however many pages:
+    cmsTranslationProgress(pageIds: [ID!]!) { pageId languageCode total translated }
+    collectionEntriesTranslations(pageId: ID!) { entryId languageCode entries { fieldName value } }
 }
 
 mutation {
@@ -91,6 +94,14 @@ mutation {
 ```
 
 `setTranslationLanguages` is a full replace: codes missing from the input are deleted.
+
+`cmsTranslationProgress` counts, per page and enabled non-default language, the fields with
+text in the default language (`total`) and those with a value in that language
+(`translated`). Page name and slug (page settings) and per-language image swaps are not
+counted; empty rich text and empty option lists count as empty. The rules live in
+`translation-progress.ts`, shared with the dashboard. Nothing records which source text a
+translation was made from (block rows also change when a label changes), so outdated
+translations are not flagged.
 
 ## Shop API (`/shop-api`) — public, no auth
 
@@ -130,9 +141,25 @@ Full request/response examples: **`menata-docs/docs/translation-api-guide.md`** 
 
 | Route | Page |
 |---|---|
-| `/cms-translations` | List of translatable CMS pages |
-| `/cms-translations/$id` | Side-by-side editor (default content vs. translation) |
-| `/cms-translations/settings` | Manage the language list |
+| `/cms-translations` | Top-level CMS pages, with their tab count and progress per language (`DE 92 % · EN 100 %`) |
+| `/cms-translations/$id` | Side-by-side editor: original (read-only) on the left, one target language on the right |
+| `/cms-translations/settings` | Manage the language list (SuperAdmin) |
+
+The editor follows the CMS page editor:
+
+- **Tabs:** "Texts", then one tab per child page (`sidebarOrder`). A child page opened
+  directly redirects to its parent's tab. A list (`isCollection`) shows every entry in one
+  tab. Each tab shows how many fields are left and saves only the fields that changed, in
+  every language edited.
+- **Sections and help:** fields are grouped by `metadata.section` (collapsed when
+  `sectionCollapsed`), with `metadata.help` under each field.
+- **Only fields to translate:** keeps the fields with source text and no translation in the
+  target language, judged on saved values so a field being typed in stays visible.
+- **Simple mode:** the CMS display preference (`cms-simple-mode.tsx`, one switch for both
+  plugins). It hides advanced pages, page name and slug, technical keys and the language
+  settings button. SuperAdmins switch to expert mode.
+- **Links:** "Edit in the original language" opens the CMS page on the same tab; the CMS
+  page editor shows "Translate this page" when this plugin's route is registered.
 
 Image `altText` and description fields are translatable alongside text content. Strings
 are localized with Lingui PO files in `dashboard/i18n/`.

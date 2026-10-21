@@ -473,3 +473,7 @@ msgstr "Advanced Page"
 
 msgid "Hidden in simple mode. For pages only the agency edits, such as interface labels."
 msgstr "Hidden in simple mode. For pages only the agency edits, such as interface labels."
+
+#. Link to the translation plugin
+msgid "Translate this page"
+msgstr "Translate this page"

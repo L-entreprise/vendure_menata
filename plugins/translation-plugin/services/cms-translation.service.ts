@@ -19,6 +19,7 @@ import {
 import { CmsTranslationEntry } from '../entities/cms-translation-entry.entity';
 import { TranslationLanguage } from '../entities/translation-language.entity';
 
+import { blockDefaultValues } from './block-default-values';
 import { collectionEntryDefaultValues } from './collection-entry-values';
 
 // Import CMS plugin entities directly — they are registered with TypeORM at runtime
@@ -317,92 +318,17 @@ export class CmsTranslationService {
             .getMany();
 
         for (const block of blocks) {
-            const translatableFields = TRANSLATABLE_BLOCK_FIELDS[block.type];
-            if (!translatableFields) continue;
-
-            // IMAGE blocks: the image itself (asset id) plus alt text (translation
-            // row) and description (block metadata) are translatable.
-            if (block.type === 'IMAGE') {
-                if (block.featuredAssetId) {
-                    entries.push({
-                        languageCode: defaultCode,
-                        pageId,
-                        contentBlockId: block.id,
-                        fieldName: 'image',
-                        value: String(block.featuredAssetId),
-                    });
-                }
-                const imageTranslations = await this.connection
-                    .getRepository(ctx, ContentBlockTranslation)
-                    .createQueryBuilder('bt')
-                    .where('bt.baseId = :blockId', { blockId: block.id })
-                    .getMany();
-                const altText = imageTranslations[0]?.altText;
-                if (altText) {
-                    entries.push({
-                        languageCode: defaultCode,
-                        pageId,
-                        contentBlockId: block.id,
-                        fieldName: 'altText',
-                        value: String(altText),
-                    });
-                }
-                const description = (block.metadata as any)?.description;
-                if (description) {
-                    entries.push({
-                        languageCode: defaultCode,
-                        pageId,
-                        contentBlockId: block.id,
-                        fieldName: 'description',
-                        value: String(description),
-                    });
-                }
-                continue;
-            }
-
-            // IMAGE_GALLERY: per-image alt/description stored in metadata.imageMeta.
-            if (block.type === 'IMAGE_GALLERY') {
-                const assetIds: string[] = (block.metadata as any)?.assetIds ?? [];
-                const imageMeta: Record<string, { alt?: string; description?: string }> =
-                    (block.metadata as any)?.imageMeta ?? {};
-                for (const assetId of assetIds) {
-                    const meta = imageMeta[String(assetId)] ?? {};
-                    for (const f of GALLERY_IMAGE_FIELDS) {
-                        const value = meta[f];
-                        if (value != null && value !== '') {
-                            entries.push({
-                                languageCode: defaultCode,
-                                pageId,
-                                contentBlockId: block.id,
-                                fieldName: galleryFieldName(String(assetId), f),
-                                value: String(value),
-                            });
-                        }
-                    }
-                }
-                continue;
-            }
-
-            const blockTranslations = await this.connection
-                .getRepository(ctx, ContentBlockTranslation)
-                .createQueryBuilder('bt')
-                .where('bt.baseId = :blockId', { blockId: block.id })
-                .getMany();
-
-            const blockTrans = blockTranslations[0];
-            if (blockTrans) {
-                for (const fieldName of translatableFields) {
-                    const value = (blockTrans as any)[fieldName];
-                    if (value != null) {
-                        entries.push({
-                            languageCode: defaultCode,
-                            pageId,
-                            contentBlockId: block.id,
-                            fieldName,
-                            value: String(value),
-                        });
-                    }
-                }
+            if (!TRANSLATABLE_BLOCK_FIELDS[block.type]) continue;
+            // Galleries keep their text in metadata; every other type may read its row.
+            const blockTranslations = block.type === 'IMAGE_GALLERY'
+                ? []
+                : await this.connection
+                      .getRepository(ctx, ContentBlockTranslation)
+                      .createQueryBuilder('bt')
+                      .where('bt.baseId = :blockId', { blockId: block.id })
+                      .getMany();
+            for (const { fieldName, value } of blockDefaultValues(block, blockTranslations[0] as any)) {
+                entries.push({ languageCode: defaultCode, pageId, contentBlockId: block.id, fieldName, value });
             }
         }
 

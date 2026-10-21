@@ -58,6 +58,21 @@ export const adminApiExtensions = gql`
         blockType: String
     }
 
+    "Translation progress of one page in one language. Counts the page fields with text in the default language, not the page name and slug."
+    type CmsTranslationProgress {
+        pageId: ID!
+        languageCode: String!
+        total: Int!
+        translated: Int!
+    }
+
+    "One entry of a collection page with its values in one language."
+    type CollectionEntryTranslationGroup {
+        entryId: ID!
+        languageCode: String!
+        entries: [CmsTranslationEntry!]!
+    }
+
     input TranslationEntryInput {
         contentBlockId: ID
         entryId: ID
@@ -86,6 +101,10 @@ export const adminApiExtensions = gql`
         collectionEntryTranslatableFields(pageId: ID!): [CollectionEntryTranslatableField!]!
         collectionEntryTranslations(pageId: ID!, entryId: ID!, languageCode: String): [PageTranslations!]!
         collectionEntryDefaultContent(pageId: ID!, entryId: ID!): [DefaultContentEntry!]!
+        "Progress per page and enabled non-default language."
+        cmsTranslationProgress(pageIds: [ID!]!): [CmsTranslationProgress!]!
+        "Every entry of a collection page, in creation order, in every language (default language from the entry data)."
+        collectionEntriesTranslations(pageId: ID!): [CollectionEntryTranslationGroup!]!
     }
 
     extend type Mutation {
