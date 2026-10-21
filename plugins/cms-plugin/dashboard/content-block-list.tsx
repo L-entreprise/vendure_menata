@@ -68,11 +68,9 @@ function ContentBlockListContent({ route }: { route: any }) {
             }}
         >
             <PageActionBarRight>
-                <Button asChild>
-                    <Link to="./new">
-                        <PlusIcon className="mr-2 h-4 w-4" />
-                        <Trans>New Content Block</Trans>
-                    </Link>
+                <Button render={<Link to="./new" />}>
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    <Trans>New Content Block</Trans>
                 </Button>
             </PageActionBarRight>
         </ListPage>

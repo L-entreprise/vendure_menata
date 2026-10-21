@@ -27,6 +27,8 @@ import {
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
+import { HelpText } from './cms-help-text';
+
 const cmsPageForEntryDocument = graphql(`
     query GetCmsPageForEntry($id: ID!) {
         cmsPage(id: $id) {
@@ -556,11 +558,9 @@ function CollectionEntryPage({ route }: { route: any }) {
         <Page>
             <PageTitle>{isNew ? t`New Entry` : t`Edit Entry`}</PageTitle>
             <PageActionBar>
-                <Button asChild variant="ghost" size="sm">
-                    <Link {...(backTarget as any)}>
-                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                        {pageName}
-                    </Link>
+                <Button variant="ghost" size="sm" render={<Link {...(backTarget as any)} />}>
+                    <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                    {pageName}
                 </Button>
                 <PageActionBarRight>
                     <Button variant="outline" onClick={() => navigate(backTarget as any)}>
@@ -581,7 +581,12 @@ function CollectionEntryPage({ route }: { route: any }) {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-6">
-                            {schemaFields.map(renderField)}
+                            {schemaFields.map(block => (
+                                <div key={block.key ?? block.id}>
+                                    {renderField(block)}
+                                    <HelpText help={block.metadata?.help} className="mt-1" />
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>

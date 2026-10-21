@@ -71,3 +71,36 @@ export function toEditableBlock(block: any): any {
         })) ?? [],
     };
 }
+
+export interface BlockSection {
+    /** Section title from `metadata.section`; null for fields without a section. */
+    title: string | null;
+    /** Collapsed on open when any of its fields sets `metadata.sectionCollapsed`. */
+    collapsed: boolean;
+    items: Array<{ block: any; index: number }>;
+}
+
+/**
+ * Groups blocks into the sections the client sees, in the order they first appear
+ * on the page. `index` stays the block's position in the original array so editors
+ * can keep updating it by index.
+ */
+export function groupBlocksBySection(blocks: any[]): BlockSection[] {
+    const sections: BlockSection[] = [];
+    const byTitle = new Map<string | null, BlockSection>();
+    blocks.forEach((block, index) => {
+        const raw = block?.metadata?.section;
+        const title = typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+        let section = byTitle.get(title);
+        if (!section) {
+            section = { title, collapsed: false, items: [] };
+            byTitle.set(title, section);
+            sections.push(section);
+        }
+        section.items.push({ block, index });
+        if (block?.metadata?.sectionCollapsed === true) {
+            section.collapsed = true;
+        }
+    });
+    return sections;
+}

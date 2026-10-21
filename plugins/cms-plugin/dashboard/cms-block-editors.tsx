@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ImageIcon, PlusIcon, XIcon } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import {
     api,
     AssetPickerDialog,
@@ -35,6 +35,18 @@ function toDatetimeLocalValue(value: any): string {
     if (Number.isNaN(d.getTime())) return '';
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// The client view titles each field with its own name, so the generic type caption
+// ("Short Text", "Images"...) is noise there; HideTypeLabels turns it off.
+const ShowTypeLabels = createContext(true);
+
+export function HideTypeLabels({ children }: { children: ReactNode }) {
+    return <ShowTypeLabels.Provider value={false}>{children}</ShowTypeLabels.Provider>;
+}
+
+function TypeLabel({ children }: { children: ReactNode }) {
+    return useContext(ShowTypeLabels) ? <label className="text-sm font-medium">{children}</label> : null;
 }
 
 export function BlockValueEditor({
@@ -73,7 +85,7 @@ export function BlockValueEditor({
         case 'DATE':
             return (
                 <div>
-                    <label className="text-sm font-medium"><Trans>Date</Trans></label>
+                    <TypeLabel><Trans>Date</Trans></TypeLabel>
                     <Input
                         type="datetime-local"
                         value={toDatetimeLocalValue(block.dateValue)}
@@ -91,7 +103,7 @@ export function BlockValueEditor({
         case 'NUMBER':
             return (
                 <div>
-                    <label className="text-sm font-medium"><Trans>Number</Trans></label>
+                    <TypeLabel><Trans>Number</Trans></TypeLabel>
                     <Input
                         type="number"
                         value={block.numberValue ?? ''}
@@ -124,7 +136,7 @@ function TextShortEditor({ block, index, onTranslationChange }: {
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium"><Trans>Short Text</Trans></label>
+            <TypeLabel><Trans>Short Text</Trans></TypeLabel>
             <Input
                 value={currentValue}
                 onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
@@ -149,7 +161,7 @@ function TextLongEditor({ block, index, onTranslationChange }: {
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium"><Trans>Long Text</Trans></label>
+            <TypeLabel><Trans>Long Text</Trans></TypeLabel>
             <Textarea
                 value={currentValue}
                 onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
@@ -173,7 +185,7 @@ function RichTextBlockEditor({ block, index, onTranslationChange }: {
     const currentValue = block.translations?.[0]?.textContent ?? '';
     return (
         <div>
-            <label className="text-sm font-medium"><Trans>Rich Text Content</Trans></label>
+            <TypeLabel><Trans>Rich Text Content</Trans></TypeLabel>
             <div className="mt-1">
                 <RichTextEditor
                     value={currentValue}
@@ -243,7 +255,7 @@ function EnumEditor({ block, index, onTranslationChange }: {
 
     return (
         <div>
-            <label className="text-sm font-medium"><Trans>Options</Trans></label>
+            <TypeLabel><Trans>Options</Trans></TypeLabel>
             <p className="text-xs text-muted-foreground mb-1"><Trans>Enter one option per line</Trans></p>
             <Textarea
                 value={currentValue}
@@ -444,7 +456,7 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
 
     return (
         <div>
-            <label className="text-sm font-medium"><Trans>Images</Trans></label>
+            <TypeLabel><Trans>Images</Trans></TypeLabel>
             <div className="space-y-3 mt-2">
                 {assetIds.map((assetId, i) => (
                     <div key={`${assetId}-${i}`} className="flex gap-3 items-start border rounded-md p-2">

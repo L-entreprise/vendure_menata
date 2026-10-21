@@ -139,6 +139,7 @@ export class CmsPageService {
         sidebarOrder?: number;
         parentId?: ID | null;
         previewUrl?: string | null;
+        advanced?: boolean;
         translations: Array<{
             languageCode: LanguageCode;
             name: string;
@@ -163,6 +164,7 @@ export class CmsPageService {
             sidebarOrder: input.sidebarOrder ?? 0,
             parentId: input.parentId ?? null,
             previewUrl,
+            advanced: input.advanced ?? false,
             translations: input.translations,
         };
         const page = await this.translatableSaver.create({
@@ -212,6 +214,7 @@ export class CmsPageService {
         sidebarOrder?: number;
         parentId?: ID | null;
         previewUrl?: string | null;
+        advanced?: boolean;
         translations?: Array<{
             id?: ID;
             languageCode: LanguageCode;
@@ -262,6 +265,7 @@ export class CmsPageService {
                 ...(input.sidebarOrder !== undefined && { sidebarOrder: input.sidebarOrder }),
                 ...(input.parentId !== undefined && { parentId: input.parentId }),
                 ...(previewUrl !== undefined && { previewUrl }),
+                ...(input.advanced !== undefined && { advanced: input.advanced }),
                 ...(input.translations && { translations: input.translations }),
             };
             await this.translatableSaver.update({
@@ -288,7 +292,7 @@ export class CmsPageService {
         }
         const changes: Record<string, { from: unknown; to: unknown }> = {};
         // Track page-level field changes
-        const trackableFields = ['key', 'enabled', 'acceptsSubmissions', 'isCollection', 'pinnedInSidebar', 'allowCustomerCreation', 'sidebarOrder'] as const;
+        const trackableFields = ['key', 'enabled', 'acceptsSubmissions', 'isCollection', 'pinnedInSidebar', 'allowCustomerCreation', 'sidebarOrder', 'advanced'] as const;
         for (const field of trackableFields) {
             if (input[field] !== undefined && input[field] !== (oldPage as any)?.[field]) {
                 changes[field] = { from: (oldPage as any)?.[field], to: input[field] };

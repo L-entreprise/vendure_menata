@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, Button, Card, CardContent, CardHeader } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
-import { BlockValueEditor } from './cms-block-editors';
+import { BlockSections } from './cms-block-sections';
 import { prepareBlocksForMutation, toEditableBlock } from './cms-block-utils';
 import { CollectionEntriesPanel } from './cms-collection-entries-panel';
 
@@ -55,7 +55,15 @@ const updateChildPageDocument = graphql(`
  * its entries; a plain page shows its fields with its own save button. Structure
  * stays on the child's own page, linked from here.
  */
-export function ChildPageTab({ pageId, isSuperAdmin }: { pageId: string; isSuperAdmin: boolean }) {
+export function ChildPageTab({
+    pageId,
+    isSuperAdmin,
+    simple,
+}: {
+    pageId: string;
+    isSuperAdmin: boolean;
+    simple: boolean;
+}) {
     const { t } = useLingui();
     const [page, setPage] = useState<any>(null);
     const [blocks, setBlocks] = useState<any[]>([]);
@@ -128,7 +136,7 @@ export function ChildPageTab({ pageId, isSuperAdmin }: { pageId: string; isSuper
         return <div className="py-12 text-center text-muted-foreground"><Trans>Loading...</Trans></div>;
     }
 
-    const structureLink = isSuperAdmin && (
+    const structureLink = isSuperAdmin && !simple && (
         <div className="flex justify-end mt-4">
             <Button variant="ghost" size="sm" render={<Link to={`/cms-pages/${pageId}`} />}>
                 <Trans>Edit fields</Trans>
@@ -174,24 +182,11 @@ export function ChildPageTab({ pageId, isSuperAdmin }: { pageId: string; isSuper
                                 <Trans>No sections yet.</Trans>
                             </div>
                         ) : (
-                            <div className="space-y-8">
-                                {blocks.map((block, index) => (
-                                    <section key={block.id ?? index}>
-                                        <h3 className="text-base font-semibold mb-2">
-                                            {block.translations?.[0]?.name || block.key}
-                                        </h3>
-                                        <BlockValueEditor
-                                            block={block}
-                                            index={index}
-                                            isSuperAdmin={isSuperAdmin}
-                                            onFieldChange={onFieldChange}
-                                            onFieldsChange={onFieldsChange}
-                                            onMetadataChange={onMetadataChange}
-                                            onTranslationChange={onTranslationChange}
-                                        />
-                                    </section>
-                                ))}
-                            </div>
+                            <BlockSections
+                                blocks={blocks}
+                                isSuperAdmin={isSuperAdmin}
+                                handlers={{ onFieldChange, onFieldsChange, onMetadataChange, onTranslationChange }}
+                            />
                         )}
                     </CardContent>
                 </Card>

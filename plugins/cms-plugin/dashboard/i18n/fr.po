@@ -462,3 +462,28 @@ msgstr "Modifier les champs"
 
 msgid "Open the form and its submissions"
 msgstr "Ouvrir le formulaire et ses envois"
+
+#. Simple mode, sections and help
+msgid "Expert mode"
+msgstr "Mode expert"
+
+msgid "Section"
+msgstr "Section"
+
+msgid "e.g. Top of page"
+msgstr "ex. Haut de page"
+
+msgid "Section starts collapsed"
+msgstr "Section repliée à l'ouverture"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Shown under the field. Link with [text](/products)."
+msgstr "Affichée sous le champ. Lien : [texte](/products)."
+
+msgid "Advanced Page"
+msgstr "Page avancée"
+
+msgid "Hidden in simple mode. For pages only the agency edits, such as interface labels."
+msgstr "Masquée en mode simple. Pour les pages que seule l'agence modifie, comme les textes de l'interface."

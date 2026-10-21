@@ -348,7 +348,18 @@ query {
 - Deleting a parent detaches its children (they become top-level), it never deletes them.
 - `sidebarOrder` orders pinned top-level pages in the sidebar, and child pages among their parent's tabs. Only top-level pages are pinned.
 - `previewUrl`: absolute http(s) address of the page on the public site, used by the dashboard "View on site" button (a child falls back to its parent's). An empty string clears it.
-- Only SuperAdmins can change `parentId` and `previewUrl`; other editors' values are ignored, like other structural fields.
+- `advanced: true` hides a page from the dashboard's simple mode (list and tabs). Filter with `{ advanced: { eq: false } }`.
+- Only SuperAdmins can change `parentId`, `previewUrl` and `advanced`; other editors' values are ignored, like other structural fields.
+
+### Dashboard presentation in block metadata
+
+These optional `ContentBlock.metadata` keys only affect the dashboard (the Shop API returns them unchanged inside `metadata`):
+
+| Key | Type | Effect |
+|---|---|---|
+| `section` | string | Groups fields into a collapsible panel, panels in page order |
+| `sectionCollapsed` | boolean | The field's panel starts closed |
+| `help` | string | Line under the field. `[label](/products)` links to a dashboard route, `[label](https://…)` opens outside, other targets stay text |
 
 ---
 

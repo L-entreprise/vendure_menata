@@ -33,8 +33,9 @@ dashboard editor and public Shop API queries.
 
 4. **A migration** — the plugin adds tables. Generate one (or run once with
    `synchronize: true` in development). Upgrading from a version without page
-   hierarchy adds two nullable columns to `cms_page`: `parentId` (FK to `cms_page`,
-   `ON DELETE SET NULL`) and `previewUrl`. Existing rows need no data change.
+   hierarchy adds three columns to `cms_page`: `parentId` (nullable FK to
+   `cms_page`, `ON DELETE SET NULL`), `previewUrl` (nullable) and `advanced`
+   (boolean, default `false`). Existing rows need no data change.
 
 ## Database dialects
 
@@ -66,5 +67,17 @@ plugins: [
   their entries, plain pages their fields with their own Save). See
   `CMS_PLUGIN_API.md`, "Page hierarchy".
 - *Address on the Site* turns on a *View on site* button on the page.
+- **Simple mode** is the default for everyone: page fields only, grouped in
+  sections, without keys, types, page settings, adding/removing fields, page
+  creation or deletion. SuperAdmins switch to *Expert mode* (per browser, a display
+  preference only; the API still enforces who may change structure).
+- **Sections and help** live in each block's `metadata` (no migration):
+  `section` (panel title, panels follow the page order), `sectionCollapsed: true`
+  (panel starts closed, e.g. "Référencement Google") and `help` (line under the
+  field; `[label](/products)` links to a dashboard screen, http(s) links open
+  outside, anything else stays text). Edit them in expert mode, or set them from a
+  seed script.
+- **Advanced pages** (`advanced: true`, e.g. interface labels) are hidden from the
+  page list and from tabs in simple mode.
 - Gallery previews are resolved per asset id from the Admin API, so reordering,
   removing, saving or reloading never shifts thumbnails.
