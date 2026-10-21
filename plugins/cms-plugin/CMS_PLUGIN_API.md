@@ -323,6 +323,32 @@ await submitContactForm({
 - No authentication is needed for any shop API query.
 - Asset URLs in `featuredAsset.preview` and `featuredAsset.source` are relative to the Vendure server. Prepend the server base URL if needed (e.g., `http://localhost:3000` + preview path).
 - For image galleries, `metadata.assetIds` gives you the IDs. You can resolve full asset URLs by querying individual assets or by using them with Vendure's asset URL pattern.
+- Page hierarchy (`parentId`) and `previewUrl` are Admin API only. The Shop API does not expose them and keeps answering by key, so grouping pages never changes a site's URLs or queries.
+
+---
+
+## Page hierarchy (Admin API)
+
+A page can sit under a top-level page (`parentId`). The dashboard then lists only top-level pages and shows each child as a tab of its parent. One level only: a parent must be a top-level page, and a page with children cannot become a child.
+
+```graphql
+mutation {
+  updateCmsPage(input: { id: "12", parentId: "3" }) { id parentId }   # attach
+}
+mutation {
+  updateCmsPage(input: { id: "12", parentId: null }) { id parentId }  # detach
+}
+query {
+  cmsPage(id: "3") { parent { id } children { id key name } previewUrl }
+  cmsPages(options: { filter: { parentId: { isNull: true } } }) { items { key } }  # top-level only
+}
+```
+
+- Omitting `parentId` in an update keeps the current parent.
+- Deleting a parent detaches its children (they become top-level), it never deletes them.
+- `sidebarOrder` orders pinned top-level pages in the sidebar, and child pages among their parent's tabs. Only top-level pages are pinned.
+- `previewUrl`: absolute http(s) address of the page on the public site, used by the dashboard "View on site" button (a child falls back to its parent's). An empty string clears it.
+- Only SuperAdmins can change `parentId` and `previewUrl`; other editors' values are ignored, like other structural fields.
 
 ---
 

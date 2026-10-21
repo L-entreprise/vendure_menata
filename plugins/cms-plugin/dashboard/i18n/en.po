@@ -408,3 +408,43 @@ msgstr "Pages"
 #. js-lingui-explicit-id
 msgid "Content Blocks"
 msgstr "Content Blocks"
+
+#. Page hierarchy (parent page, tabs, view on site)
+msgid "Tabs"
+msgstr "Tabs"
+
+msgid "Texts"
+msgstr "Texts"
+
+msgid "View on site"
+msgstr "View on site"
+
+msgid "Tab Order"
+msgstr "Tab Order"
+
+msgid "Parent Page"
+msgstr "Parent Page"
+
+msgid "None (top-level page)"
+msgstr "None (top-level page)"
+
+msgid "This page has child pages, so it stays at the top level."
+msgstr "This page has child pages, so it stays at the top level."
+
+msgid "The page then shows as a tab of its parent. The site address does not change."
+msgstr "The page then shows as a tab of its parent. The site address does not change."
+
+msgid "Address on the Site"
+msgstr "Address on the Site"
+
+msgid "This tab could not be loaded."
+msgstr "This tab could not be loaded."
+
+msgid "Try again"
+msgstr "Try again"
+
+msgid "Edit fields"
+msgstr "Edit fields"
+
+msgid "Open the form and its submissions"
+msgstr "Open the form and its submissions"

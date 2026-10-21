@@ -33,6 +33,7 @@ const cmsPageForEntryDocument = graphql(`
             id
             name
             key
+            parentId
             contentBlocks {
                 id
                 key
@@ -183,6 +184,11 @@ function CollectionEntryPage({ route }: { route: any }) {
 
     const [schema, setSchema] = useState<any[]>([]);
     const [pageName, setPageName] = useState('');
+    // A list that belongs to a parent page is edited from that page's tab, so go back there.
+    const [parentId, setParentId] = useState<string | null>(null);
+    const backTarget = parentId
+        ? { to: '/cms-pages/' + parentId, search: { tab: String(pageId) } }
+        : { to: '/cms-pages/' + pageId };
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [pickerOpen, setPickerOpen] = useState<string | null>(null);
@@ -208,6 +214,7 @@ function CollectionEntryPage({ route }: { route: any }) {
             const page = pageResult.cmsPage;
             if (!page) return;
             setPageName(page.name || page.key);
+            setParentId(page.parentId ?? null);
             const blocks = [...(page.contentBlocks || [])].sort((a: any, b: any) => a.position - b.position);
             setSchema(blocks);
 
@@ -274,7 +281,7 @@ function CollectionEntryPage({ route }: { route: any }) {
                 });
                 toast.success(t`Entry updated`);
             }
-            await navigate({ to: `/cms-pages/${pageId}` });
+            await navigate(backTarget as any);
         } catch (e: any) {
             toast.error(t`Failed to save entry`, {
                 description: e?.message || t`Unknown error`,
@@ -550,13 +557,13 @@ function CollectionEntryPage({ route }: { route: any }) {
             <PageTitle>{isNew ? t`New Entry` : t`Edit Entry`}</PageTitle>
             <PageActionBar>
                 <Button asChild variant="ghost" size="sm">
-                    <Link to={`/cms-pages/${pageId}`}>
+                    <Link {...(backTarget as any)}>
                         <ArrowLeftIcon className="mr-2 h-4 w-4" />
                         {pageName}
                     </Link>
                 </Button>
                 <PageActionBarRight>
-                    <Button variant="outline" onClick={() => navigate({ to: `/cms-pages/${pageId}` })}>
+                    <Button variant="outline" onClick={() => navigate(backTarget as any)}>
                         <Trans>Cancel</Trans>
                     </Button>
                     <Button onClick={handleSave}>

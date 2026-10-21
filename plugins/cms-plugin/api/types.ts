@@ -54,6 +54,9 @@ export interface CreateCmsPageInput {
     isCollection?: boolean;
     pinnedInSidebar?: boolean;
     allowCustomerCreation?: boolean;
+    sidebarOrder?: number;
+    parentId?: ID | null;
+    previewUrl?: string | null;
     translations: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
 }
@@ -66,6 +69,9 @@ export interface UpdateCmsPageInput {
     isCollection?: boolean;
     pinnedInSidebar?: boolean;
     allowCustomerCreation?: boolean;
+    sidebarOrder?: number;
+    parentId?: ID | null;
+    previewUrl?: string | null;
     translations?: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
 }
