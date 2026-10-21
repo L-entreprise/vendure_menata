@@ -57,6 +57,7 @@ export interface CreateCmsPageInput {
     sidebarOrder?: number;
     parentId?: ID | null;
     previewUrl?: string | null;
+    advanced?: boolean;
     translations: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
 }
@@ -72,6 +73,7 @@ export interface UpdateCmsPageInput {
     sidebarOrder?: number;
     parentId?: ID | null;
     previewUrl?: string | null;
+    advanced?: boolean;
     translations?: CmsPageTranslationInput[];
     contentBlocks?: UpdatePageContentBlockInput[];
 }

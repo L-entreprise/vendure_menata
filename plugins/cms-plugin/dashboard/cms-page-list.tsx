@@ -12,6 +12,8 @@ import {
     PageActionBarRight,
 } from '@vendure/dashboard';
 
+import { ExpertModeSwitch, useCmsSimpleMode } from './cms-simple-mode';
+
 const getCmsPageList = graphql(`
     query GetCmsPages($options: CmsPageListOptions) {
         cmsPages(options: $options) {
@@ -43,22 +45,34 @@ const deleteCmsPageDocument = graphql(`
 
 function CmsPageListContent({ route }: { route: any }) {
     const { t } = useLingui();
+    const mode = useCmsSimpleMode();
     return (
         <ListPage
             pageId="cms-page-list"
             title={t`CMS Pages`}
             listQuery={getCmsPageList}
-            deleteMutation={deleteCmsPageDocument}
+            // Simple mode: no page creation or deletion, those are structure changes.
+            deleteMutation={mode.simple ? undefined : deleteCmsPageDocument}
             route={route}
+            transformQueryKey={queryKey => [...queryKey, mode.simple]}
             transformVariables={variables => {
                 // Child pages open as tabs of their parent; a search still finds every page.
-                const filter = variables.options?.filter;
-                if (filter && Object.keys(filter).length > 0) return variables;
+                // Advanced pages (agency only) stay out of simple mode.
+                const filter = variables.options?.filter ?? {};
+                const searching = Object.keys(filter).length > 0;
                 return {
                     ...variables,
-                    options: { ...variables.options, filter: { parentId: { isNull: true } } },
+                    options: {
+                        ...variables.options,
+                        filter: {
+                            ...filter,
+                            ...(!searching && { parentId: { isNull: true } }),
+                            ...(mode.simple && { advanced: { eq: false } }),
+                        },
+                    },
                 };
             }}
+            defaultVisibility={mode.simple ? { id: false, createdAt: false, updatedAt: false, key: false } : undefined}
             customizeColumns={{
                 children: {
                     header: t`Tabs`,
@@ -79,12 +93,13 @@ function CmsPageListContent({ route }: { route: any }) {
             }}
         >
             <PageActionBarRight>
-                <Button asChild>
-                    <Link to="./new">
+                <ExpertModeSwitch mode={mode} />
+                {!mode.simple && (
+                    <Button render={<Link to="./new" />}>
                         <PlusIcon className="mr-2 h-4 w-4" />
                         <Trans>New Page</Trans>
-                    </Link>
-                </Button>
+                    </Button>
+                )}
             </PageActionBarRight>
         </ListPage>
     );

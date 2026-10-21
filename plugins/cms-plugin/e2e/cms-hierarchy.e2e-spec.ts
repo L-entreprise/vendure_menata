@@ -17,6 +17,7 @@ const CREATE_PAGE = gql`
             key
             parentId
             previewUrl
+            advanced
         }
     }
 `;
@@ -27,6 +28,7 @@ const UPDATE_PAGE = gql`
             id
             parentId
             previewUrl
+            advanced
         }
     }
 `;
@@ -121,7 +123,13 @@ describe('CmsPlugin page hierarchy', () => {
 
     async function createPage(key: string, extra: Record<string, unknown> = {}) {
         const { createCmsPage } = await adminClient.query(CREATE_PAGE, { input: pageInput(key, extra) });
-        return createCmsPage as { id: string; key: string; parentId: string | null; previewUrl: string | null };
+        return createCmsPage as {
+            id: string;
+            key: string;
+            parentId: string | null;
+            previewUrl: string | null;
+            advanced: boolean;
+        };
     }
 
     beforeAll(async () => {
@@ -258,6 +266,32 @@ describe('CmsPlugin page hierarchy', () => {
 
             expect(keys).toContain('pinned-root');
             expect(keys).not.toContain('pinned-child');
+        });
+    });
+
+    describe('advanced pages', () => {
+        it('defaults to a regular page and can be flagged advanced', async () => {
+            const page = await createPage('ui-labels');
+
+            const { updateCmsPage } = await adminClient.query(UPDATE_PAGE, {
+                input: { id: page.id, advanced: true },
+            });
+
+            expect(page.advanced).toBe(false);
+            expect(updateCmsPage.advanced).toBe(true);
+        });
+
+        it('filters advanced pages out of a list', async () => {
+            await createPage('client-page');
+            await createPage('agency-page', { advanced: true });
+
+            const { cmsPages } = await adminClient.query(ADMIN_PAGES, {
+                options: { filter: { advanced: { eq: false } } },
+            });
+            const keys = cmsPages.items.map((p: any) => p.key);
+
+            expect(keys).toContain('client-page');
+            expect(keys).not.toContain('agency-page');
         });
     });
 

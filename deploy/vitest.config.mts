@@ -45,7 +45,8 @@ export default defineConfig({
     },
     test: {
         root: path.resolve(deployDir, '..'),
-        include: ['plugins/**/e2e/**/*.e2e-spec.ts', 'deploy/e2e/**/*.e2e-spec.ts'],
+        // *.spec.ts: plain unit tests (e.g. pure dashboard helpers), no server needed.
+        include: ['plugins/**/e2e/**/*.e2e-spec.ts', 'deploy/e2e/**/*.e2e-spec.ts', 'plugins/**/*.spec.ts'],
         environment: 'node',
         testTimeout: 60_000,
         hookTimeout: 120_000,

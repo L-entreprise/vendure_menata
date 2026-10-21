@@ -137,6 +137,7 @@ export const adminApiExtensions = gql`
         parent: CmsPage
         children: [CmsPage!]!
         previewUrl: String
+        advanced: Boolean!
     }
 
     input ContentBlockTranslationInput {
@@ -195,6 +196,7 @@ export const adminApiExtensions = gql`
         sidebarOrder: Int
         parentId: ID
         previewUrl: String
+        advanced: Boolean
         translations: [CmsPageTranslationInput!]!
         contentBlocks: [UpdatePageContentBlockInput!]
     }
@@ -212,6 +214,7 @@ export const adminApiExtensions = gql`
         parentId: ID
         # An empty string or null clears it.
         previewUrl: String
+        advanced: Boolean
         translations: [CmsPageTranslationInput!]
         contentBlocks: [UpdatePageContentBlockInput!]
     }

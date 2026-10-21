@@ -128,11 +128,9 @@ function SubmissionDetailPage({ route }: { route: any }) {
             <Page>
                 <PageTitle><Trans>Submission not found</Trans></PageTitle>
                 <PageActionBar>
-                    <Button asChild variant="ghost" size="sm">
-                        <Link to={`/cms-pages/${pageId}`}>
-                            <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                            {pageName || t`Back`}
-                        </Link>
+                    <Button variant="ghost" size="sm" render={<Link to={`/cms-pages/${pageId}`} />}>
+                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                        {pageName || t`Back`}
                     </Button>
                 </PageActionBar>
             </Page>
@@ -213,11 +211,9 @@ function SubmissionDetailPage({ route }: { route: any }) {
         <Page>
             <PageTitle>{t`Submission`}</PageTitle>
             <PageActionBar>
-                <Button asChild variant="ghost" size="sm">
-                    <Link to={`/cms-pages/${pageId}`}>
-                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                        {pageName}
-                    </Link>
+                <Button variant="ghost" size="sm" render={<Link to={`/cms-pages/${pageId}`} />}>
+                    <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                    {pageName}
                 </Button>
             </PageActionBar>
 

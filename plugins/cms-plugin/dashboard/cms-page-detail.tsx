@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
     AlignLeftIcon,
     ArrowDownIcon,
@@ -13,8 +13,6 @@ import {
     ImageIcon,
     ImagesIcon,
     ListIcon,
-    MailIcon,
-    EyeIcon,
     ExternalLinkIcon,
     PlusIcon,
     TextIcon,
@@ -22,30 +20,23 @@ import {
     TrashIcon,
     TypeIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
-    api,
-    Badge,
     Button,
     Card,
     CardContent,
     CardHeader,
     DashboardRouteDefinition,
-    DataTable,
-    DetailFormGrid,
-    FormFieldWrapper,
     Input,
     Page,
     PageActionBar,
     PageActionBarRight,
-    PageBlockContext,
     PageTitle,
     Switch,
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
-    TranslatableFormFieldWrapper,
     detailPageRouteLoader,
     useDetailPage,
     usePermissions,
@@ -53,6 +44,8 @@ import {
 import { toast } from 'sonner';
 
 import { BlockValueEditor } from './cms-block-editors';
+import { BlockLayoutFields } from './cms-block-layout-fields';
+import { BlockSections } from './cms-block-sections';
 import {
     getDefaultMetadata,
     prepareBlocksForMutation,
@@ -60,12 +53,10 @@ import {
     toEditableBlock,
 } from './cms-block-utils';
 import { ChildPageTab } from './cms-child-page-tab';
-import {
-    CollectionEntriesPanel,
-    deleteFormSubmissionDocument,
-    formSubmissionsDocument,
-} from './cms-collection-entries-panel';
-import { ParentPageSelect } from './cms-parent-page-select';
+import { CollectionEntriesPanel } from './cms-collection-entries-panel';
+import { PageSettingsCard } from './cms-page-settings-card';
+import { ExpertModeSwitch, useCmsSimpleMode } from './cms-simple-mode';
+import { SubmissionsPanel } from './cms-submissions-panel';
 
 const cmsPageDetailDocument = graphql(`
     query GetCmsPageDetail($id: ID!) {
@@ -91,7 +82,9 @@ const cmsPageDetailDocument = graphql(`
                 id
                 key
                 name
+                advanced
             }
+            advanced
             name
             slug
             translations {
@@ -143,30 +136,6 @@ const createCmsPageDocument = graphql(`
     }
 `);
 
-const createCustomerFromSubmissionDocument = graphql(`
-    mutation CreateCustomerFromSubmission($submissionId: ID!) {
-        createCustomerFromSubmission(submissionId: $submissionId) {
-            submission {
-                id
-            }
-            customerId
-            existing
-        }
-    }
-`);
-
-const getCustomersByEmailDocument = graphql(`
-    query GetCustomersByEmail($options: CustomerListOptions) {
-        customers(options: $options) {
-            items {
-                id
-                emailAddress
-            }
-            totalItems
-        }
-    }
-`);
-
 interface BlockTypeDefinition {
     value: string;
     label: any;
@@ -201,46 +170,6 @@ function getBlockTypeIcon(type: string) {
     return getBlockTypeInfo(type)?.icon ?? TextIcon;
 }
 
-function getBlockSummary(block: any, t: any): string {
-    const typeInfo = getBlockTypeInfo(block.type);
-    const label = typeInfo ? t(typeInfo.label) : block.type;
-    switch (block.type) {
-        case 'TEXT_SHORT':
-        case 'TEXT_LONG': {
-            const text = block.translations?.[0]?.textContent ?? '';
-            return text ? `${text.slice(0, 80)}${text.length > 80 ? '...' : ''}` : t`Empty`;
-        }
-        case 'RICH_TEXT': {
-            const html = block.translations?.[0]?.textContent ?? '';
-            const stripped = html.replace(/<[^>]*>/g, '').trim();
-            return stripped ? `${stripped.slice(0, 80)}${stripped.length > 80 ? '...' : ''}` : t`Empty`;
-        }
-        case 'BOOLEAN': {
-            const isTrue = block.numberValue === 1;
-            const trueLabel = String(block.metadata?.trueLabel ?? t`Yes`);
-            const falseLabel = String(block.metadata?.falseLabel ?? t`No`);
-            return isTrue ? trueLabel : falseLabel;
-        }
-        case 'ENUM': {
-            const text = block.translations?.[0]?.textContent ?? '';
-            const count = text.split('\n').filter((l: string) => l.trim()).length;
-            return count > 0 ? t`${count} options` : t`Empty`;
-        }
-        case 'IMAGE':
-            return block.featuredAssetId ? t`Image selected` : t`No image`;
-        case 'IMAGE_GALLERY': {
-            const count = block.metadata?.assetIds?.length ?? 0;
-            return count > 0 ? t`${count} images` : t`No images`;
-        }
-        case 'DATE':
-            return block.dateValue ? new Date(block.dateValue).toLocaleDateString() : t`Not set`;
-        case 'NUMBER':
-            return block.numberValue != null ? String(block.numberValue) : t`Not set`;
-        default:
-            return label;
-    }
-}
-
 // Tab of the page's own fields; child pages use their id as tab value.
 const CONTENT_TAB = 'content';
 
@@ -251,6 +180,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const search = useSearch({ strict: false }) as { tab?: string | number };
     const { hasPermissions } = usePermissions();
     const isSuperAdmin = hasPermissions(['SuperAdmin']);
+    const mode = useCmsSimpleMode();
+    // Creating a page is structure work, so a new page always shows the full editor.
+    const simple = mode.simple && !isNew;
     const { t } = useLingui();
 
     const { form, submitHandler, entity, resetForm } = useDetailPage({
@@ -270,6 +202,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             sidebarOrder: page.sidebarOrder ?? 0,
             parentId: page.parentId ?? null,
             previewUrl: page.previewUrl ?? '',
+            advanced: page.advanced ?? false,
             name: page.name,
             slug: page.slug,
             translations: page.translations,
@@ -286,6 +219,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 sidebarOrder: input.sidebarOrder ?? 0,
                 parentId: input.parentId || null,
                 previewUrl: input.previewUrl || null,
+                advanced: input.advanced ?? false,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -302,6 +236,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 sidebarOrder: input.sidebarOrder,
                 parentId: input.parentId || null,
                 previewUrl: input.previewUrl || null,
+                advanced: input.advanced ?? false,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -411,8 +346,10 @@ function CmsPageDetailPage({ route }: { route: any }) {
     };
 
     const title = entity?.name || entity?.key || t`New Page`;
-    const hasParent = !!form.watch('parentId' as any);
-    const childPages: Array<{ id: string; key: string; name: string }> = isNew ? [] : (entity?.children ?? []);
+    // Advanced child pages (e.g. interface labels) stay out of the client's simple mode.
+    const childPages: Array<{ id: string; key: string; name: string; advanced: boolean }> = isNew
+        ? []
+        : (entity?.children ?? []).filter((child: any) => !simple || !child.advanced);
     const viewOnSiteUrl = entity?.previewUrl || entity?.parent?.previewUrl;
     const requestedTab = String(search.tab ?? CONTENT_TAB);
     const activeTab = childPages.some(child => String(child.id) === requestedTab) ? requestedTab : CONTENT_TAB;
@@ -429,9 +366,34 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 />
             )}
             {!isNew && entity?.isCollection && (
-                <CollectionEntriesPanel pageId={params.id} schema={contentBlocks} />
+                <CollectionEntriesPanel pageId={params.id} schema={contentBlocks} title={simple ? entity?.name : undefined} />
             )}
 
+            {simple ? (
+                !isSchemaOnly && (
+                    <div className="w-full mt-4">
+                        <Card>
+                            <CardContent>
+                                {contentBlocks.length === 0 ? (
+                                    <div className="text-center py-12 text-muted-foreground"><Trans>No sections yet.</Trans></div>
+                                ) : (
+                                    <BlockSections
+                                        blocks={contentBlocks}
+                                        isSuperAdmin={isSuperAdmin}
+                                        handlers={{
+                                            onFieldChange: updateBlockField,
+                                            onFieldsChange: updateBlockFields,
+                                            onMetadataChange: updateBlockMetadata,
+                                            onTranslationChange: updateBlockTranslation,
+                                        }}
+                                    />
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                )
+            ) : (
+            <>
             <div className="w-full mt-4">
                 <Card>
                     <CardHeader>
@@ -507,6 +469,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                             </div>
                                                             )}
                                                         </div>
+                                                        <BlockLayoutFields block={block} index={index} onMetadataChange={updateBlockMetadata} helpOnly />
                                                     </div>
                                                 )}
                                             </div>
@@ -534,6 +497,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                 <span className="text-base font-semibold shrink-0">
                                                     {block.translations?.[0]?.name || block.key || (typeInfo ? t(typeInfo.label) : block.type)}
                                                 </span>
+                                                {block.metadata?.section && (
+                                                    <span className="text-xs text-muted-foreground truncate">{String(block.metadata.section)}</span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                                                 {block.id && (
@@ -609,6 +575,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                         />
                                                     </div>
                                                 </div>
+                                                <BlockLayoutFields block={block} index={index} onMetadataChange={updateBlockMetadata} />
                                                 <div className="mt-4">
                                                     <BlockValueEditor
                                                         block={block}
@@ -688,166 +655,14 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 </Card>
             </div>
 
-            <div className="w-full mt-4">
-                <Card>
-                    <CardHeader>
-                        <div className="text-lg font-semibold"><Trans>Page Details</Trans></div>
-                    </CardHeader>
-                    <CardContent>
-                        <DetailFormGrid>
-                        <TranslatableFormFieldWrapper
-                            control={form.control}
-                            name="name"
-                            label={t`Name`}
-                            render={({ field }) => (
-                                <Input {...field} placeholder={t`Page name`} disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        <TranslatableFormFieldWrapper
-                            control={form.control}
-                            name="slug"
-                            label={t`Slug`}
-                            render={({ field }) => (
-                                <Input {...field} placeholder={t`page-slug`} disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        {isSuperAdmin && (
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="key"
-                            label={t`Key`}
-                            render={({ field }) => (
-                                <Input {...field} placeholder={t`e.g. homepage`} disabled={!isSuperAdmin} />
-                            )}
-                        />
-                        )}
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="enabled"
-                            label={t`Enabled`}
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                        <FormFieldWrapper
-                            control={form.control}
-                            name="acceptsSubmissions"
-                            label={t`Accepts Submissions`}
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={checked => {
-                                        field.onChange(checked);
-                                        if (checked) (form as any).setValue('isCollection', false, { shouldDirty: true });
-                                    }}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                        <FormFieldWrapper
-                            control={form.control}
-                            name={'isCollection' as any}
-                            label={t`Collection`}
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={checked => {
-                                        field.onChange(checked);
-                                        if (checked) form.setValue('acceptsSubmissions', false, { shouldDirty: true });
-                                    }}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                        {!hasParent && (
-                        <FormFieldWrapper
-                            control={form.control}
-                            name={'pinnedInSidebar' as any}
-                            label={t`Pin to Sidebar`}
-                            render={({ field }) => (
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={!isSuperAdmin}
-                                />
-                            )}
-                        />
-                        )}
-                        {(hasParent || form.watch('pinnedInSidebar')) && (
-                            <FormFieldWrapper
-                                control={form.control}
-                                name={'sidebarOrder' as any}
-                                label={hasParent ? t`Tab Order` : t`Sidebar Order`}
-                                render={({ field }) => (
-                                    <Input
-                                        type="number"
-                                        value={field.value ?? 0}
-                                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : 0)}
-                                        disabled={!isSuperAdmin}
-                                        className="w-24"
-                                    />
-                                )}
-                            />
-                        )}
-                        {isSuperAdmin && form.watch('acceptsSubmissions') && (
-                            <div>
-                                <FormFieldWrapper
-                                    control={form.control}
-                                    name={'allowCustomerCreation' as any}
-                                    label={t`Allow Customer Creation`}
-                                    render={({ field }) => (
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    )}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    <Trans>When enabled, submissions can be converted to customers. Use these block keys:</Trans>{' '}
-                                    <code>email</code> (<Trans>required</Trans>), <code>firstName</code>, <code>lastName</code>, <code>phone</code>
-                                </p>
-                            </div>
-                        )}
-                        {isSuperAdmin && (
-                            <div>
-                                <FormFieldWrapper
-                                    control={form.control}
-                                    name={'parentId' as any}
-                                    label={t`Parent Page`}
-                                    render={({ field }) => (
-                                        <ParentPageSelect
-                                            pageId={isNew ? undefined : params.id}
-                                            value={field.value ?? null}
-                                            onChange={field.onChange}
-                                            disabled={childPages.length > 0}
-                                        />
-                                    )}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {childPages.length > 0
-                                        ? <Trans>This page has child pages, so it stays at the top level.</Trans>
-                                        : <Trans>The page then shows as a tab of its parent. The site address does not change.</Trans>}
-                                </p>
-                            </div>
-                        )}
-                        {isSuperAdmin && (
-                            <FormFieldWrapper
-                                control={form.control}
-                                name={'previewUrl' as any}
-                                label={t`Address on the Site`}
-                                render={({ field }) => (
-                                    <Input {...field} value={field.value ?? ''} type="url" placeholder="https://" />
-                                )}
-                            />
-                        )}
-                    </DetailFormGrid>
-                    </CardContent>
-                </Card>
-            </div>
+            <PageSettingsCard
+                form={form}
+                isSuperAdmin={isSuperAdmin}
+                pageId={isNew ? undefined : params.id}
+                childCount={childPages.length}
+            />
+            </>
+            )}
         </>
     );
 
@@ -856,6 +671,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             <PageTitle>{title}</PageTitle>
             <PageActionBar>
                 <PageActionBarRight>
+                    <ExpertModeSwitch mode={mode} />
                     {viewOnSiteUrl && (
                         <Button
                             variant="outline"
@@ -865,7 +681,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                             <Trans>View on site</Trans>
                         </Button>
                     )}
-                    {activeTab === CONTENT_TAB && (
+                    {activeTab === CONTENT_TAB && !(simple && isSchemaOnly) && (
                         <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}</Button>
                     )}
                 </PageActionBarRight>
@@ -883,7 +699,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                         <TabsContent key={child.id} value={String(child.id)}>
                             {/* The tab sits inside this page's form: Enter in a field must not save the parent */}
                             <div onKeyDown={preventImplicitSubmit}>
-                                <ChildPageTab pageId={String(child.id)} isSuperAdmin={isSuperAdmin} />
+                                <ChildPageTab pageId={String(child.id)} isSuperAdmin={isSuperAdmin} simple={simple} />
                             </div>
                         </TabsContent>
                     ))}
@@ -899,204 +715,6 @@ function preventImplicitSubmit(event: React.KeyboardEvent) {
     }
 }
 
-function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: string; schema: any[]; allowCustomerCreation: boolean }) {
-    const { t } = useLingui();
-    const [submissions, setSubmissions] = useState<any[]>([]);
-    const [totalItems, setTotalItems] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [customerMap, setCustomerMap] = useState<Map<string, string>>(new Map());
-
-    const lookupExistingCustomers = useCallback(async (subs: any[]) => {
-        if (!allowCustomerCreation) return;
-        const emails = subs
-            .map(sub => sub.data?.email)
-            .filter((e): e is string => typeof e === 'string' && e.length > 0);
-        const uniqueEmails = [...new Set(emails)];
-        if (uniqueEmails.length === 0) return;
-
-        const newMap = new Map<string, string>();
-        // Query customers for each unique email (batch of in-filters not available, so query per email)
-        await Promise.all(
-            uniqueEmails.map(async (email) => {
-                try {
-                    const result = await api.query(getCustomersByEmailDocument, {
-                        options: { filter: { emailAddress: { eq: email } }, take: 1 },
-                    });
-                    if (result.customers.items.length > 0) {
-                        const customerId = result.customers.items[0].id;
-                        for (const sub of subs) {
-                            if (sub.data?.email === email) {
-                                newMap.set(sub.id, customerId);
-                            }
-                        }
-                    }
-                } catch {
-                    // Ignore lookup errors - button will just show "Create Customer"
-                }
-            }),
-        );
-        if (newMap.size > 0) {
-            setCustomerMap(prev => {
-                const merged = new Map(prev);
-                for (const [k, v] of newMap) merged.set(k, v);
-                return merged;
-            });
-        }
-    }, [allowCustomerCreation]);
-
-    const loadSubmissions = useCallback(async () => {
-        const result = await api.query(formSubmissionsDocument, {
-            pageId,
-            options: { take: itemsPerPage, skip: (currentPage - 1) * itemsPerPage, sort: { createdAt: 'DESC' as any } },
-        });
-        const items = result.formSubmissions.items;
-        setSubmissions(items);
-        setTotalItems(result.formSubmissions.totalItems);
-        lookupExistingCustomers(items);
-    }, [pageId, currentPage, itemsPerPage, lookupExistingCustomers]);
-
-    useEffect(() => {
-        loadSubmissions();
-    }, [loadSubmissions]);
-
-    const handleDelete = async (id: string) => {
-        await api.mutate(deleteFormSubmissionDocument, { id });
-        toast.success(t`Submission deleted`);
-        loadSubmissions();
-    };
-
-    const handleCreateCustomer = async (submissionId: string) => {
-        try {
-            const result = await api.mutate(createCustomerFromSubmissionDocument, { submissionId });
-            const { customerId, existing } = result.createCustomerFromSubmission;
-            if (existing) {
-                toast.info(t`Customer already exists`);
-            } else {
-                toast.success(t`Customer created`);
-            }
-            setCustomerMap(prev => new Map(prev).set(submissionId, customerId));
-        } catch (e: any) {
-            toast.error(t`Failed to create customer`, {
-                description: e?.message || t`Unknown error`,
-            });
-        }
-    };
-
-    const schemaFields = schema.filter(b => b.key);
-
-    const formatCellValue = (type: string, value: any): string => {
-        if (value == null || value === '') return '-';
-        switch (type) {
-            case 'BOOLEAN':
-                return value ? t`Yes` : t`No`;
-            case 'DATE':
-                return new Date(value).toLocaleDateString();
-            case 'IMAGE':
-            case 'IMAGE_GALLERY':
-                return value ? `[${t`Image`}]` : '-';
-            case 'RICH_TEXT': {
-                const stripped = String(value).replace(/<[^>]*>/g, '').trim();
-                return stripped.length > 60 ? stripped.slice(0, 60) + '...' : stripped;
-            }
-            default: {
-                const str = String(value);
-                return str.length > 80 ? str.slice(0, 80) + '...' : str;
-            }
-        }
-    };
-
-    const columns = [
-        {
-            id: 'createdAt',
-            header: t`Date`,
-            accessorFn: (row: any) => new Date(row.createdAt).toLocaleDateString(),
-        },
-        ...schemaFields.map(block => ({
-            id: block.key,
-            header: block.translations?.[0]?.name || block.key,
-            accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
-        })),
-        {
-            id: '_actions',
-            header: '',
-            cell: ({ row }: any) => {
-                const sub = row.original;
-                const customerId = customerMap.get(sub.id);
-                return (
-                    <div className="flex items-center gap-1 justify-end">
-                        {allowCustomerCreation && (
-                            customerId ? (
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link to={`/customers/${customerId}`}>
-                                        <Trans>View Customer</Trans>
-                                    </Link>
-                                </Button>
-                            ) : (
-                                <Button type="button" variant="ghost" size="sm" onClick={() => handleCreateCustomer(sub.id)}>
-                                    <Trans>Create Customer</Trans>
-                                </Button>
-                            )
-                        )}
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to={`/cms-pages/${pageId}/submissions/${sub.id}`}>
-                                <EyeIcon className="h-3.5 w-3.5" />
-                            </Link>
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(sub.id)}>
-                            <TrashIcon className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                );
-            },
-            enableSorting: false,
-            enableColumnFilter: false,
-        },
-    ];
-
-    const defaultVisibility: Record<string, boolean> = {};
-    schemaFields.forEach((block, i) => {
-        if (i >= 5) defaultVisibility[block.key] = false;
-    });
-
-    return (
-        <div className="w-full mt-4">
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <MailIcon className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-lg font-semibold"><Trans>Submissions</Trans></span>
-                            <Badge variant="secondary">{totalItems}</Badge>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {submissions.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
-                            <Trans>No submissions yet.</Trans>
-                        </div>
-                    ) : (
-                        <PageBlockContext.Provider value={{ blockId: 'submissions-table', column: 'main' }}>
-                            <DataTable
-                                columns={columns as any}
-                                data={submissions}
-                                totalItems={totalItems}
-                                page={currentPage}
-                                itemsPerPage={itemsPerPage}
-                                defaultColumnVisibility={defaultVisibility}
-                                onPageChange={(_table, page, perPage) => {
-                                    setCurrentPage(page);
-                                    setItemsPerPage(perPage);
-                                }}
-                            />
-                        </PageBlockContext.Provider>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
 
 export const cmsPageDetail: DashboardRouteDefinition = {
     path: '/cms-pages/$id',

@@ -448,3 +448,28 @@ msgstr "Edit fields"
 
 msgid "Open the form and its submissions"
 msgstr "Open the form and its submissions"
+
+#. Simple mode, sections and help
+msgid "Expert mode"
+msgstr "Expert mode"
+
+msgid "Section"
+msgstr "Section"
+
+msgid "e.g. Top of page"
+msgstr "e.g. Top of page"
+
+msgid "Section starts collapsed"
+msgstr "Section starts collapsed"
+
+msgid "Help"
+msgstr "Help"
+
+msgid "Shown under the field. Link with [text](/products)."
+msgstr "Shown under the field. Link with [text](/products)."
+
+msgid "Advanced Page"
+msgstr "Advanced Page"
+
+msgid "Hidden in simple mode. For pages only the agency edits, such as interface labels."
+msgstr "Hidden in simple mode. For pages only the agency edits, such as interface labels."

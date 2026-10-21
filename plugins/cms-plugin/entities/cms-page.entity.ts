@@ -55,6 +55,10 @@ export class CmsPage extends VendureEntity implements Translatable, HasCustomFie
     @OneToMany(() => CmsPage, page => page.parent)
     children: CmsPage[];
 
+    // Agency-only page (e.g. interface labels): hidden from the dashboard's simple mode.
+    @Column({ default: false })
+    advanced: boolean;
+
     // Absolute address of the page on the public site, for the dashboard "View on site" button.
     @Column({ type: 'varchar', length: 2048, nullable: true })
     previewUrl: string | null;
