@@ -130,6 +130,15 @@ export const shopApiExtensions = gql`
 export const adminApiExtensions = gql`
     ${commonApiExtensions}
 
+    # Admin only: the hierarchy and preview address organise the dashboard and never
+    # change what the Shop API returns.
+    extend type CmsPage {
+        parentId: ID
+        parent: CmsPage
+        children: [CmsPage!]!
+        previewUrl: String
+    }
+
     input ContentBlockTranslationInput {
         id: ID
         languageCode: LanguageCode!
@@ -184,6 +193,8 @@ export const adminApiExtensions = gql`
         pinnedInSidebar: Boolean
         allowCustomerCreation: Boolean
         sidebarOrder: Int
+        parentId: ID
+        previewUrl: String
         translations: [CmsPageTranslationInput!]!
         contentBlocks: [UpdatePageContentBlockInput!]
     }
@@ -197,6 +208,10 @@ export const adminApiExtensions = gql`
         pinnedInSidebar: Boolean
         allowCustomerCreation: Boolean
         sidebarOrder: Int
+        # null detaches the page from its parent; omitted keeps it.
+        parentId: ID
+        # An empty string or null clears it.
+        previewUrl: String
         translations: [CmsPageTranslationInput!]
         contentBlocks: [UpdatePageContentBlockInput!]
     }

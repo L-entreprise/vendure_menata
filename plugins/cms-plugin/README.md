@@ -32,7 +32,9 @@ dashboard editor and public Shop API queries.
    extension is not picked up.
 
 4. **A migration** — the plugin adds tables. Generate one (or run once with
-   `synchronize: true` in development).
+   `synchronize: true` in development). Upgrading from a version without page
+   hierarchy adds two nullable columns to `cms_page`: `parentId` (FK to `cms_page`,
+   `ON DELETE SET NULL`) and `previewUrl`. Existing rows need no data change.
 
 ## Database dialects
 
@@ -59,5 +61,10 @@ plugins: [
 - New sections are always created **enabled**. Existing sections show a
   *Visible / Hidden* switch in their header; hidden sections are filtered out of the
   Shop API.
+- Pages can be grouped under a top-level page (*Parent Page* field). The page list
+  shows top-level pages only; each child opens as a tab of its parent (lists show
+  their entries, plain pages their fields with their own Save). See
+  `CMS_PLUGIN_API.md`, "Page hierarchy".
+- *Address on the Site* turns on a *View on site* button on the page.
 - Gallery previews are resolved per asset id from the Admin API, so reordering,
   removing, saving or reloading never shifts thumbnails.

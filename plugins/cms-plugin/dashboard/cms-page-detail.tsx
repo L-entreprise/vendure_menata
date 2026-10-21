@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import {
     AlignLeftIcon,
     ArrowDownIcon,
@@ -15,17 +15,16 @@ import {
     ListIcon,
     MailIcon,
     EyeIcon,
+    ExternalLinkIcon,
     PlusIcon,
     TextIcon,
     ToggleLeftIcon,
     TrashIcon,
     TypeIcon,
-    XIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
     api,
-    AssetPickerDialog,
     Badge,
     Button,
     Card,
@@ -41,15 +40,32 @@ import {
     PageActionBarRight,
     PageBlockContext,
     PageTitle,
-    RichTextEditor,
     Switch,
-    Textarea,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
     TranslatableFormFieldWrapper,
     detailPageRouteLoader,
     useDetailPage,
     usePermissions,
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
+
+import { BlockValueEditor } from './cms-block-editors';
+import {
+    getDefaultMetadata,
+    prepareBlocksForMutation,
+    resolveBlockEnabled,
+    toEditableBlock,
+} from './cms-block-utils';
+import { ChildPageTab } from './cms-child-page-tab';
+import {
+    CollectionEntriesPanel,
+    deleteFormSubmissionDocument,
+    formSubmissionsDocument,
+} from './cms-collection-entries-panel';
+import { ParentPageSelect } from './cms-parent-page-select';
 
 const cmsPageDetailDocument = graphql(`
     query GetCmsPageDetail($id: ID!) {
@@ -64,6 +80,18 @@ const cmsPageDetailDocument = graphql(`
             pinnedInSidebar
             allowCustomerCreation
             sidebarOrder
+            parentId
+            previewUrl
+            parent {
+                id
+                name
+                previewUrl
+            }
+            children {
+                id
+                key
+                name
+            }
             name
             slug
             translations {
@@ -114,40 +142,6 @@ const createCmsPageDocument = graphql(`
         }
     }
 `);
-
-const formSubmissionsDocument = graphql(`
-    query GetFormSubmissions($pageId: ID!, $options: FormSubmissionListOptions) {
-        formSubmissions(pageId: $pageId, options: $options) {
-            items {
-                id
-                createdAt
-                data
-            }
-            totalItems
-        }
-    }
-`);
-
-const deleteFormSubmissionDocument = graphql(`
-    mutation DeleteFormSubmission($id: ID!) {
-        deleteFormSubmission(id: $id) {
-            result
-            message
-        }
-    }
-`);
-
-const getAssetsByIdsDocument = graphql(`
-    query GetAssetsByIds($options: AssetListOptions) {
-        assets(options: $options) {
-            items {
-                id
-                preview
-            }
-        }
-    }
-`);
-
 
 const createCustomerFromSubmissionDocument = graphql(`
     mutation CreateCustomerFromSubmission($submissionId: ID!) {
@@ -207,53 +201,6 @@ function getBlockTypeIcon(type: string) {
     return getBlockTypeInfo(type)?.icon ?? TextIcon;
 }
 
-/**
- * Formats a stored value (ISO string / Date) into the `YYYY-MM-DDTHH:mm` shape a
- * `datetime-local` input expects, using LOCAL time. `toISOString()` (UTC) shifts
- * the displayed time by the timezone offset, making minute edits move the hour.
- */
-function toDatetimeLocalValue(value: any): string {
-    if (!value) return '';
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/**
- * A block without an id is new. The generic create form seeds its first block from
- * `UpdatePageContentBlockInput`, whose Boolean `enabled` defaults to `false` — a value
- * the editor never lets the user pick. New blocks are therefore always sent enabled;
- * existing blocks keep their stored flag (toggled via the per-block switch).
- */
-function resolveBlockEnabled(block: any): boolean {
-    if (!block.id) return true;
-    return block.enabled ?? true;
-}
-
-function prepareBlocksForMutation(blocks: any[]): any[] {
-    return (blocks || [])
-        .filter((b: any) => b.type)
-        .map((b: any, i: number) => ({
-            ...(b.id ? { id: b.id } : {}),
-            type: b.type,
-            key: b.key,
-            position: i,
-            enabled: resolveBlockEnabled(b),
-            featuredAssetId: b.featuredAssetId ?? null,
-            metadata: b.metadata ?? null,
-            dateValue: b.dateValue ?? null,
-            numberValue: b.numberValue != null ? Number(b.numberValue) : null,
-            translations: (b.translations || []).map((t: any) => ({
-                ...(t.id ? { id: t.id } : {}),
-                languageCode: t.languageCode,
-                name: t.name,
-                textContent: t.textContent ?? '',
-                altText: t.altText ?? '',
-            })),
-        }));
-}
-
 function getBlockSummary(block: any, t: any): string {
     const typeInfo = getBlockTypeInfo(block.type);
     const label = typeInfo ? t(typeInfo.label) : block.type;
@@ -294,25 +241,14 @@ function getBlockSummary(block: any, t: any): string {
     }
 }
 
-function getDefaultMetadata(type: string): Record<string, unknown> | null {
-    switch (type) {
-        case 'TEXT_SHORT':
-            return { maxLength: 255 };
-        case 'TEXT_LONG':
-            return { maxLength: 2000 };
-        case 'BOOLEAN':
-            return { trueLabel: 'Yes', falseLabel: 'No' };
-        case 'IMAGE_GALLERY':
-            return { assetIds: [], imageMeta: {} };
-        default:
-            return null;
-    }
-}
+// Tab of the page's own fields; child pages use their id as tab value.
+const CONTENT_TAB = 'content';
 
 function CmsPageDetailPage({ route }: { route: any }) {
     const params = route.useParams();
     const isNew = params.id === 'new';
     const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { tab?: string | number };
     const { hasPermissions } = usePermissions();
     const isSuperAdmin = hasPermissions(['SuperAdmin']);
     const { t } = useLingui();
@@ -332,28 +268,12 @@ function CmsPageDetailPage({ route }: { route: any }) {
             pinnedInSidebar: page.pinnedInSidebar ?? false,
             allowCustomerCreation: page.allowCustomerCreation ?? false,
             sidebarOrder: page.sidebarOrder ?? 0,
+            parentId: page.parentId ?? null,
+            previewUrl: page.previewUrl ?? '',
             name: page.name,
             slug: page.slug,
             translations: page.translations,
-            contentBlocks: (page.contentBlocks || []).map((block: any) => ({
-                id: block.id,
-                type: block.type,
-                key: block.key,
-                position: block.position,
-                enabled: block.enabled ?? true,
-                featuredAssetId: block.featuredAsset?.id ?? null,
-                metadata: block.metadata ?? getDefaultMetadata(block.type),
-                dateValue: block.dateValue,
-                numberValue: block.numberValue != null ? Number(block.numberValue) : null,
-                _assetPreview: block.featuredAsset?.preview ?? null,
-                translations: block.translations?.map((t: any) => ({
-                    id: t.id,
-                    languageCode: t.languageCode,
-                    name: t.name,
-                    textContent: t.textContent ?? '',
-                    altText: t.altText ?? '',
-                })) ?? [],
-            })),
+            contentBlocks: (page.contentBlocks || []).map(toEditableBlock),
         }),
         transformCreateInput: (input: any) => {
             return {
@@ -364,6 +284,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 pinnedInSidebar: input.pinnedInSidebar ?? false,
                 allowCustomerCreation: input.allowCustomerCreation ?? false,
                 sidebarOrder: input.sidebarOrder ?? 0,
+                parentId: input.parentId || null,
+                previewUrl: input.previewUrl || null,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -378,6 +300,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 pinnedInSidebar: input.pinnedInSidebar,
                 allowCustomerCreation: input.allowCustomerCreation,
                 sidebarOrder: input.sidebarOrder,
+                parentId: input.parentId || null,
+                previewUrl: input.previewUrl || null,
                 translations: input.translations,
                 contentBlocks: prepareBlocksForMutation(input.contentBlocks),
             };
@@ -487,15 +411,16 @@ function CmsPageDetailPage({ route }: { route: any }) {
     };
 
     const title = entity?.name || entity?.key || t`New Page`;
+    const hasParent = !!form.watch('parentId' as any);
+    const childPages: Array<{ id: string; key: string; name: string }> = isNew ? [] : (entity?.children ?? []);
+    const viewOnSiteUrl = entity?.previewUrl || entity?.parent?.previewUrl;
+    const requestedTab = String(search.tab ?? CONTENT_TAB);
+    const activeTab = childPages.some(child => String(child.id) === requestedTab) ? requestedTab : CONTENT_TAB;
+    const selectTab = (tab: string) =>
+        navigate({ search: (prev: any) => ({ ...prev, tab: tab === CONTENT_TAB ? undefined : tab }), replace: true } as any);
 
-    return (
-        <Page pageId="cms-page-detail" form={form} submitHandler={submitHandler} entity={entity}>
-            <PageTitle>{title}</PageTitle>
-            <PageActionBar>
-                <PageActionBarRight>
-                    <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}</Button>
-                </PageActionBarRight>
-            </PageActionBar>
+    const pageContent = (
+        <>
             {!isNew && entity?.acceptsSubmissions && (
                 <SubmissionsPanel
                     pageId={params.id}
@@ -838,6 +763,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 />
                             )}
                         />
+                        {!hasParent && (
                         <FormFieldWrapper
                             control={form.control}
                             name={'pinnedInSidebar' as any}
@@ -850,11 +776,12 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 />
                             )}
                         />
-                        {form.watch('pinnedInSidebar') && (
+                        )}
+                        {(hasParent || form.watch('pinnedInSidebar')) && (
                             <FormFieldWrapper
                                 control={form.control}
                                 name={'sidebarOrder' as any}
-                                label={t`Sidebar Order`}
+                                label={hasParent ? t`Tab Order` : t`Sidebar Order`}
                                 render={({ field }) => (
                                     <Input
                                         type="number"
@@ -885,12 +812,91 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                 </p>
                             </div>
                         )}
+                        {isSuperAdmin && (
+                            <div>
+                                <FormFieldWrapper
+                                    control={form.control}
+                                    name={'parentId' as any}
+                                    label={t`Parent Page`}
+                                    render={({ field }) => (
+                                        <ParentPageSelect
+                                            pageId={isNew ? undefined : params.id}
+                                            value={field.value ?? null}
+                                            onChange={field.onChange}
+                                            disabled={childPages.length > 0}
+                                        />
+                                    )}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {childPages.length > 0
+                                        ? <Trans>This page has child pages, so it stays at the top level.</Trans>
+                                        : <Trans>The page then shows as a tab of its parent. The site address does not change.</Trans>}
+                                </p>
+                            </div>
+                        )}
+                        {isSuperAdmin && (
+                            <FormFieldWrapper
+                                control={form.control}
+                                name={'previewUrl' as any}
+                                label={t`Address on the Site`}
+                                render={({ field }) => (
+                                    <Input {...field} value={field.value ?? ''} type="url" placeholder="https://" />
+                                )}
+                            />
+                        )}
                     </DetailFormGrid>
                     </CardContent>
                 </Card>
             </div>
+        </>
+    );
+
+    return (
+        <Page pageId="cms-page-detail" form={form} submitHandler={submitHandler} entity={entity}>
+            <PageTitle>{title}</PageTitle>
+            <PageActionBar>
+                <PageActionBarRight>
+                    {viewOnSiteUrl && (
+                        <Button
+                            variant="outline"
+                            render={<a href={viewOnSiteUrl} target="_blank" rel="noopener noreferrer" />}
+                        >
+                            <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                            <Trans>View on site</Trans>
+                        </Button>
+                    )}
+                    {activeTab === CONTENT_TAB && (
+                        <Button type="submit" disabled={isNew && !isSuperAdmin}>{isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}</Button>
+                    )}
+                </PageActionBarRight>
+            </PageActionBar>
+            {childPages.length === 0 ? pageContent : (
+                <Tabs value={activeTab} onValueChange={value => selectTab(String(value))} className="w-full mt-4">
+                    <TabsList className="flex-wrap h-auto">
+                        <TabsTrigger value={CONTENT_TAB}><Trans>Texts</Trans></TabsTrigger>
+                        {childPages.map(child => (
+                            <TabsTrigger key={child.id} value={String(child.id)}>{child.name || child.key}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <TabsContent value={CONTENT_TAB}>{pageContent}</TabsContent>
+                    {childPages.map(child => (
+                        <TabsContent key={child.id} value={String(child.id)}>
+                            {/* The tab sits inside this page's form: Enter in a field must not save the parent */}
+                            <div onKeyDown={preventImplicitSubmit}>
+                                <ChildPageTab pageId={String(child.id)} isSuperAdmin={isSuperAdmin} />
+                            </div>
+                        </TabsContent>
+                    ))}
+                </Tabs>
+            )}
         </Page>
     );
+}
+
+function preventImplicitSubmit(event: React.KeyboardEvent) {
+    if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') {
+        event.preventDefault();
+    }
 }
 
 function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: string; schema: any[]; allowCustomerCreation: boolean }) {
@@ -1092,615 +1098,13 @@ function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pageId: s
     );
 }
 
-function CollectionEntriesPanel({ pageId, schema }: { pageId: string; schema: any[] }) {
-    const { t } = useLingui();
-    const [entries, setEntries] = useState<any[]>([]);
-    const [totalItems, setTotalItems] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-
-    const loadEntries = useCallback(async () => {
-        const result = await api.query(formSubmissionsDocument, {
-            pageId,
-            options: { take: itemsPerPage, skip: (currentPage - 1) * itemsPerPage, sort: { createdAt: 'DESC' as any } },
-        });
-        setEntries(result.formSubmissions.items);
-        setTotalItems(result.formSubmissions.totalItems);
-    }, [pageId, currentPage, itemsPerPage]);
-
-    useEffect(() => {
-        loadEntries();
-    }, [loadEntries]);
-
-    const handleDelete = async (id: string) => {
-        await api.mutate(deleteFormSubmissionDocument, { id });
-        toast.success(t`Entry deleted`);
-        loadEntries();
-    };
-
-    const schemaFields = schema.filter(b => b.key);
-
-    const formatCellValue = (type: string, value: any): string => {
-        if (value == null || value === '') return '-';
-        switch (type) {
-            case 'BOOLEAN':
-                return value ? t`Yes` : t`No`;
-            case 'DATE':
-                return new Date(value).toLocaleDateString();
-            case 'IMAGE':
-            case 'IMAGE_GALLERY':
-                return value ? `[${t`Image`}]` : '-';
-            case 'RICH_TEXT': {
-                const stripped = String(value).replace(/<[^>]*>/g, '').trim();
-                return stripped.length > 60 ? stripped.slice(0, 60) + '...' : stripped;
-            }
-            default: {
-                const str = String(value);
-                return str.length > 80 ? str.slice(0, 80) + '...' : str;
-            }
-        }
-    };
-
-    const columns = [
-        {
-            id: 'createdAt',
-            header: t`Date`,
-            accessorFn: (row: any) => new Date(row.createdAt).toLocaleDateString(),
-        },
-        ...schemaFields.map(block => ({
-            id: block.key,
-            header: block.translations?.[0]?.name || block.key,
-            accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
-        })),
-        {
-            id: '_actions',
-            header: '',
-            cell: ({ row }: any) => (
-                <div className="flex items-center gap-1 justify-end">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link to={`/cms-pages/${pageId}/entries/${row.original.id}`}>
-                            <Trans>Edit</Trans>
-                        </Link>
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.original.id)}>
-                        <TrashIcon className="h-3.5 w-3.5" />
-                    </Button>
-                </div>
-            ),
-            enableSorting: false,
-            enableColumnFilter: false,
-        },
-    ];
-
-    const defaultVisibility: Record<string, boolean> = {};
-    schemaFields.forEach((block, i) => {
-        if (i >= 5) defaultVisibility[block.key] = false;
-    });
-
-    return (
-        <div className="w-full mt-4">
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold"><Trans>Collection Entries</Trans></span>
-                            <Badge variant="secondary">{totalItems}</Badge>
-                        </div>
-                        <Button asChild>
-                            <Link to={`/cms-pages/${pageId}/entries/new`}>
-                                <PlusIcon className="mr-2 h-4 w-4" />
-                                <Trans>Add Entry</Trans>
-                            </Link>
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {entries.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
-                            <Trans>No entries yet. Add one above.</Trans>
-                        </div>
-                    ) : (
-                        <PageBlockContext.Provider value={{ blockId: 'collection-entries-table', column: 'main' }}>
-                            <DataTable
-                                columns={columns as any}
-                                data={entries}
-                                totalItems={totalItems}
-                                page={currentPage}
-                                itemsPerPage={itemsPerPage}
-                                defaultColumnVisibility={defaultVisibility}
-                                onPageChange={(_table, page, perPage) => {
-                                    setCurrentPage(page);
-                                    setItemsPerPage(perPage);
-                                }}
-                            />
-                        </PageBlockContext.Provider>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-
-function BlockValueEditor({
-    block,
-    index,
-    isSuperAdmin,
-    onFieldChange,
-    onFieldsChange,
-    onMetadataChange,
-    onTranslationChange,
-}: {
-    block: any;
-    index: number;
-    isSuperAdmin: boolean;
-    onFieldChange: (index: number, field: string, value: any) => void;
-    onFieldsChange: (index: number, fields: Record<string, any>) => void;
-    onMetadataChange: (index: number, key: string, value: any) => void;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const { t } = useLingui();
-    switch (block.type) {
-        case 'TEXT_SHORT':
-            return <TextShortEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
-        case 'TEXT_LONG':
-            return <TextLongEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
-        case 'RICH_TEXT':
-            return <RichTextBlockEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
-        case 'BOOLEAN':
-            return <BooleanEditor block={block} index={index} isSuperAdmin={isSuperAdmin} onFieldChange={onFieldChange} onMetadataChange={onMetadataChange} />;
-        case 'ENUM':
-            return <EnumEditor block={block} index={index} onTranslationChange={onTranslationChange} />;
-        case 'IMAGE':
-            return <ImageEditor block={block} index={index} onFieldsChange={onFieldsChange} onTranslationChange={onTranslationChange} />;
-        case 'IMAGE_GALLERY':
-            return <ImageGalleryEditor block={block} index={index} onFieldChange={onFieldChange} />;
-        case 'DATE':
-            return (
-                <div>
-                    <label className="text-sm font-medium"><Trans>Date</Trans></label>
-                    <Input
-                        type="datetime-local"
-                        value={toDatetimeLocalValue(block.dateValue)}
-                        onChange={e =>
-                            onFieldChange(
-                                index,
-                                'dateValue',
-                                e.target.value ? new Date(e.target.value).toISOString() : null,
-                            )
-                        }
-                        className="mt-1"
-                    />
-                </div>
-            );
-        case 'NUMBER':
-            return (
-                <div>
-                    <label className="text-sm font-medium"><Trans>Number</Trans></label>
-                    <Input
-                        type="number"
-                        value={block.numberValue ?? ''}
-                        onChange={e =>
-                            onFieldChange(
-                                index,
-                                'numberValue',
-                                e.target.value ? Number(e.target.value) : null,
-                            )
-                        }
-                        placeholder="0"
-                        className="mt-1"
-                    />
-                </div>
-            );
-        default:
-            return null;
-    }
-}
-
-// --- Individual block type editors ---
-
-function TextShortEditor({ block, index, onTranslationChange }: {
-    block: any;
-    index: number;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const { t } = useLingui();
-    const maxLength = block.metadata?.maxLength ?? 255;
-    const currentValue = block.translations?.[0]?.textContent ?? '';
-    return (
-        <div>
-            <label className="text-sm font-medium"><Trans>Short Text</Trans></label>
-            <Input
-                value={currentValue}
-                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder={t`Enter text`}
-                maxLength={maxLength}
-                className="mt-1"
-            />
-            <div className="text-xs text-muted-foreground text-right mt-1">
-                {currentValue.length} / {maxLength}
-            </div>
-        </div>
-    );
-}
-
-function TextLongEditor({ block, index, onTranslationChange }: {
-    block: any;
-    index: number;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const { t } = useLingui();
-    const maxLength = block.metadata?.maxLength ?? 2000;
-    const currentValue = block.translations?.[0]?.textContent ?? '';
-    return (
-        <div>
-            <label className="text-sm font-medium"><Trans>Long Text</Trans></label>
-            <Textarea
-                value={currentValue}
-                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder={t`Enter text content...`}
-                maxLength={maxLength}
-                rows={4}
-                className="mt-1"
-            />
-            <div className="text-xs text-muted-foreground text-right mt-1">
-                {currentValue.length} / {maxLength}
-            </div>
-        </div>
-    );
-}
-
-function RichTextBlockEditor({ block, index, onTranslationChange }: {
-    block: any;
-    index: number;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const currentValue = block.translations?.[0]?.textContent ?? '';
-    return (
-        <div>
-            <label className="text-sm font-medium"><Trans>Rich Text Content</Trans></label>
-            <div className="mt-1">
-                <RichTextEditor
-                    value={currentValue}
-                    onChange={(val: string) => onTranslationChange(index, 'textContent', val)}
-                />
-            </div>
-        </div>
-    );
-}
-
-function BooleanEditor({ block, index, isSuperAdmin, onFieldChange, onMetadataChange }: {
-    block: any;
-    index: number;
-    isSuperAdmin: boolean;
-    onFieldChange: (index: number, field: string, value: any) => void;
-    onMetadataChange: (index: number, key: string, value: any) => void;
-}) {
-    const { t } = useLingui();
-    const trueLabel = block.metadata?.trueLabel ?? t`Yes`;
-    const falseLabel = block.metadata?.falseLabel ?? t`No`;
-    const isTrue = block.numberValue === 1;
-    const activeLabel = isTrue ? trueLabel : falseLabel;
-
-    return (
-        <div className="space-y-3">
-            {isSuperAdmin && (
-            <div className="grid gap-3 @md:grid-cols-2">
-                <div>
-                    <label className="text-sm font-medium"><Trans>True Label</Trans></label>
-                    <Input
-                        value={trueLabel}
-                        onChange={e => onMetadataChange(index, 'trueLabel', e.target.value)}
-                        placeholder={t`e.g. Show Banner`}
-                        className="mt-1"
-                    />
-                </div>
-                <div>
-                    <label className="text-sm font-medium"><Trans>False Label</Trans></label>
-                    <Input
-                        value={falseLabel}
-                        onChange={e => onMetadataChange(index, 'falseLabel', e.target.value)}
-                        placeholder={t`e.g. Hide Banner`}
-                        className="mt-1"
-                    />
-                </div>
-            </div>
-            )}
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
-                <Switch
-                    checked={isTrue}
-                    onCheckedChange={checked => onFieldChange(index, 'numberValue', checked ? 1 : 0)}
-                />
-                <span className="text-sm font-medium">{activeLabel}</span>
-            </div>
-        </div>
-    );
-}
-
-function EnumEditor({ block, index, onTranslationChange }: {
-    block: any;
-    index: number;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const { t } = useLingui();
-    const currentValue = block.translations?.[0]?.textContent ?? '';
-    const options = currentValue.split('\n').filter((line: string) => line.trim());
-
-    return (
-        <div>
-            <label className="text-sm font-medium"><Trans>Options</Trans></label>
-            <p className="text-xs text-muted-foreground mb-1"><Trans>Enter one option per line</Trans></p>
-            <Textarea
-                value={currentValue}
-                onChange={e => onTranslationChange(index, 'textContent', e.target.value)}
-                placeholder={t`Small\nMedium\nLarge\nExtra Large`}
-                rows={4}
-                className="mt-1 font-mono text-sm"
-            />
-            {options.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap mt-2">
-                    {options.map((opt: string, i: number) => (
-                        <Badge key={i} variant="secondary">{opt.trim()}</Badge>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
-    block: any;
-    index: number;
-    onFieldsChange: (index: number, fields: Record<string, any>) => void;
-    onTranslationChange: (index: number, field: string, value: string) => void;
-}) {
-    const { t } = useLingui();
-    const [pickerOpen, setPickerOpen] = useState(false);
-    const assetPreview = block._assetPreview ?? block.featuredAsset?.preview;
-    const hasAsset = !!block.featuredAssetId;
-
-    return (
-        <div className="space-y-3">
-            <div className="flex items-start gap-4">
-                {hasAsset && assetPreview ? (
-                    <div className="relative group">
-                        <img
-                            src={`${assetPreview}?preset=thumb`}
-                            alt=""
-                            className="w-24 h-24 object-cover rounded-md border"
-                        />
-                        <button
-                            type="button"
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => onFieldsChange(index, { featuredAssetId: null, _assetPreview: null })}
-                        >
-                            <XIcon className="h-3.5 w-3.5" />
-                        </button>
-                    </div>
-                ) : (
-                    <div className="w-24 h-24 border border-dashed rounded-md flex items-center justify-center text-muted-foreground">
-                        <ImageIcon className="h-8 w-8" />
-                    </div>
-                )}
-                <div className="flex-1 space-y-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPickerOpen(true)}
-                    >
-                        {hasAsset ? t`Change Image` : t`Select Image`}
-                    </Button>
-                    <div>
-                        <label className="text-sm font-medium"><Trans>Alt Text</Trans></label>
-                        <Input
-                            value={block.translations?.[0]?.altText ?? ''}
-                            onChange={e => onTranslationChange(index, 'altText', e.target.value)}
-                            placeholder={t`Short text for screen readers / SEO`}
-                            className="mt-1"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium"><Trans>Description</Trans></label>
-                        <Textarea
-                            value={String(block.metadata?.description ?? '')}
-                            onChange={e =>
-                                onFieldsChange(index, {
-                                    metadata: { ...(block.metadata || {}), description: e.target.value },
-                                })
-                            }
-                            placeholder={t`Visible caption shown next to the image`}
-                            rows={2}
-                            className="mt-1"
-                        />
-                    </div>
-                </div>
-            </div>
-            {pickerOpen && (
-                <AssetPickerDialog
-                    open={pickerOpen}
-                    onClose={() => setPickerOpen(false)}
-                    multiSelect={false}
-                    onSelect={assets => {
-                        if (assets.length > 0) {
-                            const asset = assets[0];
-                            onFieldsChange(index, { featuredAssetId: asset.id, _assetPreview: asset.preview });
-                        }
-                    }}
-                />
-            )}
-        </div>
-    );
-}
-
-const ASSET_PREVIEW_BATCH_SIZE = 100;
-
-/**
- * Resolves asset preview URLs keyed by asset id. The `assets` list query defaults to
- * `take: 10`, so ids are fetched in explicit batches; keying by id (not array index)
- * keeps previews correct after reorder, removal, save/reset, or a missing asset.
- */
-function useAssetPreviews(assetIds: string[]) {
-    const [previews, setPreviews] = useState<Map<string, string>>(() => new Map());
-    const missingKey = assetIds.filter(id => !previews.has(id)).join(',');
-
-    useEffect(() => {
-        const missing = [...new Set(missingKey.split(',').filter(Boolean))];
-        if (missing.length === 0) return;
-        let active = true;
-        const batches: string[][] = [];
-        for (let i = 0; i < missing.length; i += ASSET_PREVIEW_BATCH_SIZE) {
-            batches.push(missing.slice(i, i + ASSET_PREVIEW_BATCH_SIZE));
-        }
-        Promise.all(
-            batches.map(ids =>
-                api.query(getAssetsByIdsDocument, {
-                    options: { filter: { id: { in: ids } }, take: ids.length },
-                }),
-            ),
-        )
-            .then(results => {
-                if (!active) return;
-                const found = results.flatMap((r: any) => r.assets.items as Array<{ id: string; preview: string }>);
-                setPreviews(prev => {
-                    const next = new Map(prev);
-                    for (const asset of found) next.set(String(asset.id), asset.preview);
-                    return next;
-                });
-            })
-            .catch(e => {
-                if (import.meta.env.DEV) console.warn('Failed to fetch gallery previews', e);
-            });
-        return () => {
-            active = false;
-        };
-    }, [missingKey]);
-
-    const addPreviews = useCallback((entries: Array<[string, string]>) => {
-        setPreviews(prev => new Map([...prev, ...entries]));
-    }, []);
-
-    return { previews, addPreviews };
-}
-
-function ImageGalleryEditor({ block, index, onFieldChange }: {
-    block: any;
-    index: number;
-    onFieldChange: (index: number, field: string, value: any) => void;
-}) {
-    const { t } = useLingui();
-    const [pickerOpen, setPickerOpen] = useState(false);
-    const assetIds: string[] = (block.metadata?.assetIds ?? []).map(String);
-    const { previews, addPreviews } = useAssetPreviews(assetIds);
-    // Per-image alt/description keyed by asset id (default language). Survives
-    // reorder/removal because it is keyed by id, not array index.
-    const imageMeta: Record<string, { alt?: string; description?: string }> =
-        block.metadata?.imageMeta ?? {};
-
-    const updateGallery = (
-        newIds: string[],
-        newImageMeta: Record<string, { alt?: string; description?: string }> = imageMeta,
-    ) => {
-        // `assetPreviews` is a legacy positional cache the server strips; previews are
-        // now resolved per asset id, so drop it instead of persisting a stale copy.
-        const { assetPreviews: _legacyPreviews, ...restMetadata } = block.metadata || {};
-        const newMetadata = {
-            ...restMetadata,
-            assetIds: newIds,
-            imageMeta: newImageMeta,
-        };
-        onFieldChange(index, 'metadata', newMetadata);
-    };
-
-    const removeAsset = (assetIndex: number) => {
-        const removedId = assetIds[assetIndex];
-        const newIds = assetIds.filter((_, i) => i !== assetIndex);
-        const { [removedId]: _removed, ...restMeta } = imageMeta;
-        updateGallery(newIds, restMeta);
-    };
-
-    const updateImageMeta = (assetId: string, field: 'alt' | 'description', value: string) => {
-        const newImageMeta = {
-            ...imageMeta,
-            [assetId]: { ...(imageMeta[assetId] || {}), [field]: value },
-        };
-        updateGallery(assetIds, newImageMeta);
-    };
-
-    return (
-        <div>
-            <label className="text-sm font-medium"><Trans>Images</Trans></label>
-            <div className="space-y-3 mt-2">
-                {assetIds.map((assetId, i) => (
-                    <div key={`${assetId}-${i}`} className="flex gap-3 items-start border rounded-md p-2">
-                        <div className="relative group shrink-0">
-                            {previews.get(assetId) ? (
-                                <img
-                                    src={`${previews.get(assetId)}?preset=thumb`}
-                                    alt=""
-                                    className="w-20 h-20 object-cover rounded-md border"
-                                />
-                            ) : (
-                                <div className="w-20 h-20 rounded-md border bg-muted flex items-center justify-center text-muted-foreground">
-                                    <ImageIcon className="h-5 w-5" />
-                                </div>
-                            )}
-                            <button
-                                type="button"
-                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeAsset(i)}
-                            >
-                                <XIcon className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 space-y-2">
-                            <Input
-                                value={imageMeta[assetId]?.alt ?? ''}
-                                onChange={e => updateImageMeta(assetId, 'alt', e.target.value)}
-                                placeholder={t`Alt text (screen readers / SEO)`}
-                            />
-                            <Textarea
-                                value={imageMeta[assetId]?.description ?? ''}
-                                onChange={e => updateImageMeta(assetId, 'description', e.target.value)}
-                                placeholder={t`Description / caption`}
-                                rows={2}
-                            />
-                        </div>
-                    </div>
-                ))}
-                <button
-                    type="button"
-                    className="w-20 h-20 border border-dashed rounded-md flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                    onClick={() => setPickerOpen(true)}
-                >
-                    <PlusIcon className="h-6 w-6" />
-                </button>
-            </div>
-            {assetIds.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1"><Trans>Click + to add images</Trans></p>
-            )}
-            {pickerOpen && (
-                <AssetPickerDialog
-                    open={pickerOpen}
-                    onClose={() => setPickerOpen(false)}
-                    multiSelect={true}
-                    onSelect={assets => {
-                        if (assets.length > 0) {
-                            addPreviews(assets.map(a => [String(a.id), a.preview]));
-                            updateGallery([...assetIds, ...assets.map(a => String(a.id))]);
-                        }
-                    }}
-                />
-            )}
-        </div>
-    );
-}
-
 export const cmsPageDetail: DashboardRouteDefinition = {
     path: '/cms-pages/$id',
     loader: detailPageRouteLoader({
         queryDocument: cmsPageDetailDocument,
         breadcrumb: (isNew, entity) => [
             { path: '/cms-pages', label: <Trans>Pages</Trans> },
+            ...(entity?.parent ? [{ path: `/cms-pages/${entity.parent.id}`, label: entity.parent.name }] : []),
             isNew ? <Trans>New Page</Trans> : entity?.name,
         ],
     }),

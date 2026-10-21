@@ -1,13 +1,14 @@
-import { DeepPartial } from '@vendure/common/lib/shared-types';
+import { DeepPartial, ID } from '@vendure/common/lib/shared-types';
 import {
     Channel,
+    EntityId,
     HasCustomFields,
     LocaleString,
     Translatable,
     Translation,
     VendureEntity,
 } from '@vendure/core';
-import { Column, Entity, Index, JoinTable, ManyToMany, OneToMany } from 'typeorm';
+import { Column, Entity, Index, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 
 import { CmsPageTranslation } from './cms-page-translation.entity';
 import { ContentBlock } from './content-block.entity';
@@ -39,8 +40,24 @@ export class CmsPage extends VendureEntity implements Translatable, HasCustomFie
     @Column({ default: false })
     allowCustomerCreation: boolean;
 
+    // Order in the sidebar for pinned top-level pages, and among siblings for child pages.
     @Column({ type: 'int', default: 0 })
     sidebarOrder: number;
+
+    // One level only: a child page groups under a top-level page in the dashboard
+    // (shown as a tab). Nullable so existing pages and older plugin versions are unaffected.
+    @ManyToOne(() => CmsPage, page => page.children, { nullable: true, onDelete: 'SET NULL' })
+    parent: CmsPage | null;
+
+    @EntityId({ nullable: true })
+    parentId: ID | null;
+
+    @OneToMany(() => CmsPage, page => page.parent)
+    children: CmsPage[];
+
+    // Absolute address of the page on the public site, for the dashboard "View on site" button.
+    @Column({ type: 'varchar', length: 2048, nullable: true })
+    previewUrl: string | null;
 
     name: LocaleString;
     slug: LocaleString;

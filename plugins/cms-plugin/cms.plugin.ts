@@ -3,6 +3,7 @@ import { AuditLogPlugin } from '../audit-log-plugin/audit-log.plugin';
 
 import { adminApiExtensions, shopApiExtensions } from './api/api-extensions';
 import { CmsPageAdminResolver } from './api/cms-page-admin.resolver';
+import { CmsPageEntityAdminResolver } from './api/cms-page-entity.resolver';
 import { CmsPageShopResolver } from './api/cms-page-shop.resolver';
 import { ContentBlockAdminResolver } from './api/content-block-admin.resolver';
 import { ContentBlockShopResolver } from './api/content-block-shop.resolver';
@@ -24,7 +25,12 @@ import { FormSubmissionService } from './services/form-submission.service';
     entities: [ContentBlock, ContentBlockTranslation, CmsPage, CmsPageTranslation, FormSubmission],
     adminApiExtensions: {
         schema: adminApiExtensions,
-        resolvers: [ContentBlockAdminResolver, CmsPageAdminResolver, FormSubmissionAdminResolver],
+        resolvers: [
+            ContentBlockAdminResolver,
+            CmsPageAdminResolver,
+            CmsPageEntityAdminResolver,
+            FormSubmissionAdminResolver,
+        ],
     },
     shopApiExtensions: {
         schema: shopApiExtensions,

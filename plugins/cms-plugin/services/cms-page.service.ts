@@ -12,6 +12,7 @@ import {
     TransactionalConnection,
     TranslatableSaver,
     UserInputError,
+    idsAreEqual,
     translateDeep,
 } from '@vendure/core';
 
@@ -20,6 +21,7 @@ import { ContentBlockTranslation } from '../entities/content-block-translation.e
 import { ContentBlock } from '../entities/content-block.entity';
 import { CmsPageTranslation } from '../entities/cms-page-translation.entity';
 import { CmsPage } from '../entities/cms-page.entity';
+import { normalizePreviewUrl } from './preview-url';
 import { sanitizeBlockTranslations } from './sanitize-rich-text';
 
 const MAX_KEY_LENGTH = 255;
@@ -135,6 +137,8 @@ export class CmsPageService {
         pinnedInSidebar?: boolean;
         allowCustomerCreation?: boolean;
         sidebarOrder?: number;
+        parentId?: ID | null;
+        previewUrl?: string | null;
         translations: Array<{
             languageCode: LanguageCode;
             name: string;
@@ -146,6 +150,8 @@ export class CmsPageService {
         await this.assertUniqueKey(ctx, input.key);
         this.validateContentBlocks(input.contentBlocks);
         this.validateMutualExclusivity(input.acceptsSubmissions, input.isCollection);
+        await this.assertValidParent(ctx, input.parentId);
+        const previewUrl = normalizePreviewUrl(input.previewUrl) ?? null;
 
         const pageInput = {
             key: input.key,
@@ -155,6 +161,8 @@ export class CmsPageService {
             pinnedInSidebar: input.pinnedInSidebar ?? false,
             allowCustomerCreation: input.allowCustomerCreation ?? false,
             sidebarOrder: input.sidebarOrder ?? 0,
+            parentId: input.parentId ?? null,
+            previewUrl,
             translations: input.translations,
         };
         const page = await this.translatableSaver.create({
@@ -185,6 +193,7 @@ export class CmsPageService {
                 enabled: input.enabled ?? true,
                 acceptsSubmissions: input.acceptsSubmissions ?? false,
                 isCollection: input.isCollection ?? false,
+                parentId: input.parentId?.toString() ?? null,
                 translations: input.translations.map(t => ({ lang: t.languageCode, name: t.name, slug: t.slug })),
                 blocks: input.contentBlocks?.map(b => ({ key: b.key, type: b.type })),
             },
@@ -201,6 +210,8 @@ export class CmsPageService {
         pinnedInSidebar?: boolean;
         allowCustomerCreation?: boolean;
         sidebarOrder?: number;
+        parentId?: ID | null;
+        previewUrl?: string | null;
         translations?: Array<{
             id?: ID;
             languageCode: LanguageCode;
@@ -235,6 +246,10 @@ export class CmsPageService {
             }
             this.validateContentBlocks(input.contentBlocks);
             this.validateMutualExclusivity(input.acceptsSubmissions, input.isCollection);
+            if (input.parentId !== undefined) {
+                await this.assertValidParent(ctx, input.parentId, input.id);
+            }
+            const previewUrl = normalizePreviewUrl(input.previewUrl);
 
             const updateInput = {
                 id: input.id,
@@ -245,6 +260,8 @@ export class CmsPageService {
                 ...(input.pinnedInSidebar !== undefined && { pinnedInSidebar: input.pinnedInSidebar }),
                 ...(input.allowCustomerCreation !== undefined && { allowCustomerCreation: input.allowCustomerCreation }),
                 ...(input.sidebarOrder !== undefined && { sidebarOrder: input.sidebarOrder }),
+                ...(input.parentId !== undefined && { parentId: input.parentId }),
+                ...(previewUrl !== undefined && { previewUrl }),
                 ...(input.translations && { translations: input.translations }),
             };
             await this.translatableSaver.update({
@@ -276,6 +293,16 @@ export class CmsPageService {
             if (input[field] !== undefined && input[field] !== (oldPage as any)?.[field]) {
                 changes[field] = { from: (oldPage as any)?.[field], to: input[field] };
             }
+        }
+        // IDs compare by value (the input is a string, the stored id may be a number)
+        if (isSuperAdmin && input.parentId !== undefined && !idsAreEqual(input.parentId, oldPage?.parentId)) {
+            changes.parentId = {
+                from: oldPage?.parentId?.toString() ?? null,
+                to: input.parentId?.toString() ?? null,
+            };
+        }
+        if (isSuperAdmin && input.previewUrl !== undefined && result.previewUrl !== (oldPage?.previewUrl ?? null)) {
+            changes.previewUrl = { from: oldPage?.previewUrl ?? null, to: result.previewUrl };
         }
         // Track page translation changes (name, slug)
         if (input.translations) {
@@ -364,10 +391,32 @@ export class CmsPageService {
             })
             .where('page.pinnedInSidebar = :pinned', { pinned: true })
             .andWhere('page.enabled = :enabled', { enabled: true })
+            // Child pages open as tabs of their parent, so only top-level pages get a shortcut
+            .andWhere('page.parentId IS NULL')
             .orderBy('page.sidebarOrder', 'ASC')
             .addOrderBy('page.id', 'ASC')
             .getMany();
         return pages.map(page => translateDeep(page, ctx.languageCode));
+    }
+
+    async findParent(ctx: RequestContext, page: CmsPage): Promise<CmsPage | undefined> {
+        if (page.parentId == null) return undefined;
+        const parent = await this.connection.findOneInChannel(ctx, CmsPage, page.parentId, ctx.channelId);
+        return parent ? translateDeep(parent, ctx.languageCode) : undefined;
+    }
+
+    async findChildren(ctx: RequestContext, page: CmsPage): Promise<CmsPage[]> {
+        const children = await this.connection.getRepository(ctx, CmsPage)
+            .createQueryBuilder('page')
+            .leftJoinAndSelect('page.translations', 'translation')
+            .innerJoin('page.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('page.parentId = :parentId', { parentId: page.id })
+            .orderBy('page.sidebarOrder', 'ASC')
+            .addOrderBy('page.id', 'ASC')
+            .getMany();
+        return children.map(child => translateDeep(child, ctx.languageCode));
     }
 
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
@@ -377,6 +426,10 @@ export class CmsPageService {
         });
         const pageKey = page.key;
         const blockCount = page.contentBlocks?.length ?? 0;
+        // The FK is ON DELETE SET NULL, but detach explicitly so it also holds where
+        // foreign keys are not enforced (SQLite without the pragma).
+        const { affected: detachedChildren } = await this.connection.getRepository(ctx, CmsPage)
+            .update({ parentId: id }, { parentId: null });
         await this.connection.getRepository(ctx, CmsPage).remove(page);
         this.auditLogService?.log(ctx, {
             action: 'CmsPageDeleted',
@@ -390,6 +443,7 @@ export class CmsPageService {
                 isCollection: page.isCollection,
                 acceptsSubmissions: page.acceptsSubmissions,
                 blockCount,
+                detachedChildren: detachedChildren ?? 0,
             },
         }).catch(() => {});
         return { result: DeletionResult.DELETED };
@@ -398,6 +452,32 @@ export class CmsPageService {
     private validateMutualExclusivity(acceptsSubmissions?: boolean, isCollection?: boolean): void {
         if (acceptsSubmissions && isCollection) {
             throw new UserInputError('A page cannot be both a collection and accept submissions');
+        }
+    }
+
+    /**
+     * The hierarchy is one level deep: a parent must be a top-level page, and a page
+     * that already has children cannot become a child. This also rules out cycles.
+     */
+    private async assertValidParent(ctx: RequestContext, parentId: ID | null | undefined, pageId?: ID): Promise<void> {
+        if (parentId == null) return;
+        if (pageId != null && idsAreEqual(parentId, pageId)) {
+            throw new UserInputError('A page cannot be its own parent');
+        }
+        const parent = await this.connection.findOneInChannel(ctx, CmsPage, parentId, ctx.channelId);
+        if (!parent) {
+            throw new UserInputError(`No CMS page with id "${parentId}" in this channel`);
+        }
+        if (parent.parentId != null) {
+            throw new UserInputError(`The parent page "${parent.key}" must be a top-level page`);
+        }
+        if (pageId != null) {
+            const childCount = await this.connection.getRepository(ctx, CmsPage).count({
+                where: { parentId: pageId },
+            });
+            if (childCount > 0) {
+                throw new UserInputError('This page has child pages, so it cannot be placed under another page');
+            }
         }
     }
 

@@ -23,6 +23,9 @@ const getCmsPageList = graphql(`
                 enabled
                 name
                 slug
+                children {
+                    id
+                }
             }
             totalItems
         }
@@ -47,7 +50,20 @@ function CmsPageListContent({ route }: { route: any }) {
             listQuery={getCmsPageList}
             deleteMutation={deleteCmsPageDocument}
             route={route}
+            transformVariables={variables => {
+                // Child pages open as tabs of their parent; a search still finds every page.
+                const filter = variables.options?.filter;
+                if (filter && Object.keys(filter).length > 0) return variables;
+                return {
+                    ...variables,
+                    options: { ...variables.options, filter: { parentId: { isNull: true } } },
+                };
+            }}
             customizeColumns={{
+                children: {
+                    header: t`Tabs`,
+                    cell: ({ row }) => row.original.children?.length || '',
+                },
                 key: {
                     header: t`Key`,
                 },
