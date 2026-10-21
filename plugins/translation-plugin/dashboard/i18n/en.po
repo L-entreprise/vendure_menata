@@ -18,9 +18,6 @@ msgstr "Languages"
 msgid "Translation Settings"
 msgstr "Translation Settings"
 
-msgid "Save Translations"
-msgstr "Save Translations"
-
 msgid "Save Languages"
 msgstr "Save Languages"
 
@@ -29,9 +26,6 @@ msgstr "Save"
 
 msgid "Add Language"
 msgstr "Add Language"
-
-msgid "No translatable fields found"
-msgstr "No translatable fields found"
 
 msgid "Translations saved"
 msgstr "Translations saved"
@@ -51,9 +45,6 @@ msgstr "Page"
 msgid "Remove"
 msgstr "Remove"
 
-msgid "Field"
-msgstr "Field"
-
 msgid "Code"
 msgstr "Code"
 
@@ -66,30 +57,6 @@ msgstr "Enabled"
 msgid "Default"
 msgstr "Default"
 
-msgid "Collection"
-msgstr "Collection"
-
-msgid "Collection Translations"
-msgstr "Collection Translations"
-
-msgid "No entries found in this collection."
-msgstr "No entries found in this collection."
-
-msgid "Content"
-msgstr "Content"
-
-msgid "Alt text"
-msgstr "Alt text"
-
-msgid "Description"
-msgstr "Description"
-
-msgid "Image"
-msgstr "Image"
-
-msgid "Slug"
-msgstr "Slug"
-
 msgid "Page Name"
 msgstr "Page Name"
 
@@ -101,12 +68,6 @@ msgstr "Image selected"
 
 msgid "Change Image"
 msgstr "Change Image"
-
-msgid "Select Image"
-msgstr "Select Image"
-
-msgid "CMS — read-only"
-msgstr "CMS — read-only"
 
 msgid "Only SuperAdmin can manage translation languages."
 msgstr "Only SuperAdmin can manage translation languages."
@@ -133,3 +94,91 @@ msgstr "Translations"
 #. js-lingui-explicit-id
 msgid "Languages"
 msgstr "Languages"
+
+#. Simplified editor: tabs, sections, progress
+msgid "Edit in the original language"
+msgstr "Edit in the original language"
+
+msgid "Only one language is enabled, so there is nothing to translate yet."
+msgstr "Only one language is enabled, so there is nothing to translate yet."
+
+msgid "Form submissions are not translated."
+msgstr "Form submissions are not translated."
+
+msgid "Language to translate into"
+msgstr "Language to translate into"
+
+msgid "Only fields to translate"
+msgstr "Only fields to translate"
+
+msgid "Texts"
+msgstr "Texts"
+
+msgid "{count} fields to translate"
+msgstr "{count} fields to translate"
+
+msgid "This page could not be loaded."
+msgstr "This page could not be loaded."
+
+msgid "This tab could not be loaded."
+msgstr "This tab could not be loaded."
+
+msgid "Try again"
+msgstr "Try again"
+
+msgid "Loading..."
+msgstr "Loading..."
+
+msgid "Tabs"
+msgstr "Tabs"
+
+msgid "Translated"
+msgstr "Translated"
+
+msgid "{0} (original)"
+msgstr "{0} (original)"
+
+msgid "Original"
+msgstr "Original"
+
+msgid "Untitled field"
+msgstr "Untitled field"
+
+msgid "alt text"
+msgstr "alt text"
+
+msgid "image description"
+msgstr "image description"
+
+msgid "image"
+msgstr "image"
+
+msgid "Nothing to translate here."
+msgstr "Nothing to translate here."
+
+msgid "Everything is translated into {targetName}."
+msgstr "Everything is translated into {targetName}."
+
+msgid "{remaining} of {0} fields left to translate into {targetName}."
+msgstr "{remaining} of {0} fields left to translate into {targetName}."
+
+msgid "This page has no text to translate."
+msgstr "This page has no text to translate."
+
+msgid "Nothing left to translate on this tab."
+msgstr "Nothing left to translate on this tab."
+
+msgid "Unknown error"
+msgstr "Unknown error"
+
+msgid "This list has no entries yet."
+msgstr "This list has no entries yet."
+
+msgid "Entry {0}"
+msgstr "Entry {0}"
+
+msgid "Empty in the original language"
+msgstr "Empty in the original language"
+
+msgid "Use another image"
+msgstr "Use another image"

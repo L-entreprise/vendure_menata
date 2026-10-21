@@ -4,6 +4,7 @@ import { Allow, Ctx, Permission, RequestContext, Transaction } from '@vendure/co
 import { cmsPagePermission } from '../../cms-plugin/constants';
 import { CmsTranslationService } from '../services/cms-translation.service';
 import { TranslationLanguageService } from '../services/translation-language.service';
+import { TranslationOverviewService } from '../services/translation-overview.service';
 import {
     TranslationLanguageInput,
     UpdateCmsPageTranslationsInput,
@@ -15,6 +16,7 @@ export class TranslationAdminResolver {
     constructor(
         private translationLanguageService: TranslationLanguageService,
         private cmsTranslationService: CmsTranslationService,
+        private translationOverviewService: TranslationOverviewService,
     ) {}
 
     @Query()
@@ -75,6 +77,24 @@ export class TranslationAdminResolver {
         @Args() args: { pageId: string; entryId: string },
     ) {
         return this.cmsTranslationService.getCollectionEntryDefaultContent(ctx, args.pageId, args.entryId);
+    }
+
+    @Query()
+    @Allow(cmsPagePermission.Read)
+    async cmsTranslationProgress(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { pageIds: string[] },
+    ) {
+        return this.translationOverviewService.progress(ctx, args.pageIds);
+    }
+
+    @Query()
+    @Allow(cmsPagePermission.Read)
+    async collectionEntriesTranslations(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { pageId: string },
+    ) {
+        return this.translationOverviewService.collectionEntriesTranslations(ctx, args.pageId);
     }
 
     @Transaction()

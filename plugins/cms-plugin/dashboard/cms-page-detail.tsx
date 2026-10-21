@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
 import {
     AlignLeftIcon,
     ArrowDownIcon,
@@ -14,6 +14,7 @@ import {
     ImagesIcon,
     ListIcon,
     ExternalLinkIcon,
+    LanguagesIcon,
     PlusIcon,
     TextIcon,
     ToggleLeftIcon,
@@ -173,6 +174,16 @@ function getBlockTypeIcon(type: string) {
 // Tab of the page's own fields; child pages use their id as tab value.
 const CONTENT_TAB = 'content';
 
+// Registered by the translation plugin, when it is installed next to this one.
+const TRANSLATION_ROUTE = '/cms-translations/$id';
+
+function useHasRoute(fullPath: string): boolean {
+    const router = useRouter();
+    return Object.values(router.routesById as Record<string, { fullPath?: string }>).some(
+        route => route.fullPath === fullPath,
+    );
+}
+
 function CmsPageDetailPage({ route }: { route: any }) {
     const params = route.useParams();
     const isNew = params.id === 'new';
@@ -181,6 +192,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const { hasPermissions } = usePermissions();
     const isSuperAdmin = hasPermissions(['SuperAdmin']);
     const mode = useCmsSimpleMode();
+    const canTranslate = useHasRoute(TRANSLATION_ROUTE);
     // Creating a page is structure work, so a new page always shows the full editor.
     const simple = mode.simple && !isNew;
     const { t } = useLingui();
@@ -672,6 +684,21 @@ function CmsPageDetailPage({ route }: { route: any }) {
             <PageActionBar>
                 <PageActionBarRight>
                     <ExpertModeSwitch mode={mode} />
+                    {canTranslate && !isNew && !entity?.acceptsSubmissions && (
+                        <Button
+                            variant="outline"
+                            render={
+                                <Link
+                                    to={TRANSLATION_ROUTE as any}
+                                    params={{ id: params.id } as any}
+                                    search={(activeTab === CONTENT_TAB ? {} : { tab: activeTab }) as any}
+                                />
+                            }
+                        >
+                            <LanguagesIcon className="mr-2 h-4 w-4" />
+                            <Trans>Translate this page</Trans>
+                        </Button>
+                    )}
                     {viewOnSiteUrl && (
                         <Button
                             variant="outline"
