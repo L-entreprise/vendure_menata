@@ -32,7 +32,7 @@ export class AuditLogEntry extends VendureEntity {
     @Index()
     userId: string;
 
-    /** Human-readable user identifier (email or name) */
+    /** Pseudonymous user label (`User #id`), never an email or a name */
     @Column({ nullable: true })
     userName: string;
 
@@ -41,7 +41,7 @@ export class AuditLogEntry extends VendureEntity {
     @Index()
     apiType: string;
 
-    /** IP address from the request (if available) */
+    /** Request IP, kept for admin actions and auth events only (empty for storefront activity) */
     @Column({ nullable: true })
     ipAddress: string;
 

@@ -20,6 +20,7 @@ export const SECRET_KEYS = new Set([
  * `identifier` is not listed: login identifiers are masked upstream (j***@domain).
  */
 export const PERSONAL_DATA_KEYS = new Set([
+    'title',
     'emailAddress',
     'email',
     'firstName',
@@ -34,6 +35,12 @@ export const PERSONAL_DATA_KEYS = new Set([
     'province',
     'postalCode',
 ]);
+
+/**
+ * Custom fields are project-specific (birth date, VAT number, gift message...), so no
+ * key list can be trusted to catch them: every value under this key is redacted.
+ */
+export const CUSTOM_FIELDS_KEY = 'customFields';
 
 export const REDACTED = '[redacted]';
 
@@ -53,10 +60,27 @@ export function redactPersonalData(value: unknown, depth = 0): unknown {
     const result: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
         if (SECRET_KEYS.has(key)) continue;
-        result[key] =
-            PERSONAL_DATA_KEYS.has(key) && item !== null && item !== undefined
-                ? REDACTED
-                : redactPersonalData(item, depth + 1);
+        if (key === CUSTOM_FIELDS_KEY) {
+            result[key] = redactAllValues(item, depth + 1);
+        } else {
+            result[key] =
+                PERSONAL_DATA_KEYS.has(key) && item !== null && item !== undefined
+                    ? REDACTED
+                    : redactPersonalData(item, depth + 1);
+        }
+    }
+    return result;
+}
+
+/** Keeps the structure (which fields changed) and replaces every non-empty value. */
+function redactAllValues(value: unknown, depth: number): unknown {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object' || depth > MAX_DEPTH) return REDACTED;
+    if (Array.isArray(value)) return value.map(item => redactAllValues(item, depth + 1));
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+        if (SECRET_KEYS.has(key)) continue;
+        result[key] = redactAllValues(item, depth + 1);
     }
     return result;
 }

@@ -166,6 +166,45 @@ describe('AuditLogPlugin', () => {
         }
     });
 
+    it('redacts every custom field value and the title, keeping the field names', async () => {
+        const ctx = await server.app.get(RequestContextService).create({ apiType: 'admin' });
+        const repo = server.app.get(TransactionalConnection).rawConnection.getRepository(AuditLogEntry);
+
+        await server.app.get(AuditLogService).log(ctx, {
+            action: 'CustomFieldsTest',
+            detail: {
+                changes: {
+                    title: 'Mrs',
+                    customFields: { birthDate: '1990-01-01', billing: { vatNumber: 'FR123456789' }, empty: null },
+                },
+            },
+        });
+
+        const entry = await repo.findOneOrFail({ where: { action: 'CustomFieldsTest' } });
+        expect(entry.detail.changes).toEqual({
+            title: '[redacted]',
+            customFields: { birthDate: '[redacted]', billing: { vatNumber: '[redacted]' }, empty: null },
+        });
+    });
+
+    it('keeps the IP for admin and auth events only, never for storefront activity', async () => {
+        const requestContextService = server.app.get(RequestContextService);
+        const auditLogService = server.app.get(AuditLogService);
+        const repo = server.app.get(TransactionalConnection).rawConnection.getRepository(AuditLogEntry);
+        const req = { ip: '203.0.113.7', headers: {} } as any;
+        const shopCtx = await requestContextService.create({ apiType: 'shop', req });
+        const adminCtx = await requestContextService.create({ apiType: 'admin', req });
+
+        await auditLogService.log(shopCtx, { action: 'IpShopCart', category: 'order' });
+        await auditLogService.log(shopCtx, { action: 'IpShopLogin', category: 'auth' });
+        await auditLogService.log(adminCtx, { action: 'IpAdminAction', category: 'catalog' });
+
+        const ipOf = async (action: string) => (await repo.findOneOrFail({ where: { action } })).ipAddress;
+        expect(await ipOf('IpShopCart')).toBe('');
+        expect(await ipOf('IpShopLogin')).toBe('203.0.113.7');
+        expect(await ipOf('IpAdminAction')).toBe('203.0.113.7');
+    });
+
     it('masks the identifier of a failed login', async () => {
         await shopClient.query(SHOP_LOGIN, { username: 'john.smith@example.com', password: 'wrong' });
 
