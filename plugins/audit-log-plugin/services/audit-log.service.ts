@@ -56,7 +56,7 @@ export class AuditLogService {
         entry.userId = ctx?.activeUserId?.toString() ?? '';
         entry.userName = this.extractUserName(ctx);
         entry.apiType = ctx?.apiType ?? '';
-        entry.ipAddress = this.extractIpAddress(ctx) ?? '';
+        entry.ipAddress = this.keepsIpAddress(ctx, entry.category) ? this.extractIpAddress(ctx) : '';
         entry.detail = (input.detail ? redactPersonalData(input.detail) : {}) as Record<string, unknown>;
         if (ctx) {
             await this.channelService.assignToCurrentChannel(entry, ctx);
@@ -149,6 +149,15 @@ export class AuditLogService {
     private extractUserName(ctx?: RequestContext): string {
         if (!ctx?.activeUserId) return 'system';
         return `User #${ctx.activeUserId}`;
+    }
+
+    /**
+     * The IP is kept for its security purpose only (art. 5.1.b/c): admin actions and
+     * authentication attempts. Storefront activity (cart, checkout) is logged without
+     * it, so the trail never becomes a record of where each shopper browses from.
+     */
+    private keepsIpAddress(ctx: RequestContext | undefined, category: string): boolean {
+        return ctx?.apiType === 'admin' || category === 'auth';
     }
 
     private extractIpAddress(ctx?: RequestContext): string {

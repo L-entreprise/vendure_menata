@@ -43,7 +43,11 @@ compliant:
 - **Data minimisation (art. 5.1.c):** subjects are referenced by id only (`userId`,
   `entityId`, `customerId`). Names, emails, phone numbers and postal addresses in
   mutation input are stored as `[redacted]` (the field name stays, so you still see
-  *what* changed). Login identifiers are masked (`j***@example.com`).
+  *what* changed). Every value under `customFields` is redacted too, whatever the
+  field, since custom fields are project-specific. Login identifiers are masked
+  (`j***@example.com`).
+- **IP addresses:** kept only for admin actions and authentication events (security
+  purpose). Storefront activity (cart, checkout) is logged without the IP.
 - **Secrets:** passwords, hashes and tokens are dropped from the payload entirely.
 - **Access:** SuperAdmin only.
 - **IP address** is kept (personal data) for security investigation; it expires with
