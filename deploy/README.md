@@ -29,7 +29,7 @@ Every plugin in `../plugins` is wired here (see `vendure-config.ts` → `plugins
 | `menata-branding` | `MenataBrandingPlugin` | — |
 | `cms-plugin` | `CmsPlugin` | — |
 | `audit-log-plugin` | `AuditLogPlugin.init({ retentionDays })` | `AUDIT_LOG_RETENTION_DAYS` (default 90) |
-| `translation-plugin` | `TranslationPlugin.init({ languages })` | — (languages are set in `vendure-config.ts`) |
+| `content-i18n` | `ContentI18nPlugin` | — (languages come from the channel: Settings → Channels) |
 | `diagnostics-plugin` | `DiagnosticsPlugin.init({ ... })` — **conditional** | `MENATA_DIAGNOSTIC_API_KEY`, `MENATA_API_BASE_URL`, `MENATA_CLIENT_ID`, `DIAGNOSTICS_CTA_URL`, `DIAGNOSTICS_CACHE_TTL_MS` |
 
 Diagnostics registers only when `MENATA_DIAGNOSTIC_API_KEY` is set. Once it is set, the

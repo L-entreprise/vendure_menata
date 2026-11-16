@@ -24,7 +24,8 @@ dashboard editor and public Shop API queries.
    `form-submission.service.ts` import `../audit-log-plugin/...` by relative path, and
    the plugin module imports `AuditLogPlugin`. Keep `audit-log-plugin/` next to
    `cms-plugin/` and register `AuditLogPlugin` too, or nothing compiles.
-   `translation-plugin`, if used, must be a sibling as well.
+   `content-i18n` must be a sibling as well: the CMS imports its shared translation
+   helpers (progress rules, hints, dialogs) by relative path `../content-i18n/...`.
 
 3. **Inside the TypeScript / dashboard scan roots** — put the plugin folders under a
    path covered by the host `tsconfig.json` `include` and by the dashboard Vite
@@ -81,3 +82,31 @@ plugins: [
   page list and from tabs in simple mode.
 - Gallery previews are resolved per asset id from the Admin API, so reordering,
   removing, saving or reloading never shifts thumbnails.
+
+## Languages
+
+Content uses Vendure's native translations. The languages are the channel's
+(Settings → Channels); the original is the channel's **default language**.
+
+- **Editing:** the editor works on the dashboard's *content language* (the switcher
+  next to the alerts bell, from `content-i18n`). In the default language it edits the
+  original; in another language it edits that language's row, with the original under
+  each field (copy button). The Admin API already receives `?languageCode=` from the
+  dashboard, so `ctx.languageCode` is the language being edited.
+- **What is translated:** block texts (`textContent`, `altText`, `name`), image
+  captions and gallery alt/description (`ContentBlockTranslation.translatedMetadata`),
+  an optional per-language image (`ContentBlockTranslation.featuredAsset`), page
+  `name`/`slug`, and list-entry texts (`FormSubmissionTranslation.data`). Dates,
+  numbers, toggles and gallery contents are shared by all languages.
+- **Fallback:** the Shop API answers per field: a field empty or missing in the
+  requested language shows the default language's value.
+- **Rights:** editors without SuperAdmin may translate page `name`/`slug` in the other
+  languages; the original stays SuperAdmin-only.
+- **Progress:** `CmsPage.translationProgress` and `cmsTranslationProgress(pageIds)`
+  (Admin API) count, per target language, the fields with original text and those
+  translated (a top-level page includes its child pages; form pages never count).
+  The page list shows it, and a bell alert lists unfinished pages.
+- **Original changed:** after saving the original, if translations of the changed
+  fields exist, a dialog offers to keep them, clear them, or translate now.
+- **Upgrading from `translation-plugin`:** run `npm run migrate:translations` in
+  `deploy/` once (see `../content-i18n/README.md`).

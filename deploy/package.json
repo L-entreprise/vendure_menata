@@ -13,6 +13,7 @@
         "migration:generate": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts generate",
         "migration:run": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts run",
         "migration:revert": "node -r ts-node/register/transpile-only -r dotenv/config migration.ts revert",
+        "migrate:translations": "node -r ts-node/register/transpile-only -r dotenv/config migrate-translations.ts",
         "test:e2e": "vitest run --config vitest.config.mts"
     },
     "//": "Version ranges (~3.7.4) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.8.0) when the monorepo fork merges a new upstream minor.",

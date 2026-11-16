@@ -14,7 +14,10 @@ import {
 import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
 import { ContentBlock } from '../entities/content-block.entity';
 import { CmsPage } from '../entities/cms-page.entity';
+import { FormSubmissionTranslation } from '../entities/form-submission-translation.entity';
 import { FormSubmission } from '../entities/form-submission.entity';
+import { channelDefaultLanguage } from './channel-languages';
+import { mergeEntryData, pickTranslation, pruneEntryTranslation, splitEntryData } from './localize';
 
 const MAX_FIELDS = 50;
 const MAX_FIELD_KEY_LENGTH = 255;
@@ -41,10 +44,19 @@ export class FormSubmissionService {
             .build(FormSubmission, options, {
                 ctx,
                 channelId: ctx.channelId,
+                relations: ['translations'],
             })
             .andWhere('formsubmission.pageId = :pageId', { pageId })
             .getManyAndCount()
             .then(([items, totalItems]) => ({ items, totalItems }));
+    }
+
+    /** The stored translations of a collection entry (admin view). */
+    async findTranslations(ctx: RequestContext, submission: FormSubmission): Promise<FormSubmissionTranslation[]> {
+        if (Array.isArray(submission.translations)) return submission.translations;
+        return this.connection.getRepository(ctx, FormSubmissionTranslation).find({
+            where: { baseId: submission.id },
+        });
     }
 
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
@@ -126,14 +138,15 @@ export class FormSubmissionService {
             return { items: [], totalItems: 0 };
         }
 
-        return this.listQueryBuilder
+        const [items, totalItems] = await this.listQueryBuilder
             .build(FormSubmission, options, {
                 ctx,
                 channelId: ctx.channelId,
+                relations: ['translations'],
             })
             .andWhere('formsubmission.pageId = :pageId', { pageId: page.id })
-            .getManyAndCount()
-            .then(([items, totalItems]) => ({ items, totalItems }));
+            .getManyAndCount();
+        return { items: await this.localizeEntries(ctx, page.id, items), totalItems };
     }
 
     async findCollectionEntry(
@@ -157,15 +170,71 @@ export class FormSubmissionService {
             return null;
         }
 
-        return this.connection
+        const entry = await this.connection
             .getRepository(ctx, FormSubmission)
             .createQueryBuilder('submission')
             .innerJoin('submission.channels', 'channel', 'channel.id = :channelId', {
                 channelId: ctx.channelId,
             })
+            .leftJoinAndSelect('submission.translations', 'translation')
             .where('submission.id = :entryId', { entryId })
             .andWhere('submission.pageId = :pageId', { pageId: page.id })
-            .getOne() ?? null;
+            .getOne();
+        if (!entry) return null;
+        const [localized] = await this.localizeEntries(ctx, page.id, [entry]);
+        return localized;
+    }
+
+    /** Entries as seen in the request's language: translated texts over `data`, per key. */
+    private async localizeEntries(ctx: RequestContext, pageId: ID, entries: FormSubmission[]): Promise<FormSubmission[]> {
+        if (ctx.languageCode === channelDefaultLanguage(ctx) || entries.length === 0) return entries;
+        const blocks = await this.schemaBlocks(ctx, pageId);
+        return entries.map(entry => {
+            const translation = pickTranslation(entry.translations ?? [], ctx.languageCode);
+            return Object.assign(new FormSubmission(), entry, { data: mergeEntryData(blocks, entry.data, translation?.data) });
+        });
+    }
+
+    private schemaBlocks(ctx: RequestContext, pageId: ID): Promise<ContentBlock[]> {
+        return this.connection
+            .getRepository(ctx, ContentBlock)
+            .createQueryBuilder('block')
+            .where('block.pageId = :pageId', { pageId })
+            .getMany();
+    }
+
+    /**
+     * Saves an entry edited in a non-default language: values that are not translated
+     * (dates, numbers, galleries, ...) go to the entry, texts to that language's row.
+     */
+    private async saveEntryTranslation(
+        ctx: RequestContext,
+        submission: FormSubmission,
+        blocks: ContentBlock[],
+        data: Record<string, unknown>,
+    ): Promise<FormSubmission> {
+        const { translatable, structural } = splitEntryData(blocks, data);
+        const merged = { ...submission.data, ...structural };
+        const saved = await this.connection
+            .getRepository(ctx, FormSubmission)
+            .save(Object.assign(new FormSubmission(), submission, { data: merged }) as FormSubmission);
+        const repo = this.connection.getRepository(ctx, FormSubmissionTranslation);
+        const existing = await repo.findOne({ where: { baseId: submission.id, languageCode: ctx.languageCode } });
+        const translated = pruneEntryTranslation(blocks, merged, translatable);
+        if (Object.keys(translated).length === 0) {
+            if (existing) await repo.remove(existing);
+        } else {
+            await repo.save(
+                Object.assign(new FormSubmissionTranslation(), {
+                    ...(existing && { id: existing.id }),
+                    languageCode: ctx.languageCode,
+                    data: translated,
+                    base: saved,
+                    baseId: saved.id,
+                }),
+            );
+        }
+        return saved;
     }
 
     async createEntry(
@@ -218,8 +287,12 @@ export class FormSubmissionService {
             .getMany();
         this.validateEntryData(blocks, input.data);
         const oldData = { ...submission.data };
-        submission.data = input.data;
-        const saved = await this.connection.getRepository(ctx, FormSubmission).save(submission);
+        const isDefaultLanguage = ctx.languageCode === channelDefaultLanguage(ctx);
+        const saved = isDefaultLanguage
+            ? await this.connection
+                  .getRepository(ctx, FormSubmission)
+                  .save(Object.assign(new FormSubmission(), submission, { data: input.data }))
+            : await this.saveEntryTranslation(ctx, submission, blocks, input.data);
         const changes: Record<string, { from: unknown; to: unknown }> = {};
         for (const key of Object.keys(input.data)) {
             if (JSON.stringify(oldData[key]) !== JSON.stringify(input.data[key])) {
@@ -234,6 +307,7 @@ export class FormSubmissionService {
             detail: {
                 pageId: submission.pageId.toString(),
                 pageKey: page.key,
+                ...(!isDefaultLanguage && { languageCode: ctx.languageCode }),
                 changes: Object.keys(changes).length > 0 ? changes : undefined,
             },
         }).catch(() => {});

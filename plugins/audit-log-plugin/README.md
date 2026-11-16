@@ -137,7 +137,7 @@ usual `filter` / `sort` / `take` / `skip` are available on the indexed columns.
 ## Service API
 
 `AuditLogService` is exported, so another plugin can import `AuditLogPlugin` and write
-its own entries (this is what `translation-plugin` does).
+its own entries (this is what `cms-plugin` does).
 
 ```ts
 await this.auditLogService.log(ctx, {
@@ -171,7 +171,7 @@ via Lingui PO files in `dashboard/i18n/{en,fr}.po`.
 
 ## Used by other plugins
 
-`cms-plugin` and `translation-plugin` import this plugin (`AuditLogPlugin` in their
+`cms-plugin` imports this plugin (`AuditLogPlugin` in their
 module `imports`, `AuditLogService` in their services) by relative path
 `../audit-log-plugin/...`. Keep this folder as a **sibling** of theirs and register
 `AuditLogPlugin` whenever either of them is registered.

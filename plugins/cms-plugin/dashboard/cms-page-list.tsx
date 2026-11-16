@@ -12,6 +12,8 @@ import {
     PageActionBarRight,
 } from '@vendure/dashboard';
 
+import { ProgressCell } from '../../content-i18n/dashboard/progress-cell';
+import { visibleProgress } from './cms-progress-view';
 import { ExpertModeSwitch, useCmsSimpleMode } from './cms-simple-mode';
 
 const getCmsPageList = graphql(`
@@ -27,6 +29,18 @@ const getCmsPageList = graphql(`
                 slug
                 children {
                     id
+                }
+                translationProgress {
+                    languageCode
+                    total
+                    translated
+                    parts {
+                        pageId
+                        name
+                        advanced
+                        total
+                        translated
+                    }
                 }
             }
             totalItems
@@ -74,6 +88,13 @@ function CmsPageListContent({ route }: { route: any }) {
             }}
             defaultVisibility={mode.simple ? { id: false, createdAt: false, updatedAt: false, key: false } : undefined}
             customizeColumns={{
+                translationProgress: {
+                    header: t`Translations`,
+                    // Simple mode hides advanced tabs: they leave the percentage too.
+                    cell: ({ row }) => (
+                        <ProgressCell value={visibleProgress(row.original.translationProgress ?? [], mode.simple)} />
+                    ),
+                },
                 children: {
                     header: t`Tabs`,
                     cell: ({ row }) => row.original.children?.length || '',

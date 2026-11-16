@@ -18,6 +18,8 @@ import {
     Switch,
 } from '@vendure/dashboard';
 
+import { blockLabel } from './cms-language';
+
 const cmsPageForSubmissionDocument = graphql(`
     query GetCmsPageForSubmission($id: ID!) {
         cmsPage(id: $id) {
@@ -144,7 +146,7 @@ function SubmissionDetailPage({ route }: { route: any }) {
 
     const renderFieldValue = (block: any) => {
         const value = data[block.key];
-        const fieldLabel = block.translations?.[0]?.name || block.key;
+        const fieldLabel = blockLabel(block);
 
         if (value == null || value === '') {
             return (

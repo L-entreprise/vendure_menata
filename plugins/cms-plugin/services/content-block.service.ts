@@ -11,11 +11,12 @@ import {
     TransactionalConnection,
     TranslatableSaver,
     UserInputError,
-    translateDeep,
 } from '@vendure/core';
 
 import { ContentBlockTranslation } from '../entities/content-block-translation.entity';
 import { ContentBlock } from '../entities/content-block.entity';
+import { channelDefaultLanguage, cleanTranslatedMetadata } from './channel-languages';
+import { localizeBlock } from './localize';
 import { sanitizeBlockTranslations } from './sanitize-rich-text';
 
 const MAX_KEY_LENGTH = 255;
@@ -36,7 +37,7 @@ export class ContentBlockService {
     ): Promise<PaginatedList<ContentBlock>> {
         const qb = this.listQueryBuilder
             .build(ContentBlock, options, {
-                relations: ['featuredAsset', 'channels'],
+                relations: ['featuredAsset', 'channels', 'translations', 'translations.featuredAsset'],
                 ctx,
                 channelId: ctx.channelId,
             });
@@ -46,7 +47,7 @@ export class ContentBlockService {
         return qb
             .getManyAndCount()
             .then(([items, totalItems]) => ({
-                items: items.map(item => translateDeep(item, ctx.languageCode)),
+                items: items.map(item => this.localize(ctx, item)),
                 totalItems,
             }));
     }
@@ -61,11 +62,11 @@ export class ContentBlockService {
             ContentBlock,
             id,
             ctx.channelId,
-            { relations: ['featuredAsset', 'channels'] },
+            { relations: ['featuredAsset', 'channels', 'translations', 'translations.featuredAsset'] },
         );
         if (!block) return undefined;
         if (onlyEnabled && !block.enabled) return undefined;
-        return translateDeep(block, ctx.languageCode);
+        return this.localize(ctx, block);
     }
 
     async findByKey(
@@ -77,14 +78,14 @@ export class ContentBlockService {
             .build(ContentBlock, {}, {
                 ctx,
                 channelId: ctx.channelId,
-                relations: ['featuredAsset', 'channels'],
+                relations: ['featuredAsset', 'channels', 'translations', 'translations.featuredAsset'],
             })
             .andWhere('contentblock.key = :key', { key });
         if (onlyEnabled) {
             qb.andWhere('contentblock.enabled = :enabled', { enabled: true });
         }
         const block = await qb.getOne();
-        return block ? translateDeep(block, ctx.languageCode) : undefined;
+        return block ? this.localize(ctx, block) : undefined;
     }
 
     async create(ctx: RequestContext, input: {
@@ -98,6 +99,8 @@ export class ContentBlockService {
             name: string;
             textContent?: string;
             altText?: string;
+            featuredAssetId?: ID | null;
+            translatedMetadata?: Record<string, unknown> | null;
         }>;
     }): Promise<ContentBlock> {
         if (input.key && input.key.length > MAX_KEY_LENGTH) {
@@ -106,7 +109,7 @@ export class ContentBlockService {
         sanitizeBlockTranslations(input.type, input.translations);
         const block = await this.translatableSaver.create({
             ctx,
-            input,
+            input: { ...input, translations: cleanRows(input.translations) },
             entityType: ContentBlock,
             translationType: ContentBlockTranslation,
             beforeSave: async b => {
@@ -132,6 +135,8 @@ export class ContentBlockService {
             name: string;
             textContent?: string;
             altText?: string;
+            featuredAssetId?: ID | null;
+            translatedMetadata?: Record<string, unknown> | null;
         }>;
     }): Promise<ContentBlock> {
         if (input.key && input.key.length > MAX_KEY_LENGTH) {
@@ -143,7 +148,7 @@ export class ContentBlockService {
         }
         await this.translatableSaver.update({
             ctx,
-            input,
+            input: { ...input, translations: input.translations && cleanRows(input.translations) },
             entityType: ContentBlock,
             translationType: ContentBlockTranslation,
         });
@@ -152,6 +157,11 @@ export class ContentBlockService {
             throw new InternalServerError('Failed to retrieve updated ContentBlock');
         }
         return result;
+    }
+
+    /** The block as seen in the request's language, each field falling back to the default one. */
+    private localize(ctx: RequestContext, block: ContentBlock): ContentBlock {
+        return localizeBlock(block, ctx.languageCode, channelDefaultLanguage(ctx), { media: ctx.apiType === 'shop' });
     }
 
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
@@ -163,4 +173,10 @@ export class ContentBlockService {
             result: DeletionResult.DELETED,
         };
     }
+}
+
+function cleanRows<T extends { translatedMetadata?: unknown }>(rows: T[]): T[] {
+    return rows.map(row =>
+        row.translatedMetadata === undefined ? row : { ...row, translatedMetadata: cleanTranslatedMetadata(row.translatedMetadata) },
+    );
 }

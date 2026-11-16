@@ -10,6 +10,7 @@ import {
     TranslatableFormFieldWrapper,
 } from '@vendure/dashboard';
 
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
 import { ParentPageSelect } from './cms-parent-page-select';
 
 /**
@@ -29,6 +30,8 @@ export function PageSettingsCard({
 }) {
     const { t } = useLingui();
     const hasParent = !!form.watch('parentId');
+    // Editors may translate the name and slug; the original stays SuperAdmin-only.
+    const { isTranslating } = useContentLanguages();
     return (
         <div className="w-full mt-4">
             <Card>
@@ -42,7 +45,7 @@ export function PageSettingsCard({
                         name="name"
                         label={t`Name`}
                         render={({ field }) => (
-                            <Input {...field} placeholder={t`Page name`} disabled={!isSuperAdmin} />
+                            <Input {...field} placeholder={t`Page name`} disabled={!isSuperAdmin && !isTranslating} />
                         )}
                     />
                     <TranslatableFormFieldWrapper
@@ -50,7 +53,7 @@ export function PageSettingsCard({
                         name="slug"
                         label={t`Slug`}
                         render={({ field }) => (
-                            <Input {...field} placeholder={t`page-slug`} disabled={!isSuperAdmin} />
+                            <Input {...field} placeholder={t`page-slug`} disabled={!isSuperAdmin && !isTranslating} />
                         )}
                     />
                     {isSuperAdmin && (

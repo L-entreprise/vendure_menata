@@ -13,7 +13,6 @@ import {
     TranslatableSaver,
     UserInputError,
     idsAreEqual,
-    translateDeep,
 } from '@vendure/core';
 
 import { AuditLogService } from '../../audit-log-plugin/services/audit-log.service';
@@ -21,6 +20,8 @@ import { ContentBlockTranslation } from '../entities/content-block-translation.e
 import { ContentBlock } from '../entities/content-block.entity';
 import { CmsPageTranslation } from '../entities/cms-page-translation.entity';
 import { CmsPage } from '../entities/cms-page.entity';
+import { channelDefaultLanguage, cleanTranslatedMetadata } from './channel-languages';
+import { localizePage } from './localize';
 import { normalizePreviewUrl } from './preview-url';
 import { sanitizeBlockTranslations } from './sanitize-rich-text';
 
@@ -43,6 +44,8 @@ interface ContentBlockInput {
         name: string;
         textContent?: string;
         altText?: string;
+        featuredAssetId?: ID | null;
+        translatedMetadata?: Record<string, unknown> | null;
     }>;
 }
 
@@ -73,7 +76,7 @@ export class CmsPageService {
         return qb
             .getManyAndCount()
             .then(([items, totalItems]) => ({
-                items: items.map(item => translateDeep(item, ctx.languageCode)),
+                items: items.map(item => this.localize(ctx, item)),
                 totalItems,
             }));
     }
@@ -88,18 +91,14 @@ export class CmsPageService {
             CmsPage,
             id,
             ctx.channelId,
-            { relations: ['channels', 'contentBlocks', 'contentBlocks.featuredAsset'] },
+            { relations: ['channels', 'contentBlocks', 'contentBlocks.featuredAsset', 'contentBlocks.translations', 'contentBlocks.translations.featuredAsset'] },
         );
         if (!page) return undefined;
         if (onlyEnabled && !page.enabled) return undefined;
         page.contentBlocks = (page.contentBlocks || [])
             .filter(block => !onlyEnabled || block.enabled)
             .sort((a, b) => a.position - b.position);
-        const translated = translateDeep(page, ctx.languageCode);
-        translated.contentBlocks = translated.contentBlocks.map(
-            block => translateDeep(block, ctx.languageCode),
-        );
-        return translated;
+        return this.localize(ctx, page);
     }
 
     async findByKey(
@@ -111,7 +110,7 @@ export class CmsPageService {
             .build(CmsPage, {}, {
                 ctx,
                 channelId: ctx.channelId,
-                relations: ['channels', 'contentBlocks', 'contentBlocks.featuredAsset'],
+                relations: ['channels', 'contentBlocks', 'contentBlocks.featuredAsset', 'contentBlocks.translations', 'contentBlocks.translations.featuredAsset'],
             })
             .andWhere('cmspage.key = :key', { key });
         if (onlyEnabled) {
@@ -122,11 +121,7 @@ export class CmsPageService {
         page.contentBlocks = (page.contentBlocks || [])
             .filter(block => !onlyEnabled || block.enabled)
             .sort((a, b) => a.position - b.position);
-        const translated = translateDeep(page, ctx.languageCode);
-        translated.contentBlocks = translated.contentBlocks.map(
-            block => translateDeep(block, ctx.languageCode),
-        );
-        return translated;
+        return this.localize(ctx, page);
     }
 
     async create(ctx: RequestContext, input: {
@@ -279,7 +274,20 @@ export class CmsPageService {
                 await this.syncContentBlocks(ctx, input.id, input.contentBlocks);
             }
         } else {
-            // Non-SuperAdmin: only allow content value updates on existing blocks
+            // Non-SuperAdmin: the page name and slug may be translated, but the original
+            // (default language) stays SuperAdmin-only.
+            const translatedRows = (input.translations ?? []).filter(
+                t => t.languageCode !== channelDefaultLanguage(ctx),
+            );
+            if (translatedRows.length > 0) {
+                await this.translatableSaver.update({
+                    ctx,
+                    input: { id: input.id, translations: translatedRows },
+                    entityType: CmsPage,
+                    translationType: CmsPageTranslation,
+                });
+            }
+            // Only allow content value updates on existing blocks
             if (input.contentBlocks !== undefined) {
                 this.validateContentBlocks(input.contentBlocks);
                 await this.syncContentBlocksContentOnly(ctx, input.id, input.contentBlocks);
@@ -400,13 +408,13 @@ export class CmsPageService {
             .orderBy('page.sidebarOrder', 'ASC')
             .addOrderBy('page.id', 'ASC')
             .getMany();
-        return pages.map(page => translateDeep(page, ctx.languageCode));
+        return pages.map(page => this.localize(ctx, page));
     }
 
     async findParent(ctx: RequestContext, page: CmsPage): Promise<CmsPage | undefined> {
         if (page.parentId == null) return undefined;
         const parent = await this.connection.findOneInChannel(ctx, CmsPage, page.parentId, ctx.channelId);
-        return parent ? translateDeep(parent, ctx.languageCode) : undefined;
+        return parent ? this.localize(ctx, parent) : undefined;
     }
 
     async findChildren(ctx: RequestContext, page: CmsPage): Promise<CmsPage[]> {
@@ -420,7 +428,7 @@ export class CmsPageService {
             .orderBy('page.sidebarOrder', 'ASC')
             .addOrderBy('page.id', 'ASC')
             .getMany();
-        return children.map(child => translateDeep(child, ctx.languageCode));
+        return children.map(child => this.localize(ctx, child));
     }
 
     async delete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
@@ -451,6 +459,23 @@ export class CmsPageService {
             },
         }).catch(() => {});
         return { result: DeletionResult.DELETED };
+    }
+
+    /** Block translation rows as stored: only image texts may be overridden per language. */
+    private blockTranslations(
+        translations: ContentBlockInput['translations'],
+    ): ContentBlockInput['translations'] {
+        return translations?.map(t => ({
+            ...t,
+            ...(t.translatedMetadata !== undefined && {
+                translatedMetadata: cleanTranslatedMetadata(t.translatedMetadata),
+            }),
+        }));
+    }
+
+    /** The page as seen in the request's language, each field falling back to the default one. */
+    private localize(ctx: RequestContext, page: CmsPage): CmsPage {
+        return localizePage(page, ctx.languageCode, channelDefaultLanguage(ctx), { media: ctx.apiType === 'shop' });
     }
 
     private validateMutualExclusivity(acceptsSubmissions?: boolean, isCollection?: boolean): void {
@@ -516,6 +541,11 @@ export class CmsPageService {
                     throw new UserInputError(`Block metadata exceeds maximum size of ${MAX_METADATA_BYTES} bytes`);
                 }
             }
+            for (const t of block.translations ?? []) {
+                if (t.translatedMetadata && JSON.stringify(t.translatedMetadata).length > MAX_METADATA_BYTES) {
+                    throw new UserInputError(`Block metadata exceeds maximum size of ${MAX_METADATA_BYTES} bytes`);
+                }
+            }
             sanitizeBlockTranslations(block.type, block.translations);
         }
     }
@@ -542,7 +572,7 @@ export class CmsPageService {
                 metadata: this.stripInternalMetadata(blockInput.metadata),
                 dateValue: blockInput.dateValue ?? null,
                 numberValue: blockInput.numberValue ?? null,
-                translations: blockInput.translations ?? [],
+                translations: this.blockTranslations(blockInput.translations) ?? [],
             };
             await this.translatableSaver.create({
                 ctx,
@@ -599,7 +629,7 @@ export class CmsPageService {
                     metadata: this.stripInternalMetadata(blockInput.metadata),
                     dateValue: blockInput.dateValue ?? null,
                     numberValue: blockInput.numberValue ?? null,
-                    translations: blockInput.translations,
+                    translations: this.blockTranslations(blockInput.translations),
                 };
                 await this.translatableSaver.update({
                     ctx,
@@ -618,7 +648,7 @@ export class CmsPageService {
                     metadata: this.stripInternalMetadata(blockInput.metadata),
                     dateValue: blockInput.dateValue ?? null,
                     numberValue: blockInput.numberValue ?? null,
-                    translations: blockInput.translations ?? [],
+                    translations: this.blockTranslations(blockInput.translations) ?? [],
                 };
                 await this.translatableSaver.create({
                     ctx,
@@ -672,7 +702,7 @@ export class CmsPageService {
                 metadata: this.stripInternalMetadata(blockInput.metadata),
                 dateValue: blockInput.dateValue ?? null,
                 numberValue: blockInput.numberValue ?? null,
-                translations: blockInput.translations,
+                translations: this.blockTranslations(blockInput.translations),
             };
             await this.translatableSaver.update({
                 ctx,

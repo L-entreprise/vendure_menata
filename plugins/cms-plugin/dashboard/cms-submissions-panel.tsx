@@ -15,6 +15,7 @@ import {
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
+import { blockLabel } from './cms-language';
 import { deleteFormSubmissionDocument, formSubmissionsDocument } from './cms-collection-entries-panel';
 
 const createCustomerFromSubmissionDocument = graphql(`
@@ -157,7 +158,7 @@ export function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pa
         },
         ...schemaFields.map(block => ({
             id: block.key,
-            header: block.translations?.[0]?.name || block.key,
+            header: blockLabel(block),
             accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
         })),
         {

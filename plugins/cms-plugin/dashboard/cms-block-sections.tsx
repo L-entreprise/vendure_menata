@@ -1,4 +1,5 @@
 import { BlockValueEditor, HideTypeLabels } from './cms-block-editors';
+import { blockLabel } from './cms-language';
 import { BlockSection, groupBlocksBySection } from './cms-block-utils';
 import { CollapsibleSection } from './cms-collapsible-section';
 import { HelpText } from './cms-help-text';
@@ -69,7 +70,7 @@ function SectionFields({
         <div className="space-y-8">
             {section.items.map(({ block, index }) => (
                 <div key={block.id ?? `new-${index}`}>
-                    <h3 className="text-base font-semibold">{block.translations?.[0]?.name || block.key}</h3>
+                    <h3 className="text-base font-semibold">{blockLabel(block)}</h3>
                     <HelpText help={block.metadata?.help} className="mt-1" />
                     <div className="mt-2">
                         <BlockValueEditor block={block} index={index} isSuperAdmin={isSuperAdmin} {...handlers} />

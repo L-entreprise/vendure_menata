@@ -488,6 +488,28 @@ msgstr "Page avancée"
 msgid "Hidden in simple mode. For pages only the agency edits, such as interface labels."
 msgstr "Masquée en mode simple. Pour les pages que seule l'agence modifie, comme les textes de l'interface."
 
-#. Link to the translation plugin
-msgid "Translate this page"
-msgstr "Traduire cette page"
+#. Translating an image
+msgid "Same image as the original. Pick another one to change it in this language only."
+msgstr "Même image que l'original. Choisissez-en une autre pour la changer dans cette langue uniquement."
+
+msgid "This language shows its own image."
+msgstr "Cette langue affiche sa propre image."
+
+msgid "Use the original image"
+msgstr "Reprendre l'image d'origine"
+
+#. Translation progress
+msgid "Translations"
+msgstr "Traductions"
+
+msgid "Pages not fully translated"
+msgstr "Pages pas entièrement traduites"
+
+msgid "See pages"
+msgstr "Voir les pages"
+
+msgid "Translations cleared"
+msgstr "Traductions effacées"
+
+msgid "Could not clear the translations"
+msgstr "Impossible d'effacer les traductions"

@@ -1,0 +1,87 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-16 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+#. Toolbar language switcher
+msgid "Content language"
+msgstr "Content language"
+
+msgid "original"
+msgstr "original"
+
+#. Original text under a translated field
+msgid "Copy"
+msgstr "Copy"
+
+#. Original changed dialog
+msgid "The original text changed"
+msgstr "The original text changed"
+
+msgid "{fieldList} changed in {source}. These translations may be out of date: {languageList}."
+msgstr "{fieldList} changed in {source}. These translations may be out of date: {languageList}."
+
+msgid "Clearing them shows the original text on the site until they are translated again."
+msgstr "Clearing them shows the original text on the site until they are translated again."
+
+msgid "Keep"
+msgstr "Keep"
+
+msgid "Clear in {languageList}"
+msgstr "Clear in {languageList}"
+
+msgid "Translate now ({0})"
+msgstr "Translate now ({0})"
+
+msgid "Translations cleared"
+msgstr "Translations cleared"
+
+msgid "Could not clear the translations"
+msgstr "Could not clear the translations"
+
+#. Product translations panel
+msgid "Translations"
+msgstr "Translations"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Variant {0}"
+msgstr "Variant {0}"
+
+msgid "Translate"
+msgstr "Translate"
+
+#. Prompt after creating a record
+msgid "Created. Translate it now?"
+msgstr "Created. Translate it now?"
+
+msgid "The site shows the original text in the other languages until they are translated."
+msgstr "The site shows the original text in the other languages until they are translated."
+
+msgid "Later"
+msgstr "Later"
+
+msgid "Translate into {0}"
+msgstr "Translate into {0}"
+
+#. Alerts
+msgid "Products not fully translated"
+msgstr "Products not fully translated"
+
+msgid "See products"
+msgstr "See products"
+
+#. Notice at the top of an editor while translating
+msgid "You are editing the {target} translation. Empty fields show the {source} original on the site."
+msgstr "You are editing the {target} translation. Empty fields show the {source} original on the site."
+
+msgid "This new entry is saved as the {source} original. Translate it into {target} once it exists."
+msgstr "This new entry is saved as the {source} original. Translate it into {target} once it exists."

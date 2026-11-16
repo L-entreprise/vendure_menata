@@ -6,8 +6,11 @@ import { api, Button, Card, CardContent, CardHeader } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
 import { BlockSections } from './cms-block-sections';
-import { prepareBlocksForMutation, toEditableBlock } from './cms-block-utils';
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
 import { CollectionEntriesPanel } from './cms-collection-entries-panel';
+import { blocksForMutation, editableBlockForLanguage } from './cms-language';
+import { useCmsStaleCheck } from './cms-stale-dialog';
+import { useRefreshCmsTabProgress } from './cms-tab-progress';
 
 const childPageDocument = graphql(`
     query GetCmsChildPage($id: ID!) {
@@ -36,6 +39,11 @@ const childPageDocument = graphql(`
                     name
                     textContent
                     altText
+                    translatedMetadata
+                    featuredAsset {
+                        id
+                        preview
+                    }
                 }
             }
         }
@@ -70,18 +78,30 @@ export function ChildPageTab({
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
+    const { contentLanguage, defaultLanguage, ready } = useContentLanguages();
+    // Blocks as loaded, to spot translations made outdated by a save of the original.
+    const [loadedBlocks, setLoadedBlocks] = useState<any[]>([]);
 
     const load = useCallback(async () => {
+        // Wait for the channel: blocks are built for its default language.
+        if (!ready) return;
         try {
             const result = await api.query(childPageDocument, { id: pageId });
             setPage(result.cmsPage);
-            setBlocks((result.cmsPage?.contentBlocks ?? []).map(toEditableBlock));
+            const loaded = result.cmsPage?.contentBlocks ?? [];
+            setLoadedBlocks(loaded);
+            setBlocks(loaded.map((block: any) => editableBlockForLanguage(block, contentLanguage, defaultLanguage)));
             setDirty(false);
             setLoadFailed(false);
         } catch {
             setLoadFailed(true);
         }
-    }, [pageId]);
+    }, [pageId, contentLanguage, defaultLanguage, ready]);
+    const refreshTabProgress = useRefreshCmsTabProgress();
+    const staleCheck = useCmsStaleCheck(pageId, () => {
+        load();
+        refreshTabProgress();
+    });
 
     useEffect(() => {
         load();
@@ -101,17 +121,18 @@ export function ChildPageTab({
         updateBlock(index, block => {
             const [first, ...rest] = block.translations?.length
                 ? block.translations
-                : [{ languageCode: 'en', name: '', textContent: '', altText: '' }];
+                : [{ languageCode: contentLanguage, name: '', textContent: '', altText: '' }];
             return { ...block, translations: [{ ...first, [field]: value }, ...rest] };
         });
 
     const save = async () => {
         setSaving(true);
         try {
-            await api.mutate(updateChildPageDocument, {
-                input: { id: pageId, contentBlocks: prepareBlocksForMutation(blocks) },
-            });
+            const contentBlocks = blocksForMutation(blocks, contentLanguage, defaultLanguage);
+            await api.mutate(updateChildPageDocument, { input: { id: pageId, contentBlocks } });
+            refreshTabProgress();
             toast.success(t`Page updated`);
+            staleCheck.check(loadedBlocks, contentBlocks);
             await load();
         } catch (error) {
             toast.error(t`Failed to save page`, {
@@ -165,6 +186,7 @@ export function ChildPageTab({
 
     return (
         <>
+            {staleCheck.dialog}
             {structureLink}
             <div className="w-full mt-4">
                 <Card>
