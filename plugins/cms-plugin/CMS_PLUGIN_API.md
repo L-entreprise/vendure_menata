@@ -323,6 +323,16 @@ await submitContactForm({
 - No authentication is needed for any shop API query.
 - Asset URLs in `featuredAsset.preview` and `featuredAsset.source` are relative to the Vendure server. Prepend the server base URL if needed (e.g., `http://localhost:3000` + preview path).
 - For image galleries, `metadata.assetIds` gives you the IDs. You can resolve full asset URLs by querying individual assets or by using them with Vendure's asset URL pattern.
+- **Languages:** add `?languageCode=xx` to the Shop API URL (Vendure's standard
+  parameter). Every page, block and list-entry field comes back in that language,
+  falling back field by field to the channel's default language when it is empty or
+  missing. `featuredAsset` and `metadata.description` / `metadata.imageMeta` are also
+  per language (a language may show its own image). The language list is the
+  channel's `availableLanguageCodes` (e.g. from `activeChannel { availableLanguageCodes defaultLanguageCode }`).
+  Products are native Vendure entities: a language with no translation at all falls
+  back to the default language, but a translation with an empty field (for example
+  after "Clear" in the dashboard) returns it empty, so the storefront falls back per
+  field itself (query the default language too and use its value for empty fields).
 - Page hierarchy (`parentId`) and `previewUrl` are Admin API only. The Shop API does not expose them and keeps answering by key, so grouping pages never changes a site's URLs or queries.
 
 ---

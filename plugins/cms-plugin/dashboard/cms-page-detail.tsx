@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
     AlignLeftIcon,
     ArrowDownIcon,
@@ -14,14 +14,13 @@ import {
     ImagesIcon,
     ListIcon,
     ExternalLinkIcon,
-    LanguagesIcon,
     PlusIcon,
     TextIcon,
     ToggleLeftIcon,
     TrashIcon,
     TypeIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
     Button,
     Card,
@@ -44,19 +43,19 @@ import {
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
+import { TranslatingNotice } from '../../content-i18n/dashboard/translating-notice';
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
 import { BlockValueEditor } from './cms-block-editors';
 import { BlockLayoutFields } from './cms-block-layout-fields';
 import { BlockSections } from './cms-block-sections';
-import {
-    getDefaultMetadata,
-    prepareBlocksForMutation,
-    resolveBlockEnabled,
-    toEditableBlock,
-} from './cms-block-utils';
+import { getDefaultMetadata, resolveBlockEnabled } from './cms-block-utils';
 import { ChildPageTab } from './cms-child-page-tab';
 import { CollectionEntriesPanel } from './cms-collection-entries-panel';
+import { blockLabel, blocksForMutation, editableBlockForLanguage } from './cms-language';
 import { PageSettingsCard } from './cms-page-settings-card';
 import { ExpertModeSwitch, useCmsSimpleMode } from './cms-simple-mode';
+import { useCmsStaleCheck } from './cms-stale-dialog';
+import { TabProgress, useCmsTabProgress, useRefreshCmsTabProgress } from './cms-tab-progress';
 import { SubmissionsPanel } from './cms-submissions-panel';
 
 const cmsPageDetailDocument = graphql(`
@@ -115,6 +114,11 @@ const cmsPageDetailDocument = graphql(`
                     name
                     textContent
                     altText
+                    translatedMetadata
+                    featuredAsset {
+                        id
+                        preview
+                    }
                 }
             }
         }
@@ -174,16 +178,6 @@ function getBlockTypeIcon(type: string) {
 // Tab of the page's own fields; child pages use their id as tab value.
 const CONTENT_TAB = 'content';
 
-// Registered by the translation plugin, when it is installed next to this one.
-const TRANSLATION_ROUTE = '/cms-translations/$id';
-
-function useHasRoute(fullPath: string): boolean {
-    const router = useRouter();
-    return Object.values(router.routesById as Record<string, { fullPath?: string }>).some(
-        route => route.fullPath === fullPath,
-    );
-}
-
 function CmsPageDetailPage({ route }: { route: any }) {
     const params = route.useParams();
     const isNew = params.id === 'new';
@@ -192,12 +186,16 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const { hasPermissions } = usePermissions();
     const isSuperAdmin = hasPermissions(['SuperAdmin']);
     const mode = useCmsSimpleMode();
-    const canTranslate = useHasRoute(TRANSLATION_ROUTE);
     // Creating a page is structure work, so a new page always shows the full editor.
     const simple = mode.simple && !isNew;
     const { t } = useLingui();
+    // The editor works on the content language's rows (dashboard language switcher).
+    const { contentLanguage, defaultLanguage } = useContentLanguages();
+    // What was just saved, compared with the loaded page to spot outdated translations.
+    const pendingSave = useRef<{ before: any[]; submitted: any[] } | null>(null);
+    const refreshTabProgress = useRefreshCmsTabProgress();
 
-    const { form, submitHandler, entity, resetForm } = useDetailPage({
+    const { form, submitHandler, entity, resetForm, refreshEntity } = useDetailPage({
         pageId: 'cms-page-detail',
         queryDocument: cmsPageDetailDocument,
         updateDocument: updateCmsPageDocument,
@@ -218,7 +216,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
             name: page.name,
             slug: page.slug,
             translations: page.translations,
-            contentBlocks: (page.contentBlocks || []).map(toEditableBlock),
+            contentBlocks: (page.contentBlocks || []).map((block: any) =>
+                editableBlockForLanguage(block, contentLanguage, defaultLanguage),
+            ),
         }),
         transformCreateInput: (input: any) => {
             return {
@@ -233,10 +233,12 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 previewUrl: input.previewUrl || null,
                 advanced: input.advanced ?? false,
                 translations: input.translations,
-                contentBlocks: prepareBlocksForMutation(input.contentBlocks),
+                contentBlocks: blocksForMutation(input.contentBlocks, contentLanguage, defaultLanguage),
             };
         },
         transformUpdateInput: (input: any) => {
+            const contentBlocks = blocksForMutation(input.contentBlocks, contentLanguage, defaultLanguage);
+            pendingSave.current = { before: entity?.contentBlocks ?? [], submitted: contentBlocks };
             return {
                 id: input.id,
                 key: input.key,
@@ -250,12 +252,17 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 previewUrl: input.previewUrl || null,
                 advanced: input.advanced ?? false,
                 translations: input.translations,
-                contentBlocks: prepareBlocksForMutation(input.contentBlocks),
+                contentBlocks,
             };
         },
         onSuccess: async (data: any) => {
             toast.success(isNew ? t`Page created` : t`Page updated`);
             resetForm();
+            refreshTabProgress();
+            if (!isNew && pendingSave.current) {
+                staleCheck.check(pendingSave.current.before, pendingSave.current.submitted);
+            }
+            pendingSave.current = null;
             if (isNew && data?.id) {
                 await navigate({ to: `../$id`, params: { id: data.id } });
             }
@@ -265,6 +272,10 @@ function CmsPageDetailPage({ route }: { route: any }) {
                 description: error instanceof Error ? error.message : t`Unknown error`,
             });
         },
+    });
+    const staleCheck = useCmsStaleCheck(params.id, () => {
+        refreshEntity();
+        refreshTabProgress();
     });
 
     const rawContentBlocks: any[] = form.watch('contentBlocks') ?? [];
@@ -285,7 +296,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
             numberValue: type === 'BOOLEAN' ? 0 : null,
             _assetPreview: null,
             translations: [
-                { languageCode: 'en', name: '', textContent: '', altText: '' },
+                { languageCode: contentLanguage, name: '', textContent: '', altText: '' },
             ],
         };
         form.setValue('contentBlocks', [...contentBlocks, newBlock], { shouldDirty: true });
@@ -334,7 +345,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
         const block = { ...updated[index] };
         const translations = [...(block.translations || [])];
         if (translations.length === 0) {
-            translations.push({ languageCode: 'en', name: '', textContent: '', altText: '' });
+            translations.push({ languageCode: contentLanguage, name: '', textContent: '', altText: '' });
         }
         translations[0] = { ...translations[0], [field]: value };
         block.translations = translations;
@@ -362,6 +373,8 @@ function CmsPageDetailPage({ route }: { route: any }) {
     const childPages: Array<{ id: string; key: string; name: string; advanced: boolean }> = isNew
         ? []
         : (entity?.children ?? []).filter((child: any) => !simple || !child.advanced);
+    // While translating, each tab shows how much of it is translated in the content language.
+    const tabProgress = useCmsTabProgress(childPages.length ? entity?.id : undefined);
     const viewOnSiteUrl = entity?.previewUrl || entity?.parent?.previewUrl;
     const requestedTab = String(search.tab ?? CONTENT_TAB);
     const activeTab = childPages.some(child => String(child.id) === requestedTab) ? requestedTab : CONTENT_TAB;
@@ -370,6 +383,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
 
     const pageContent = (
         <>
+            <TranslatingNotice />
             {!isNew && entity?.acceptsSubmissions && (
                 <SubmissionsPanel
                     pageId={params.id}
@@ -507,7 +521,7 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                 }
                                                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                                                 <span className="text-base font-semibold shrink-0">
-                                                    {block.translations?.[0]?.name || block.key || (typeInfo ? t(typeInfo.label) : block.type)}
+                                                    {blockLabel(block) || (typeInfo ? t(typeInfo.label) : block.type)}
                                                 </span>
                                                 {block.metadata?.section && (
                                                     <span className="text-xs text-muted-foreground truncate">{String(block.metadata.section)}</span>
@@ -681,24 +695,10 @@ function CmsPageDetailPage({ route }: { route: any }) {
     return (
         <Page pageId="cms-page-detail" form={form} submitHandler={submitHandler} entity={entity}>
             <PageTitle>{title}</PageTitle>
+            {staleCheck.dialog}
             <PageActionBar>
                 <PageActionBarRight>
                     <ExpertModeSwitch mode={mode} />
-                    {canTranslate && !isNew && !entity?.acceptsSubmissions && (
-                        <Button
-                            variant="outline"
-                            render={
-                                <Link
-                                    to={TRANSLATION_ROUTE as any}
-                                    params={{ id: params.id } as any}
-                                    search={(activeTab === CONTENT_TAB ? {} : { tab: activeTab }) as any}
-                                />
-                            }
-                        >
-                            <LanguagesIcon className="mr-2 h-4 w-4" />
-                            <Trans>Translate this page</Trans>
-                        </Button>
-                    )}
                     {viewOnSiteUrl && (
                         <Button
                             variant="outline"
@@ -716,9 +716,15 @@ function CmsPageDetailPage({ route }: { route: any }) {
             {childPages.length === 0 ? pageContent : (
                 <Tabs value={activeTab} onValueChange={value => selectTab(String(value))} className="w-full mt-4">
                     <TabsList className="flex-wrap h-auto">
-                        <TabsTrigger value={CONTENT_TAB}><Trans>Texts</Trans></TabsTrigger>
+                        <TabsTrigger value={CONTENT_TAB}>
+                            <Trans>Texts</Trans>
+                            <TabProgress progress={tabProgress.get(String(entity?.id))} />
+                        </TabsTrigger>
                         {childPages.map(child => (
-                            <TabsTrigger key={child.id} value={String(child.id)}>{child.name || child.key}</TabsTrigger>
+                            <TabsTrigger key={child.id} value={String(child.id)}>
+                                {child.name || child.key}
+                                <TabProgress progress={tabProgress.get(String(child.id))} />
+                            </TabsTrigger>
                         ))}
                     </TabsList>
                     <TabsContent value={CONTENT_TAB}>{pageContent}</TabsContent>
@@ -734,6 +740,16 @@ function CmsPageDetailPage({ route }: { route: any }) {
             )}
         </Page>
     );
+}
+
+/**
+ * Builds the editor once the channel (its default language) is known, and again on each
+ * content language switch: the form is made for one language and never rebuilt in place.
+ */
+function CmsPageDetailGate({ route }: { route: any }) {
+    const { ready, contentLanguage, defaultLanguage } = useContentLanguages();
+    if (!ready) return null;
+    return <CmsPageDetailPage key={`${contentLanguage}|${defaultLanguage}`} route={route} />;
 }
 
 function preventImplicitSubmit(event: React.KeyboardEvent) {
@@ -753,5 +769,5 @@ export const cmsPageDetail: DashboardRouteDefinition = {
             isNew ? <Trans>New Page</Trans> : entity?.name,
         ],
     }),
-    component: route => <CmsPageDetailPage route={route} />,
+    component: route => <CmsPageDetailGate route={route} />,
 };

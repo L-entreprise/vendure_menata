@@ -13,6 +13,9 @@ import {
     Textarea,
 } from '@vendure/dashboard';
 
+import { OriginalHint } from '../../content-i18n/dashboard/original-hint';
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
+
 const getAssetsByIdsDocument = graphql(`
     query GetAssetsByIds($options: AssetListOptions) {
         assets(options: $options) {
@@ -35,6 +38,34 @@ function toDatetimeLocalValue(value: any): string {
     if (Number.isNaN(d.getTime())) return '';
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * The original text under a field, while a translation is edited (the block then
+ * carries `_source`, see cms-language.ts).
+ */
+function SourceHint({ block, value, onCopy }: { block: any; value: unknown; onCopy: (value: string) => void }) {
+    const { defaultLanguage } = useContentLanguages();
+    if (!block._source) return null;
+    return <OriginalHint languageCode={defaultLanguage} value={value} onCopy={() => onCopy(String(value ?? ''))} />;
+}
+
+/** While translating an image: whether this language shows its own picture. */
+function OwnImageNote({ block, onUseOriginal }: { block: any; onUseOriginal: () => void }) {
+    const source = block._source;
+    if (!source) return null;
+    const ownImage = block.featuredAssetId != null && String(block.featuredAssetId) !== String(source.featuredAssetId ?? '');
+    if (!ownImage) {
+        return <p className="text-xs text-muted-foreground"><Trans>Same image as the original. Pick another one to change it in this language only.</Trans></p>;
+    }
+    return (
+        <p className="text-xs text-muted-foreground">
+            <Trans>This language shows its own image.</Trans>{' '}
+            <button type="button" className="font-medium text-foreground/70 hover:text-foreground" onClick={onUseOriginal}>
+                <Trans>Use the original image</Trans>
+            </button>
+        </p>
+    );
 }
 
 // The client view titles each field with its own name, so the generic type caption
@@ -144,6 +175,7 @@ function TextShortEditor({ block, index, onTranslationChange }: {
                 maxLength={maxLength}
                 className="mt-1"
             />
+            <SourceHint block={block} value={block._source?.textContent} onCopy={v => onTranslationChange(index, 'textContent', v)} />
             <div className="text-xs text-muted-foreground text-right mt-1">
                 {currentValue.length} / {maxLength}
             </div>
@@ -170,6 +202,7 @@ function TextLongEditor({ block, index, onTranslationChange }: {
                 rows={4}
                 className="mt-1"
             />
+            <SourceHint block={block} value={block._source?.textContent} onCopy={v => onTranslationChange(index, 'textContent', v)} />
             <div className="text-xs text-muted-foreground text-right mt-1">
                 {currentValue.length} / {maxLength}
             </div>
@@ -192,6 +225,7 @@ function RichTextBlockEditor({ block, index, onTranslationChange }: {
                     onChange={(val: string) => onTranslationChange(index, 'textContent', val)}
                 />
             </div>
+            <SourceHint block={block} value={block._source?.textContent} onCopy={v => onTranslationChange(index, 'textContent', v)} />
         </div>
     );
 }
@@ -264,6 +298,7 @@ function EnumEditor({ block, index, onTranslationChange }: {
                 rows={4}
                 className="mt-1 font-mono text-sm"
             />
+            <SourceHint block={block} value={block._source?.textContent} onCopy={v => onTranslationChange(index, 'textContent', v)} />
             {options.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap mt-2">
                     {options.map((opt: string, i: number) => (
@@ -318,6 +353,7 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
                     >
                         {hasAsset ? t`Change Image` : t`Select Image`}
                     </Button>
+                    <OwnImageNote block={block} onUseOriginal={() => onFieldsChange(index, { featuredAssetId: block._source.featuredAssetId, _assetPreview: block._source.featuredAssetPreview })} />
                     <div>
                         <label className="text-sm font-medium"><Trans>Alt Text</Trans></label>
                         <Input
@@ -326,6 +362,7 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
                             placeholder={t`Short text for screen readers / SEO`}
                             className="mt-1"
                         />
+                        <SourceHint block={block} value={block._source?.altText} onCopy={v => onTranslationChange(index, 'altText', v)} />
                     </div>
                     <div>
                         <label className="text-sm font-medium"><Trans>Description</Trans></label>
@@ -339,6 +376,11 @@ function ImageEditor({ block, index, onFieldsChange, onTranslationChange }: {
                             placeholder={t`Visible caption shown next to the image`}
                             rows={2}
                             className="mt-1"
+                        />
+                        <SourceHint
+                            block={block}
+                            value={block._source?.description}
+                            onCopy={v => onFieldsChange(index, { metadata: { ...(block.metadata || {}), description: v } })}
                         />
                     </div>
                 </div>
@@ -486,12 +528,14 @@ function ImageGalleryEditor({ block, index, onFieldChange }: {
                                 onChange={e => updateImageMeta(assetId, 'alt', e.target.value)}
                                 placeholder={t`Alt text (screen readers / SEO)`}
                             />
+                            <SourceHint block={block} value={block._source?.imageMeta?.[assetId]?.alt} onCopy={v => updateImageMeta(assetId, 'alt', v)} />
                             <Textarea
                                 value={imageMeta[assetId]?.description ?? ''}
                                 onChange={e => updateImageMeta(assetId, 'description', e.target.value)}
                                 placeholder={t`Description / caption`}
                                 rows={2}
                             />
+                            <SourceHint block={block} value={block._source?.imageMeta?.[assetId]?.description} onCopy={v => updateImageMeta(assetId, 'description', v)} />
                         </div>
                     </div>
                 ))}

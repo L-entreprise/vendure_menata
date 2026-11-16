@@ -8,6 +8,7 @@ import { cmsCollectionEntry } from './cms-collection-entry';
 import { cmsPageDetail } from './cms-page-detail';
 import { cmsPageList } from './cms-page-list';
 import { cmsSubmissionDetail } from './cms-submission-detail';
+import { cmsTranslationsAlert } from './cms-translation-alert';
 
 // Plugin .po catalogs reach the production dashboard as raw (uncompiled) ICU strings
 // and are merged over the compiled core catalog, so placeholders would render literally
@@ -40,6 +41,7 @@ defineDashboardExtension({
         cmsCollectionEntry,
         cmsSubmissionDetail,
     ],
+    alerts: [cmsTranslationsAlert],
 });
 
 // Async: add pinned pages to sidebar after fetching (non-blocking)

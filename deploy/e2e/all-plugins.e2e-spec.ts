@@ -3,9 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
+import { ContentI18nPlugin } from '../../plugins/content-i18n/content-i18n.plugin';
 import { DiagnosticsPlugin } from '../../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
-import { TranslationPlugin } from '../../plugins/translation-plugin/translation.plugin';
 
 import { createPluginTestEnvironment, initialData, TEST_SETUP_TIMEOUT_MS } from './test-environment';
 
@@ -18,7 +18,7 @@ describe('All Menata plugins together', () => {
         plugins: [
             AuditLogPlugin.init({ retentionDays: 90 }),
             CmsPlugin,
-            TranslationPlugin.init({ languages: [{ code: 'fr', name: 'Français', isDefault: true }] }),
+            ContentI18nPlugin,
             DiagnosticsPlugin.init({ apiBaseUrl: 'http://127.0.0.1:9', apiKey: 'k', clientId: 'c' }),
             MenataBrandingPlugin,
         ],
@@ -42,8 +42,8 @@ describe('All Menata plugins together', () => {
                 cmsPages {
                     totalItems
                 }
-                translationLanguages {
-                    code
+                productTranslationSummary {
+                    languageCode
                 }
                 diagnostic {
                     available
@@ -51,23 +51,24 @@ describe('All Menata plugins together', () => {
             }
         `);
 
-        expect(result.translationLanguages).toEqual([{ code: 'fr' }]);
+        // The default channel offers one language: nothing to translate.
+        expect(result.productTranslationSummary).toEqual([]);
         expect(result.diagnostic.available).toBe(false);
     });
 
-    it('exposes the CMS and translations on the Shop API', async () => {
+    it('exposes the CMS on the Shop API', async () => {
         const result = await shopClient.query(gql`
             query {
                 cmsPages {
                     totalItems
                 }
-                cmsPageTranslationsByKey(pageKey: "missing", languageCode: "fr") {
-                    pageId
+                cmsPageByKey(key: "missing") {
+                    key
                 }
             }
         `);
 
         expect(result.cmsPages.totalItems).toBe(0);
-        expect(result.cmsPageTranslationsByKey).toBeNull();
+        expect(result.cmsPageByKey).toBeNull();
     });
 });

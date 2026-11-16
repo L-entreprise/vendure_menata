@@ -27,7 +27,11 @@ import {
 } from '@vendure/dashboard';
 import { toast } from 'sonner';
 
+import { OriginalHint } from '../../content-i18n/dashboard/original-hint';
+import { TranslatingNotice } from '../../content-i18n/dashboard/translating-notice';
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
 import { HelpText } from './cms-help-text';
+import { blockLabel, entryDataForLanguage } from './cms-language';
 
 const cmsPageForEntryDocument = graphql(`
     query GetCmsPageForEntry($id: ID!) {
@@ -43,6 +47,7 @@ const cmsPageForEntryDocument = graphql(`
                 enabled
                 position
                 metadata
+                name
                 translations {
                     id
                     languageCode
@@ -62,6 +67,10 @@ const formSubmissionDocument = graphql(`
                 id
                 createdAt
                 data
+                translations {
+                    languageCode
+                    data
+                }
             }
             totalItems
         }
@@ -196,6 +205,9 @@ function CollectionEntryPage({ route }: { route: any }) {
     const [pickerOpen, setPickerOpen] = useState<string | null>(null);
     const [galleryPicker, setGalleryPicker] = useState<string | null>(null);
     const [assetPreviews, setAssetPreviews] = useState<Map<string, string>>(new Map());
+    const { contentLanguage, defaultLanguage, ready } = useContentLanguages();
+    // The entry in the original language, for the hints under each field while translating.
+    const [sourceData, setSourceData] = useState<Record<string, any> | null>(null);
 
     const loadAssetPreview = useCallback(async (assetId: string) => {
         if (!assetId || assetPreviews.has(assetId)) return;
@@ -210,6 +222,8 @@ function CollectionEntryPage({ route }: { route: any }) {
     }, [assetPreviews]);
 
     const loadData = useCallback(async () => {
+        // Wait for the channel: the entry is shown for its default language.
+        if (!ready) return;
         setLoading(true);
         try {
             const pageResult = await api.query(cmsPageForEntryDocument, { id: pageId });
@@ -240,8 +254,11 @@ function CollectionEntryPage({ route }: { route: any }) {
                 });
                 const entry = entryResult.formSubmissions.items[0];
                 if (entry) {
-                    const data = { ...(entry.data as Record<string, any>) };
+                    const stored = entry.data as Record<string, any>;
+                    const translation = (entry.translations ?? []).find((tr: any) => tr.languageCode === contentLanguage);
+                    const data = entryDataForLanguage(blocks, stored, translation?.data, contentLanguage, defaultLanguage);
                     setFormData(data);
+                    setSourceData(contentLanguage === defaultLanguage ? null : stored);
                     // Resolve asset previews for IMAGE (single id) and IMAGE_GALLERY
                     // (array of ids) fields.
                     const assetIdsToLoad: string[] = [];
@@ -264,7 +281,7 @@ function CollectionEntryPage({ route }: { route: any }) {
         } finally {
             setLoading(false);
         }
-    }, [pageId, entryId, isNew]);
+    }, [pageId, entryId, isNew, contentLanguage, defaultLanguage, ready]);
 
     useEffect(() => {
         loadData();
@@ -295,7 +312,10 @@ function CollectionEntryPage({ route }: { route: any }) {
 
     const renderField = (block: any) => {
         if (!block.key) return null;
-        const fieldLabel = block.translations?.[0]?.name || block.key;
+        const fieldLabel = blockLabel(block);
+        // The original value of a key, under its field while translating.
+        const hint = (key: string, apply: (value: any) => void = v => setFormData(prev => ({ ...prev, [key]: v }))) =>
+            sourceData ? <OriginalHint languageCode={defaultLanguage} value={sourceData[key]} onCopy={() => apply(sourceData[key])} /> : null;
         const value = formData[block.key] ?? '';
 
         switch (block.type) {
@@ -308,6 +328,7 @@ function CollectionEntryPage({ route }: { route: any }) {
                             onChange={e => setFormData(prev => ({ ...prev, [block.key]: e.target.value }))}
                             className="mt-1"
                         />
+                        {hint(block.key)}
                     </div>
                 );
             case 'TEXT_LONG':
@@ -320,6 +341,7 @@ function CollectionEntryPage({ route }: { route: any }) {
                             rows={4}
                             className="mt-1"
                         />
+                        {hint(block.key)}
                     </div>
                 );
             case 'RICH_TEXT':
@@ -332,6 +354,7 @@ function CollectionEntryPage({ route }: { route: any }) {
                                 onChange={(val: string) => setFormData(prev => ({ ...prev, [block.key]: val }))}
                             />
                         </div>
+                        {hint(block.key)}
                     </div>
                 );
             case 'BOOLEAN':
@@ -409,12 +432,14 @@ function CollectionEntryPage({ route }: { route: any }) {
                                     onChange={e => setFormData(prev => ({ ...prev, [altKey]: e.target.value }))}
                                     placeholder={t`Alt text (screen readers / SEO)`}
                                 />
+                                {hint(altKey)}
                                 <Textarea
                                     value={String(formData[descKey] ?? '')}
                                     onChange={e => setFormData(prev => ({ ...prev, [descKey]: e.target.value }))}
                                     placeholder={t`Description / caption`}
                                     rows={2}
                                 />
+                                {hint(descKey)}
                             </div>
                         )}
                         {pickerOpen === block.key && (
@@ -490,12 +515,14 @@ function CollectionEntryPage({ route }: { route: any }) {
                                                 onChange={e => updateMeta(assetId, 'alt', e.target.value)}
                                                 placeholder={t`Alt text (screen readers / SEO)`}
                                             />
+                                            {sourceData && <OriginalHint languageCode={defaultLanguage} value={sourceData[metaKey]?.[assetId]?.alt} onCopy={() => updateMeta(assetId, 'alt', String(sourceData[metaKey]?.[assetId]?.alt ?? ''))} />}
                                             <Textarea
                                                 value={imageMeta[assetId]?.description ?? ''}
                                                 onChange={e => updateMeta(assetId, 'description', e.target.value)}
                                                 placeholder={t`Description / caption`}
                                                 rows={2}
                                             />
+                                            {sourceData && <OriginalHint languageCode={defaultLanguage} value={sourceData[metaKey]?.[assetId]?.description} onCopy={() => updateMeta(assetId, 'description', String(sourceData[metaKey]?.[assetId]?.description ?? ''))} />}
                                         </div>
                                     </div>
                                 );
@@ -557,6 +584,7 @@ function CollectionEntryPage({ route }: { route: any }) {
     return (
         <Page>
             <PageTitle>{isNew ? t`New Entry` : t`Edit Entry`}</PageTitle>
+            <TranslatingNotice creating={isNew} />
             <PageActionBar>
                 <Button variant="ghost" size="sm" render={<Link {...(backTarget as any)} />}>
                     <ArrowLeftIcon className="mr-2 h-4 w-4" />

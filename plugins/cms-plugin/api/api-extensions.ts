@@ -19,6 +19,9 @@ const commonApiExtensions = gql`
         name: String!
         textContent: String
         altText: String
+        # Per-language image (null: the block's own image) and image texts.
+        featuredAsset: Asset
+        translatedMetadata: JSON
     }
 
     type ContentBlock implements Node {
@@ -138,6 +141,8 @@ export const adminApiExtensions = gql`
         children: [CmsPage!]!
         previewUrl: String
         advanced: Boolean!
+        # Per target language of the channel; a top-level page counts its child pages.
+        translationProgress: [CmsTranslationProgress!]!
     }
 
     input ContentBlockTranslationInput {
@@ -146,6 +151,8 @@ export const adminApiExtensions = gql`
         name: String!
         textContent: String
         altText: String
+        featuredAssetId: ID
+        translatedMetadata: JSON
     }
 
     input CreateContentBlockInput {
@@ -233,7 +240,36 @@ export const adminApiExtensions = gql`
         id: ID!
         createdAt: DateTime!
         updatedAt: DateTime!
+        # Default language and untranslated values. Collection entries only:
+        # translations hold the translated texts per language.
         data: JSON!
+        translations: [FormSubmissionTranslation!]!
+    }
+
+    type FormSubmissionTranslation {
+        languageCode: LanguageCode!
+        data: JSON!
+    }
+
+    # Per page and target language: fields with original text, and those translated.
+    "The requested page's own fields, or one of its child pages (tabs)."
+    type CmsTranslationProgressPart {
+        pageId: ID!
+        "Page name in the content language, else the original."
+        name: String!
+        "An advanced page (agency only): hidden from the simple mode."
+        advanced: Boolean!
+        total: Int!
+        translated: Int!
+    }
+
+    type CmsTranslationProgress {
+        pageId: ID!
+        languageCode: LanguageCode!
+        total: Int!
+        translated: Int!
+        "The page first, then each child page: what the total is made of."
+        parts: [CmsTranslationProgressPart!]!
     }
 
     type CreateCustomerFromSubmissionResult {
@@ -257,6 +293,7 @@ export const adminApiExtensions = gql`
         cmsPages(options: CmsPageListOptions): CmsPageList!
         formSubmissions(pageId: ID!, options: FormSubmissionListOptions): FormSubmissionList!
         pinnedCmsPages: [CmsPage!]!
+        cmsTranslationProgress(pageIds: [ID!]!): [CmsTranslationProgress!]!
     }
 
     extend type Mutation {

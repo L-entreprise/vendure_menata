@@ -13,6 +13,7 @@ import {
     DataTable,
     PageBlockContext,
 } from '@vendure/dashboard';
+import { blockLabel } from './cms-language';
 import { toast } from 'sonner';
 
 // Also used by the submissions panel of the page editor.
@@ -95,7 +96,7 @@ export function CollectionEntriesPanel({ pageId, schema, title }: { pageId: stri
         },
         ...schemaFields.map(block => ({
             id: block.key,
-            header: block.translations?.[0]?.name || block.key,
+            header: blockLabel(block),
             accessorFn: (row: any) => formatCellValue(block.type, row.data?.[block.key]),
         })),
         {

@@ -1,0 +1,87 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-16 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr\n"
+
+#. Toolbar language switcher
+msgid "Content language"
+msgstr "Langue du contenu"
+
+msgid "original"
+msgstr "original"
+
+#. Original text under a translated field
+msgid "Copy"
+msgstr "Copier"
+
+#. Original changed dialog
+msgid "The original text changed"
+msgstr "Le texte d'origine a changé"
+
+msgid "{fieldList} changed in {source}. These translations may be out of date: {languageList}."
+msgstr "{fieldList} a changé en {source}. Ces traductions sont peut-être obsolètes : {languageList}."
+
+msgid "Clearing them shows the original text on the site until they are translated again."
+msgstr "Si vous les effacez, le site affiche le texte d'origine jusqu'à la prochaine traduction."
+
+msgid "Keep"
+msgstr "Garder"
+
+msgid "Clear in {languageList}"
+msgstr "Effacer en {languageList}"
+
+msgid "Translate now ({0})"
+msgstr "Traduire maintenant ({0})"
+
+msgid "Translations cleared"
+msgstr "Traductions effacées"
+
+msgid "Could not clear the translations"
+msgstr "Impossible d'effacer les traductions"
+
+#. Product translations panel
+msgid "Translations"
+msgstr "Traductions"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Variant {0}"
+msgstr "Variante {0}"
+
+msgid "Translate"
+msgstr "Traduire"
+
+#. Prompt after creating a record
+msgid "Created. Translate it now?"
+msgstr "Créé. Le traduire maintenant ?"
+
+msgid "The site shows the original text in the other languages until they are translated."
+msgstr "Dans les autres langues, le site affiche le texte d'origine tant qu'il n'est pas traduit."
+
+msgid "Later"
+msgstr "Plus tard"
+
+msgid "Translate into {0}"
+msgstr "Traduire en {0}"
+
+#. Alerts
+msgid "Products not fully translated"
+msgstr "Produits pas entièrement traduits"
+
+msgid "See products"
+msgstr "Voir les produits"
+
+#. Notice at the top of an editor while translating
+msgid "You are editing the {target} translation. Empty fields show the {source} original on the site."
+msgstr "Vous modifiez la traduction {target}. Les champs vides affichent l'original {source} sur le site."
+
+msgid "This new entry is saved as the {source} original. Translate it into {target} once it exists."
+msgstr "Cette nouvelle entrée est enregistrée comme original {source}. Traduisez-la en {target} une fois créée."

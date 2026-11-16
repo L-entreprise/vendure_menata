@@ -21,9 +21,9 @@ import { DataSourceOptions } from 'typeorm';
 
 import { AuditLogPlugin } from '../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../plugins/cms-plugin/cms.plugin';
+import { ContentI18nPlugin } from '../plugins/content-i18n/content-i18n.plugin';
 import { DiagnosticsPlugin } from '../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../plugins/menata-branding/menata-branding.plugin';
-import { TranslationPlugin } from '../plugins/translation-plugin/translation.plugin';
 
 const serverPort = Number(process.env.PORT) || 3000;
 const useRedis = Boolean(process.env.REDIS_HOST);
@@ -110,12 +110,8 @@ export const config: VendureConfig = {
         MenataBrandingPlugin,
         CmsPlugin,
         AuditLogPlugin.init({ retentionDays: Number(process.env.AUDIT_LOG_RETENTION_DAYS) || 90 }),
-        TranslationPlugin.init({
-            languages: [
-                { code: 'en', name: 'English' },
-                { code: 'fr', name: 'French' },
-            ],
-        }),
+        // Languages come from the channel (Settings → Channels): no plugin option.
+        ContentI18nPlugin,
         AssetServerPlugin.init({
             route: 'assets',
             assetUploadDir: process.env.ASSET_UPLOAD_DIR || path.join(__dirname, 'assets'),

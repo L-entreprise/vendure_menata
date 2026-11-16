@@ -8,6 +8,7 @@ import {
 
 import { cmsPagePermission } from '../constants';
 import { CmsPageService } from '../services/cms-page.service';
+import { CmsTranslationProgressService } from '../services/cms-translation-progress.service';
 import { FormSubmissionService } from '../services/form-submission.service';
 import {
     CreateCmsPageInput,
@@ -22,7 +23,14 @@ export class CmsPageAdminResolver {
     constructor(
         private cmsPageService: CmsPageService,
         private formSubmissionService: FormSubmissionService,
+        private progressService: CmsTranslationProgressService,
     ) {}
+
+    @Query()
+    @Allow(cmsPagePermission.Read)
+    async cmsTranslationProgress(@Ctx() ctx: RequestContext, @Args() args: { pageIds: string[] }) {
+        return this.progressService.progress(ctx, args.pageIds);
+    }
 
     @Query()
     @Allow(cmsPagePermission.Read)
