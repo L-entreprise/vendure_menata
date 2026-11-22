@@ -39,6 +39,9 @@ const en = {
     'crm-task-title-invalid': 'A follow-up needs a title of at most { max } characters',
     'crm-task-invalid-date': 'The due date must be a calendar date (YYYY-MM-DD)',
     'crm-task-needs-target': 'A follow-up must concern a customer or a group, not both',
+    'crm-address-invalid': 'Incomplete address ({ reason })',
+    'crm-address-unknown-country': 'Unknown country code "{ countryCode }"',
+    'crm-order-not-draft': 'Only a draft order can change company this way',
     'crm-merge-same-customer': 'A customer cannot be merged into itself',
     'crm-merge-company-conflict':
         'The two customers belong to different companies ("{ sourceCompany }" and "{ targetCompany }"): move one first',
@@ -68,6 +71,9 @@ const fr: Record<CrmErrorKey, string> = {
     'crm-task-title-invalid': 'Une relance doit avoir un titre de { max } caractères au plus',
     'crm-task-invalid-date': 'La date d’échéance doit être une date du calendrier (AAAA-MM-JJ)',
     'crm-task-needs-target': 'Une relance concerne un client ou un groupe, pas les deux',
+    'crm-address-invalid': 'Adresse incomplète ({ reason })',
+    'crm-address-unknown-country': 'Code pays inconnu « { countryCode } »',
+    'crm-order-not-draft': 'Seul un brouillon de commande peut changer d’entreprise ainsi',
     'crm-merge-same-customer': 'Un client ne peut pas être fusionné avec lui-même',
     'crm-merge-company-conflict':
         'Les deux clients appartiennent à des entreprises différentes (« { sourceCompany } » et « { targetCompany } ») : déplacez-en un d’abord',

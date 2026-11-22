@@ -11,7 +11,7 @@ import { cancelOrder, createDraft, createTestVariant, payDraft, refund } from '.
 
 const ORDER_CRM = gql`
     query OrderCrm($id: ID!) {
-        order(id: $id) { id crmSalesRepName customFields { companyGroup { id name } } }
+        order(id: $id) { id crmSalesRepName crmCompany { id name } }
     }
 `;
 const GROUP_LIFECYCLE = gql`
@@ -92,7 +92,7 @@ describe('CrmPlugin — orders, lifecycle, group sales (O1-O6, T1-T4)', () => {
         await adminClient.asUserWithCredentials(alexandre.username, COMMERCIAL_PASSWORD);
         const { order } = await adminClient.query(ORDER_CRM, { id: orderId });
 
-        expect(order.customFields.companyGroup.name).toBe('O1 Colmar');
+        expect(order.crmCompany.name).toBe('O1 Colmar');
         expect(order.crmSalesRepName).toBe('Alexandre Martin');
     });
 
@@ -198,7 +198,7 @@ describe('CrmPlugin — orders, lifecycle, group sales (O1-O6, T1-T4)', () => {
         await adminClient.asSuperAdmin();
         await adminClient.query(SET_ORDER_COMPANY, { orderId, companyId: other });
 
-        expect((await adminClient.query(ORDER_CRM, { id: orderId })).order.customFields.companyGroup.name).toBe('Change other');
+        expect((await adminClient.query(ORDER_CRM, { id: orderId })).order.crmCompany.name).toBe('Change other');
         expect((await waitLifecycle(company, 'prospect')).lifecycle).toBe('prospect');
         expect((await waitLifecycle(other, 'client')).lifecycle).toBe('client');
     });

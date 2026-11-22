@@ -462,3 +462,93 @@ msgstr "Change"
 
 msgid "See the CRM block"
 msgstr "See the CRM block"
+
+msgid "Order for a company"
+msgstr "Order for a company"
+
+msgid "This company has no contact yet."
+msgstr "This company has no contact yet."
+
+msgid "Company addresses"
+msgstr "Company addresses"
+
+msgid "For delivery"
+msgstr "For delivery"
+
+msgid "For billing"
+msgstr "For billing"
+
+msgid "Choose"
+msgstr "Choose"
+
+msgid "Choose the contact"
+msgstr "Choose the contact"
+
+msgid "Delivery address set"
+msgstr "Delivery address set"
+
+msgid "Billing address set"
+msgstr "Billing address set"
+
+msgid "Default delivery address"
+msgstr "Default delivery address"
+
+msgid "Default billing address"
+msgstr "Default billing address"
+
+msgid "No address yet."
+msgstr "No address yet."
+
+msgid "default delivery"
+msgstr "default delivery"
+
+msgid "default billing"
+msgstr "default billing"
+
+msgid "Add an address"
+msgstr "Add an address"
+
+msgid "Use"
+msgstr "Use"
+
+msgid "Name of the address (e.g. Main warehouse)"
+msgstr "Name of the address (e.g. Main warehouse)"
+
+msgid "Recipient"
+msgstr "Recipient"
+
+msgid "Company name"
+msgstr "Company name"
+
+msgid "Street"
+msgstr "Street"
+
+msgid "Street (line 2)"
+msgstr "Street (line 2)"
+
+msgid "Postal code"
+msgstr "Postal code"
+
+msgid "City"
+msgstr "City"
+
+msgid "Country code (FR)"
+msgstr "Country code (FR)"
+
+msgid "Phone"
+msgstr "Phone"
+
+msgid "Address saved"
+msgstr "Address saved"
+
+msgid "Head office"
+msgstr "Head office"
+
+msgid "Delivery"
+msgstr "Delivery"
+
+msgid "Billing"
+msgstr "Billing"
+
+msgid "Addresses"
+msgstr "Addresses"

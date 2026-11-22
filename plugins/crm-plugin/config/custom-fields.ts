@@ -71,6 +71,8 @@ export const crmCustomFields: CustomFields = {
             type: 'relation',
             entity: CustomerGroup,
             readonly: true,
+            // Read through Order.crmCompany; hidden from the native form, the CRM block shows it.
+            internal: true,
             label: label('Company', 'Entreprise'),
             ui: { component: 'crm-readonly-value' },
             description: label('Frozen when the order is placed', 'Figée au passage de la commande'),
@@ -81,6 +83,8 @@ export const crmCustomFields: CustomFields = {
             type: 'relation',
             entity: Administrator,
             readonly: true,
+            // Read through Order.crmSalesRepName (no Administrator exposed to sales reps).
+            internal: true,
             label: label('Sales rep', 'Commercial'),
             ui: { component: 'crm-readonly-value' },
         },

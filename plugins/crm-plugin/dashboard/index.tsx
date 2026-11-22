@@ -9,6 +9,8 @@ import { CRM_NAV_SECTION } from './constants';
 import { CompanyContactsBlock } from './company-contacts-block';
 import { CustomerCrmBlock } from './customer-crm-block';
 import { CustomerGroupsBlock } from './customer-groups-block';
+import { DraftOrderCompanyBlock } from './draft-order-company-block';
+import { GroupAddressesBlock } from './group-addresses-block';
 import { GroupCrmBlock } from './group-crm-block';
 import { GroupSalesBlock } from './group-sales-block';
 import { JournalBlock } from './journal-block';
@@ -79,6 +81,13 @@ defineDashboardExtension({
             shouldRender: groupTypeIs('company'),
         },
         {
+            id: 'crm-group-addresses',
+            title: <Trans>Addresses</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
+            component: GroupAddressesBlock,
+            shouldRender: groupTypeIs('company'),
+        },
+        {
             id: 'crm-customer-notes',
             title: <Trans>Notes</Trans>,
             location: { pageId: 'customer-detail', column: 'main', position: { blockId: 'history', order: 'before' } },
@@ -124,7 +133,7 @@ defineDashboardExtension({
             id: 'crm-draft-order-company',
             title: <Trans>CRM</Trans>,
             location: { pageId: 'draft-order-detail', column: 'side', position: { blockId: 'customer', order: 'after' } },
-            component: OrderCrmBlock,
+            component: DraftOrderCompanyBlock,
             shouldRender: hasEntity,
         },
         {

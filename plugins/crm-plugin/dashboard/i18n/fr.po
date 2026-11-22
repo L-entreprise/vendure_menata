@@ -462,3 +462,93 @@ msgstr "Changer"
 
 msgid "See the CRM block"
 msgstr "Voir le bloc CRM"
+
+msgid "Order for a company"
+msgstr "Commande pour une entreprise"
+
+msgid "This company has no contact yet."
+msgstr "Cette entreprise n’a pas encore de contact."
+
+msgid "Company addresses"
+msgstr "Adresses de l’entreprise"
+
+msgid "For delivery"
+msgstr "Pour la livraison"
+
+msgid "For billing"
+msgstr "Pour la facturation"
+
+msgid "Choose"
+msgstr "Choisir"
+
+msgid "Choose the contact"
+msgstr "Choisir le contact"
+
+msgid "Delivery address set"
+msgstr "Adresse de livraison appliquée"
+
+msgid "Billing address set"
+msgstr "Adresse de facturation appliquée"
+
+msgid "Default delivery address"
+msgstr "Adresse de livraison par défaut"
+
+msgid "Default billing address"
+msgstr "Adresse de facturation par défaut"
+
+msgid "No address yet."
+msgstr "Aucune adresse pour l’instant."
+
+msgid "default delivery"
+msgstr "livraison par défaut"
+
+msgid "default billing"
+msgstr "facturation par défaut"
+
+msgid "Add an address"
+msgstr "Ajouter une adresse"
+
+msgid "Use"
+msgstr "Usage"
+
+msgid "Name of the address (e.g. Main warehouse)"
+msgstr "Nom de l’adresse (ex. Entrepôt principal)"
+
+msgid "Recipient"
+msgstr "Destinataire"
+
+msgid "Company name"
+msgstr "Raison sociale"
+
+msgid "Street"
+msgstr "Rue"
+
+msgid "Street (line 2)"
+msgstr "Complément d’adresse"
+
+msgid "Postal code"
+msgstr "Code postal"
+
+msgid "City"
+msgstr "Ville"
+
+msgid "Country code (FR)"
+msgstr "Code pays (FR)"
+
+msgid "Phone"
+msgstr "Téléphone"
+
+msgid "Address saved"
+msgstr "Adresse enregistrée"
+
+msgid "Head office"
+msgstr "Siège"
+
+msgid "Delivery"
+msgstr "Livraison"
+
+msgid "Billing"
+msgstr "Facturation"
+
+msgid "Addresses"
+msgstr "Adresses"

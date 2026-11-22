@@ -232,6 +232,8 @@ const sales = gql`
     extend type Order {
         "Name of the sales rep recorded on the order (O6)"
         crmSalesRepName: String
+        "The company frozen on the order (O1)"
+        crmCompany: CustomerGroup
     }
     extend type Query {
         "Placed orders of the group and every group below it, newest first"
@@ -244,6 +246,60 @@ const sales = gql`
     }
 `;
 
+/** A1-A3 company addresses and ordering by company. */
+const addresses = gql`
+    type CrmGroupAddress {
+        id: ID!
+        "headquarters, shipping or billing"
+        kind: String!
+        label: String!
+        fullName: String!
+        company: String!
+        streetLine1: String!
+        streetLine2: String!
+        city: String!
+        province: String!
+        postalCode: String!
+        countryCode: String!
+        phoneNumber: String!
+        defaultShipping: Boolean!
+        defaultBilling: Boolean!
+    }
+    input CrmGroupAddressInput {
+        kind: String!
+        label: String
+        fullName: String
+        company: String
+        streetLine1: String!
+        streetLine2: String
+        city: String
+        province: String
+        postalCode: String
+        countryCode: String!
+        phoneNumber: String
+        defaultShipping: Boolean
+        defaultBilling: Boolean
+    }
+    type CrmAddressSuggestion {
+        "company: the contact's company; ancestor: a group above it"
+        source: String!
+        groupId: ID!
+        groupName: String!
+        address: CrmGroupAddress!
+    }
+    extend type Query {
+        customerGroupAddresses(groupId: ID!): [CrmGroupAddress!]!
+        "Addresses proposed for a contact: their company first, then each group above it"
+        crmAddressSuggestions(customerId: ID!): [CrmAddressSuggestion!]!
+    }
+    extend type Mutation {
+        createCustomerGroupAddress(groupId: ID!, input: CrmGroupAddressInput!): CrmGroupAddress!
+        updateCustomerGroupAddress(id: ID!, input: CrmGroupAddressInput!): CrmGroupAddress!
+        deleteCustomerGroupAddress(id: ID!): DeletionResponse!
+        setDraftOrderCompany(orderId: ID!, companyId: ID!): Order!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
@@ -252,4 +308,5 @@ export const adminApiExtensions = gql`
     ${notes}
     ${tasks}
     ${sales}
+    ${addresses}
 `;

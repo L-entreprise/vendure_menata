@@ -14,7 +14,7 @@ const orderCrmDocument = graphql(`
             id
             state
             crmSalesRepName
-            customFields { companyGroup { id name } }
+            crmCompany { id name }
             customer { id groups { id name crmGroupType } }
         }
         crmGroupTree { group { id name crmGroupType } }
@@ -45,7 +45,7 @@ export function OrderCrmBlock({ context }: Readonly<{ context: PageContextValue 
     if (!order) {
         return null;
     }
-    const frozen = order.customFields?.companyGroup;
+    const frozen = order.crmCompany;
     const expected = order.customer?.groups?.find((group: any) => group.crmGroupType === 'company');
     const company = frozen ?? expected;
     const companies = (data.crmGroupTree as any[]).map(entry => entry.group).filter(group => group.crmGroupType === 'company' && group.id !== frozen?.id);
@@ -57,7 +57,7 @@ export function OrderCrmBlock({ context }: Readonly<{ context: PageContextValue 
                 {company ? (
                     <Link to="/customer-groups/$id" params={{ id: company.id }} className="font-medium hover:underline">{company.name}</Link>
                 ) : (
-                    <span className="text-muted-foreground">{order.customer ? <Trans>The customer has no company.</Trans> : <Trans>Pick a customer first.</Trans>}</span>
+                    <span className="text-muted-foreground">{order.customer ? <Trans>The customer has no company.</Trans> : <Trans>No company yet.</Trans>}</span>
                 )}
                 {!frozen && company && <p className="text-xs text-muted-foreground"><Trans>Frozen when the order is placed.</Trans></p>}
             </dd>

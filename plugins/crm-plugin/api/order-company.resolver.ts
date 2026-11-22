@@ -1,6 +1,6 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { Permission } from '@vendure/common/lib/generated-types';
-import { Administrator, Allow, Ctx, ID, Order, OrderService, RequestContext, Transaction, TransactionalConnection } from '@vendure/core';
+import { Administrator, Allow, Ctx, CustomerGroup, ID, Order, OrderService, RequestContext, Transaction, TransactionalConnection } from '@vendure/core';
 
 import { crmAdminPermission } from '../constants';
 import { GroupOrdersOptions, GroupSalesService } from '../services/group-sales.service';
@@ -49,6 +49,14 @@ export class OrderCompanyResolver {
 @Resolver('Order')
 export class OrderCrmFieldsResolver {
     constructor(private connection: TransactionalConnection) {}
+
+    @ResolveField()
+    async crmCompany(@Ctx() ctx: RequestContext, @Parent() order: Order): Promise<CustomerGroup | null> {
+        const loaded = await this.connection
+            .getRepository(ctx, Order)
+            .findOne({ where: { id: order.id }, relations: { customFields: { companyGroup: true } } as any });
+        return (loaded?.customFields as { companyGroup?: CustomerGroup | null } | undefined)?.companyGroup ?? null;
+    }
 
     @ResolveField()
     async crmSalesRepName(@Ctx() ctx: RequestContext, @Parent() order: Order): Promise<string | null> {
