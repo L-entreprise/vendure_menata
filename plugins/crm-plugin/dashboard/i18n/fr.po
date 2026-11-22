@@ -1,0 +1,56 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-21 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr\n"
+
+msgid "Company"
+msgstr "Entreprise"
+
+msgid "Could not load the company."
+msgstr "Impossible de charger l’entreprise."
+
+msgid "No company yet."
+msgstr "Aucune entreprise pour l’instant."
+
+msgid "Pick a customer to see their company."
+msgstr "Choisissez un client pour voir son entreprise."
+
+msgid "CRM rules"
+msgstr "Règles CRM"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "None"
+msgstr "Aucun"
+
+msgid "Members"
+msgstr "Membres"
+
+msgid "Group of companies"
+msgstr "Groupe d’entreprises"
+
+msgid "Sales portfolio"
+msgstr "Portefeuille commercial"
+
+msgid "Segment"
+msgstr "Segment"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Customers only"
+msgstr "Clients seulement"
+
+msgid "Groups only"
+msgstr "Groupes seulement"
+
+msgid "Customers and groups"
+msgstr "Clients et groupes"
+
+msgid "Could not load the CRM rules."
+msgstr "Impossible de charger les règles CRM."

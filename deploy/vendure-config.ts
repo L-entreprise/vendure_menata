@@ -22,6 +22,7 @@ import { DataSourceOptions } from 'typeorm';
 import { AuditLogPlugin } from '../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../plugins/cms-plugin/cms.plugin';
 import { ContentI18nPlugin } from '../plugins/content-i18n/content-i18n.plugin';
+import { CrmPlugin } from '../plugins/crm-plugin/crm.plugin';
 import { DiagnosticsPlugin } from '../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../plugins/menata-branding/menata-branding.plugin';
 
@@ -112,6 +113,7 @@ export const config: VendureConfig = {
         AuditLogPlugin.init({ retentionDays: Number(process.env.AUDIT_LOG_RETENTION_DAYS) || 90 }),
         // Languages come from the channel (Settings → Channels): no plugin option.
         ContentI18nPlugin,
+        CrmPlugin,
         AssetServerPlugin.init({
             route: 'assets',
             assetUploadDir: process.env.ASSET_UPLOAD_DIR || path.join(__dirname, 'assets'),
