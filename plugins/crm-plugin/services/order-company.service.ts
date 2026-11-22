@@ -5,6 +5,7 @@ import {
     CustomerGroup,
     EventBus,
     ID,
+    idsAreEqual,
     Logger,
     Order,
     OrderPlacedEvent,
@@ -82,8 +83,10 @@ export class OrderCompanyService implements OnModuleInit {
         if (!order.customer) {
             return;
         }
-        const company = fields.companyGroup ?? (await this.membershipRules.companyOf(ctx, order.customer.id));
-        if (!fields.companyGroup && company) {
+        // The customer's own company wins over a company picked for the draft (the customer may
+        // have been changed afterwards); a draft company is kept only for a customer without one.
+        const company = (await this.membershipRules.companyOf(ctx, order.customer.id)) ?? fields.companyGroup ?? null;
+        if (company && !idsAreEqual(fields.companyGroup?.id, company.id)) {
             await this.writeFields(ctx, order.id, { companyGroup: { id: company.id } });
             this.setOnPlacingOrder(placing, { companyGroup: company });
             await this.journal.record(ctx, company.id, 'order-assigned', { orderCode: order.code });

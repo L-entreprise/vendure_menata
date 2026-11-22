@@ -1,20 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import {
-    AdministratorService,
-    CustomerHistoryEntry,
-    ID,
-    idsAreEqual,
-    OrderHistoryEntry,
-    RequestContext,
-    TransactionalConnection,
-} from '@vendure/core';
+import { AdministratorService, ID, idsAreEqual, RequestContext, TransactionalConnection } from '@vendure/core';
 
 import { CrmForbiddenError } from '../common/crm-errors';
+import { customerHistoryEntity, orderHistoryEntity } from '../common/history-entities';
 import { crmAdminPermission } from '../constants';
 
 export type HistoryNoteKind = 'customer' | 'order';
-
-const ENTITY = { customer: CustomerHistoryEntry, order: OrderHistoryEntry } as const;
 
 /**
  * N3: nobody edits or deletes another person's note (customer, order or group notes).
@@ -54,7 +45,11 @@ export class NoteOwnershipService {
     }
 
     private async historyAuthorId(ctx: RequestContext, noteId: ID, kind: HistoryNoteKind): Promise<ID | undefined> {
-        const note = await this.connection.getEntityOrThrow(ctx, ENTITY[kind] as typeof CustomerHistoryEntry, noteId, {
+        // Both entry kinds share the `administrator` relation read here.
+        const entity = (kind === 'customer' ? customerHistoryEntity(this.connection) : orderHistoryEntity(this.connection)) as ReturnType<
+            typeof customerHistoryEntity
+        >;
+        const note = await this.connection.getEntityOrThrow(ctx, entity, noteId, {
             relations: { administrator: true },
         });
         return note.administrator?.id;

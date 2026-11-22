@@ -32,13 +32,16 @@ export class CustomerStatusService {
         if (from === status) {
             return customer;
         }
+        // A status removed from the settings has no transitions left: any listed status is allowed
+        // from it, otherwise its customers would be stuck.
+        const fromIsListed = settings.customerStatuses.some(option => option.code === from);
         const allowed = settings.statusTransitions?.find(transition => transition.from === from)?.to;
-        if (settings.statusTransitions && !allowed?.includes(status)) {
+        if (settings.statusTransitions && fromIsListed && !allowed?.includes(status)) {
             throw new CrmRuleError('crm-status-transition-not-allowed', { from, to: status });
         }
         await this.connection
             .getRepository(ctx, Customer)
-            .update({ id: customer.id }, { customFields: { ...customer.customFields, crmStatus: status } });
+            .update({ id: customer.id }, { customFields: { crmStatus: status } } as any);
         await this.historyService.createHistoryEntryForCustomer({
             ctx,
             customerId: customer.id,

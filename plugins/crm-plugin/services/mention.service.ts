@@ -13,6 +13,7 @@ import {
 } from '@vendure/core';
 import { IsNull } from 'typeorm';
 
+import { findMentionedNames } from '../common/mentions';
 import { loggerCtx } from '../constants';
 import { NotificationData } from '../entities/crm-notification.entity';
 
@@ -26,23 +27,7 @@ export interface MentionTarget {
     groupId?: ID;
 }
 
-const fold = (value: string) => value.normalize('NFC').toLocaleLowerCase('fr');
 const fullName = (admin: Administrator) => `${admin.firstName} ${admin.lastName}`.trim();
-
-/** True when `text` contains `@First Last`, not followed by another letter. */
-export function mentions(text: string, name: string): boolean {
-    const haystack = fold(text);
-    const needle = `@${fold(name)}`;
-    let index = haystack.indexOf(needle);
-    while (index !== -1) {
-        const next = haystack.charAt(index + needle.length);
-        if (!next || !/\p{L}/u.test(next)) {
-            return true;
-        }
-        index = haystack.indexOf(needle, index + 1);
-    }
-    return false;
-}
 
 /** K3: `@Prénom Nom` in a note notifies that colleague (never the author). */
 @Injectable()
@@ -82,7 +67,8 @@ export class MentionService implements OnModuleInit {
         }
         const authorId = await this.noteOwnership.currentAdministratorId(ctx);
         const admins = await this.mentionable(ctx);
-        const mentioned = admins.filter(admin => mentions(text, fullName(admin)) && !(authorId && idsAreEqual(admin.id, authorId)));
+        const names = findMentionedNames(text, admins.map(fullName));
+        const mentioned = admins.filter(admin => names.has(fullName(admin)) && !(authorId && idsAreEqual(admin.id, authorId)));
         if (mentioned.length === 0) {
             return;
         }

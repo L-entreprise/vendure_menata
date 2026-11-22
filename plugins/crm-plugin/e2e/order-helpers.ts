@@ -87,13 +87,17 @@ export async function createTestVariant(superAdmin: AdminClient): Promise<string
 /** Creates a draft for `customerId` with whoever is logged in on `creator`. */
 export async function createDraft(creator: AdminClient, customerId: string, variantId: string): Promise<string> {
     const { createDraftOrder } = await creator.query(CREATE_DRAFT);
-    const orderId = createDraftOrder.id;
+    await fillDraft(creator, createDraftOrder.id, customerId, variantId);
+    return createDraftOrder.id;
+}
+
+/** Sets the customer, one line, an address and shipping on an existing draft. */
+export async function fillDraft(creator: AdminClient, orderId: string, customerId: string, variantId: string): Promise<void> {
     await creator.query(SET_CUSTOMER, { orderId, customerId });
     await creator.query(ADD_ITEM, { orderId, variantId });
     await creator.query(SET_ADDRESS, { orderId });
     const { eligibleShippingMethodsForDraftOrder } = await creator.query(SHIPPING_METHODS, { orderId });
     await creator.query(SET_SHIPPING, { orderId, methodId: eligibleShippingMethodsForDraftOrder[0].id });
-    return orderId;
 }
 
 export interface PaidOrder {

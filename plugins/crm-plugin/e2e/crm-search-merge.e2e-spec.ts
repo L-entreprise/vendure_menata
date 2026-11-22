@@ -1,4 +1,4 @@
-import { Channel, Customer, TransactionalConnection } from '@vendure/core';
+import { Channel, Customer, Order, TransactionalConnection } from '@vendure/core';
 import { gql } from 'graphql-tag';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -44,6 +44,11 @@ const CREATE_ADDRESS = gql`
 `;
 const CUSTOMER = gql`
     query Customer($id: ID!) { customer(id: $id) { id } }
+`;
+const GUEST_FOR_DRAFT = gql`
+    mutation Guest($orderId: ID!, $input: CreateCustomerInput!) {
+        setCustomerForDraftOrder(orderId: $orderId, input: $input) { ... on Order { id customer { id } } }
+    }
 `;
 
 describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, D3)', () => {
@@ -187,5 +192,27 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
         await adminClient.query(ADD_CUSTOMERS_TO_GROUP, { customerGroupId: b, customerIds: [second.id] });
 
         await expect(adminClient.query(MERGE, { sourceId: first.id, targetId: second.id })).rejects.toThrow(/different companies/i);
+    });
+
+    it('never deletes a shop login for a guest record, and leaves an open cart behind (D3)', async () => {
+        await adminClient.asSuperAdmin();
+        const variantId = await createTestVariant(adminClient);
+        const registered = await customer('login@menata.test', 'Has', 'Login');
+        const { createDraftOrder } = await adminClient.query(gql`mutation { createDraftOrder { id } }`);
+        const { setCustomerForDraftOrder } = await adminClient.query(GUEST_FOR_DRAFT, {
+            orderId: createDraftOrder.id,
+            input: { emailAddress: 'guest@menata.test', firstName: 'Phone', lastName: 'Guest' },
+        });
+        const guestId = setCustomerForDraftOrder.customer.id;
+
+        await expect(adminClient.query(MERGE, { sourceId: registered.id, targetId: guestId })).rejects.toThrow(/shop login/i);
+
+        const cartId = await createDraft(adminClient, guestId, variantId);
+        const connection = server.app.get(TransactionalConnection);
+        await connection.rawConnection.getRepository(Order).update({ id: cartId.replace('T_', '') }, { active: true });
+        await adminClient.query(MERGE, { sourceId: guestId, targetId: registered.id });
+
+        const cart = await connection.rawConnection.getRepository(Order).findOneOrFail({ where: { id: cartId.replace('T_', '') } });
+        expect(String(cart.customerId)).toBe(guestId.replace('T_', ''));
     });
 });

@@ -66,6 +66,7 @@ export class GroupSalesService {
             where: {
                 orderPlacedAt: placedBetween(options.from, options.to),
                 customFields: { companyGroup: { id: In(ids) } },
+                channels: { id: ctx.channelId },
                 ...(options.states?.length ? { state: In(options.states) } : {}),
                 ...(options.customerId ? { customer: { id: options.customerId } } : {}),
             } as any,
@@ -84,9 +85,11 @@ export class GroupSalesService {
 
     async summary(ctx: RequestContext, groupId: ID, from?: Date | null, to?: Date | null): Promise<SalesSummary> {
         const ids = await this.companyIds(ctx, groupId);
-        const inPeriod = (await this.lifecycle.countedOrders(ctx, ids)).filter(order => {
+        // Amounts in different currencies cannot be added: totals use the channel's default currency.
+        const currencyCode = ctx.channel.defaultCurrencyCode;
+        const inPeriod = (await this.lifecycle.countedOrders(ctx, ids, ctx.channelId)).filter(order => {
             const placed = order.orderPlacedAt?.getTime() ?? 0;
-            return (!from || placed >= from.getTime()) && (!to || placed <= to.getTime());
+            return order.currencyCode === currencyCode && (!from || placed >= from.getTime()) && (!to || placed <= to.getTime());
         });
         const totalWithTax = inPeriod.reduce((sum, order) => sum + order.totalWithTax, 0);
         const last = inPeriod.reduce<Date | null>((latest, order) => {
@@ -99,7 +102,7 @@ export class GroupSalesService {
             totalWithTax,
             averageWithTax: inPeriod.length ? Math.round(totalWithTax / inPeriod.length) : 0,
             lastOrderAt: last,
-            currencyCode: inPeriod[0]?.currencyCode ?? null,
+            currencyCode,
         };
     }
 }

@@ -76,9 +76,9 @@ export class LifecycleService {
         if (!changed) {
             return;
         }
-        await this.connection
-            .getRepository(ctx, CustomerGroup)
-            .update({ id: group.id }, { customFields: { ...group.customFields, ...next } });
+        // Only the computed columns are written: this runs after commit and from the nightly job,
+        // so rewriting the whole snapshot could undo a concurrent edit of the company data.
+        await this.connection.getRepository(ctx, CustomerGroup).update({ id: group.id }, { customFields: next } as any);
         if ((current.lifecycle ?? null) !== next.lifecycle) {
             await this.journal.record(ctx, group.id, 'lifecycle-changed', { from: current.lifecycle ?? null, to: next.lifecycle });
         }
@@ -98,13 +98,20 @@ export class LifecycleService {
         return { lifecycle: dormant ? 'dormant' : 'client', lifecycleVia: direct ? 'direct' : 'subsidiary', lastCountedOrderAt: last };
     }
 
-    /** Counted orders frozen on any of the given companies. */
-    async countedOrders(ctx: RequestContext, companyIds: string[]): Promise<Order[]> {
+    /**
+     * Counted orders frozen on any of the given companies. The lifecycle counts every channel
+     * (a client is a client); sales figures pass `channelId` to stay within the active channel.
+     */
+    async countedOrders(ctx: RequestContext, companyIds: string[], channelId?: ID): Promise<Order[]> {
         if (companyIds.length === 0) {
             return [];
         }
         const orders = await this.connection.getRepository(ctx, Order).find({
-            where: { state: In(COUNTED_ORDER_STATES), customFields: { companyGroup: { id: In(companyIds) } } } as any,
+            where: {
+                state: In(COUNTED_ORDER_STATES),
+                customFields: { companyGroup: { id: In(companyIds) } },
+                ...(channelId ? { channels: { id: channelId } } : {}),
+            } as any,
             relations: { payments: { refunds: true }, customFields: { companyGroup: true } } as any,
         });
         return orders.filter(isCountedOrder);

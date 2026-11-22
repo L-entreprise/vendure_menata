@@ -7,7 +7,7 @@ import { CrmPlugin } from '../crm.plugin';
 import { LifecycleService } from '../services/lifecycle.service';
 
 import { ADD_CUSTOMERS_TO_GROUP, Commercial, COMMERCIAL_PASSWORD, CREATE_CUSTOMER_GROUP, createCommercialFactory, createCustomer } from './helpers';
-import { cancelOrder, createDraft, createTestVariant, payDraft, refund } from './order-helpers';
+import { cancelOrder, createDraft, createTestVariant, fillDraft, payDraft, refund } from './order-helpers';
 
 const ORDER_CRM = gql`
     query OrderCrm($id: ID!) {
@@ -37,6 +37,15 @@ const SALES_SUMMARY = gql`
     query Summary($groupId: ID!) {
         crmGroupSalesSummary(groupId: $groupId) { orderCount totalWithTax averageWithTax lastOrderAt }
     }
+`;
+const DELETE_GROUPS = gql`
+    mutation DeleteGroups($ids: [ID!]!) { deleteCustomerGroups(ids: $ids) { result message } }
+`;
+const DELETE_GROUP = gql`
+    mutation DeleteGroup($id: ID!) { deleteCustomerGroup(id: $id) { result message } }
+`;
+const SET_DRAFT_COMPANY = gql`
+    mutation SetDraftCompany($orderId: ID!, $companyId: ID!) { setDraftOrderCompany(orderId: $orderId, companyId: $companyId) { id } }
 `;
 const UPDATE_SETTINGS = gql`
     mutation Settings($input: UpdateCrmSettingsInput!) { updateCrmSettings(input: $input) { dormantThresholdDays } }
@@ -224,5 +233,34 @@ describe('CrmPlugin — orders, lifecycle, group sales (O1-O6, T1-T4)', () => {
 
         expect((await adminClient.query(ORDER_CRM, { id: orderId })).order.crmCompany).toBeNull();
         expect((await adminClient.query(ORDER_CRM, { id: second.orderId })).order.crmCompany).toBeNull();
+    });
+
+    it('refuses to delete a company that has orders, with a clear message (O1, G6)', async () => {
+        const company = await group('Delete with orders', 'company');
+        const empty = await group('Delete empty', 'company');
+        const customerId = await contact('delete@menata.test', company);
+        await payDraft(adminClient, await createDraft(adminClient, customerId, variantId));
+
+        const { deleteCustomerGroups } = await adminClient.query(DELETE_GROUPS, { ids: [company, empty] });
+
+        expect(deleteCustomerGroups[0]).toEqual({ result: 'NOT_DELETED', message: expect.stringMatching(/has 1 order/) });
+        expect(deleteCustomerGroups[1]).toEqual({ result: 'DELETED', message: null });
+        expect((await adminClient.query(DELETE_GROUP, { id: company })).deleteCustomerGroup.result).toBe('NOT_DELETED');
+    });
+
+    it("freezes the customer's own company even when the draft was started for another one (O1, A2)", async () => {
+        const mine = await group('Draft own company', 'company');
+        const other = await group('Draft other company', 'company');
+        const customerId = await contact('draft-own@menata.test', mine);
+        const orderId = await createDraft(adminClient, customerId, variantId);
+
+        await expect(adminClient.query(SET_DRAFT_COMPANY, { orderId, companyId: other })).rejects.toThrow(/belongs to the company/i);
+
+        const { createDraftOrder } = await adminClient.query(gql`mutation { createDraftOrder { id } }`);
+        await adminClient.query(SET_DRAFT_COMPANY, { orderId: createDraftOrder.id, companyId: other });
+        await fillDraft(adminClient, createDraftOrder.id, customerId, variantId);
+        const placed = await payDraft(adminClient, createDraftOrder.id);
+
+        expect((await adminClient.query(ORDER_CRM, { id: placed.orderId })).order.crmCompany.name).toBe('Draft own company');
     });
 });

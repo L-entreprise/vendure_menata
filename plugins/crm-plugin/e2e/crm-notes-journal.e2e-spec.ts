@@ -107,6 +107,8 @@ describe('CrmPlugin — notes and company journal (N2-N5)', () => {
         const { setCustomerNotePinned } = await adminClient.query(PIN_CUSTOMER_NOTE, { noteId, pinned: true });
 
         expect(setCustomerNotePinned.customFields.pinned).toBe(true);
+        const systemEntry = customer.history.items.find((item: any) => item.type !== 'CUSTOMER_NOTE');
+        await expect(adminClient.query(PIN_CUSTOMER_NOTE, { noteId: systemEntry.id, pinned: true })).rejects.toThrow(/only notes/i);
     });
 
     it('applies the author rule to order notes too (N3)', async () => {

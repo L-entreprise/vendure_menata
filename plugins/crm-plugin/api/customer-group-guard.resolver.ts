@@ -1,11 +1,25 @@
 import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import {
+    DeletionResponse,
+    DeletionResult,
     MutationAddCustomersToGroupArgs,
     MutationCreateCustomerGroupArgs,
+    MutationDeleteCustomerGroupArgs,
+    MutationDeleteCustomerGroupsArgs,
     MutationUpdateCustomerGroupArgs,
     Permission,
 } from '@vendure/common/lib/generated-types';
-import { Allow, Ctx, CustomerGroupService, RequestContext, Transaction } from '@vendure/core';
+import {
+    Allow,
+    Ctx,
+    CustomerGroup,
+    CustomerGroupService,
+    ID,
+    Order,
+    RequestContext,
+    Transaction,
+    TransactionalConnection,
+} from '@vendure/core';
 
 import { JournalService } from '../services/journal.service';
 import { LifecycleService } from '../services/lifecycle.service';
@@ -21,8 +35,8 @@ function withoutComputed(customFields: CustomFieldsInput): CustomFieldsInput {
 }
 
 /**
- * Replaces the native `createCustomerGroup`, `updateCustomerGroup` and `addCustomersToGroup`
- * mutations (same names, same permissions, same service calls) to enforce R1-R5 and the
+ * Replaces the native `createCustomerGroup`, `updateCustomerGroup`, `addCustomersToGroup` and
+ * `deleteCustomerGroup(s)` mutations (same names, same permissions, same service calls) to enforce R1-R5 and the
  * super-admin-only structure fields before writing. Vendure merges plugin resolvers after
  * its own, so these win; the e2e specs prove it.
  */
@@ -33,6 +47,7 @@ export class CustomerGroupGuardResolver {
         private membershipRules: MembershipRulesService,
         private lifecycle: LifecycleService,
         private journal: JournalService,
+        private connection: TransactionalConnection,
     ) {}
 
     @Transaction()
@@ -86,5 +101,38 @@ export class CustomerGroupGuardResolver {
         const group = await this.membershipRules.loadProfile(ctx, args.customerGroupId);
         await this.membershipRules.assertCustomersCanJoin(ctx, group, args.customerIds);
         return this.customerGroupService.addCustomersToGroup(ctx, args);
+    }
+
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.DeleteCustomerGroup)
+    async deleteCustomerGroup(@Ctx() ctx: RequestContext, @Args() args: MutationDeleteCustomerGroupArgs) {
+        return this.deleteUnlessOrdersFrozen(ctx, args.id);
+    }
+
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.DeleteCustomerGroup)
+    async deleteCustomerGroups(@Ctx() ctx: RequestContext, @Args() args: MutationDeleteCustomerGroupsArgs) {
+        return Promise.all(args.ids.map(id => this.deleteUnlessOrdersFrozen(ctx, id)));
+    }
+
+    /**
+     * O1: orders keep the company they were placed for, so a company with orders cannot be
+     * deleted (the database would refuse with a raw foreign key error). The super admin moves
+     * those orders to another company first.
+     */
+    private async deleteUnlessOrdersFrozen(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
+        const orderCount = await this.connection
+            .getRepository(ctx, Order)
+            .count({ where: { customFields: { companyGroup: { id } } } as any });
+        if (orderCount > 0) {
+            const group = await this.connection.getEntityOrThrow(ctx, CustomerGroup, id);
+            return {
+                result: DeletionResult.NOT_DELETED,
+                message: ctx.translate('error.crm-group-has-orders', { groupName: group.name, count: orderCount }),
+            };
+        }
+        return this.customerGroupService.delete(ctx, id);
     }
 }

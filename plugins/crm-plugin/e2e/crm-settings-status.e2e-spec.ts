@@ -164,6 +164,27 @@ describe('CrmPlugin — settings, status, codes, structure guard (C3, C4, I1, I2
         await adminClient.query(UPDATE_CRM_SETTINGS, { input: DEFAULT_SETTINGS_INPUT });
     });
 
+    it('never strands a customer whose status was removed from the settings (C3)', async () => {
+        await asCommercial();
+        const customerId = await createCustomer(adminClient, 'removed-status@menata.test');
+        await adminClient.query(SET_CUSTOMER_STATUS, { customerId, status: 'left' });
+        await adminClient.asSuperAdmin();
+        await adminClient.query(UPDATE_CRM_SETTINGS, {
+            input: {
+                ...DEFAULT_SETTINGS_INPUT,
+                customerStatuses: DEFAULT_SETTINGS_INPUT.customerStatuses.filter(option => option.code !== 'left'),
+                statusTransitions: [{ from: 'active', to: ['inactive'] }],
+            },
+        });
+        await asCommercial();
+
+        const { setCustomerStatus } = await adminClient.query(SET_CUSTOMER_STATUS, { customerId, status: 'active' });
+
+        expect(setCustomerStatus.crmStatus).toBe('active');
+        await adminClient.asSuperAdmin();
+        await adminClient.query(UPDATE_CRM_SETTINGS, { input: DEFAULT_SETTINGS_INPUT });
+    });
+
     it('gives groups a GRP- code readable by a sales rep, with the type custom field', async () => {
         await adminClient.asSuperAdmin();
         const { createCustomerGroup } = await adminClient.query(CREATE_CUSTOMER_GROUP, {

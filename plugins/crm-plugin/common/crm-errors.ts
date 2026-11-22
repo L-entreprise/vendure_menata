@@ -46,6 +46,12 @@ const en = {
     'crm-merge-same-customer': 'A customer cannot be merged into itself',
     'crm-merge-company-conflict':
         'The two customers belong to different companies ("{ sourceCompany }" and "{ targetCompany }"): move one first',
+    'crm-merge-source-has-account':
+        '{ sourceEmail } has a shop login and the kept customer has none: keep { sourceEmail } and merge the other one into it',
+    'crm-draft-customer-other-company': '{ customerName } belongs to the company "{ companyName }": this order goes to that company',
+    'crm-group-has-orders':
+        'The company "{ groupName }" has { count } order(s): move them to another company before deleting it',
+    'crm-pin-not-a-note': 'Only notes can be pinned',
 } as const;
 
 export type CrmErrorKey = keyof typeof en;
@@ -79,6 +85,13 @@ const fr: Record<CrmErrorKey, string> = {
     'crm-merge-same-customer': 'Un client ne peut pas être fusionné avec lui-même',
     'crm-merge-company-conflict':
         'Les deux clients appartiennent à des entreprises différentes (« { sourceCompany } » et « { targetCompany } ») : déplacez-en un d’abord',
+    'crm-merge-source-has-account':
+        '{ sourceEmail } a un compte boutique et le client conservé n’en a pas : gardez { sourceEmail } et fusionnez l’autre dedans',
+    'crm-draft-customer-other-company':
+        '{ customerName } appartient à l’entreprise « { companyName } » : cette commande va à cette entreprise',
+    'crm-group-has-orders':
+        'L’entreprise « { groupName } » a { count } commande(s) : rattachez-les à une autre entreprise avant de la supprimer',
+    'crm-pin-not-a-note': 'Seules les notes peuvent être épinglées',
 };
 
 /** Registered for each language in {@link CrmPlugin}. */

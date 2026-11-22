@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Country, Customer, CustomerGroup, ID, Order, RequestContext, TransactionalConnection } from '@vendure/core';
+import { Country, Customer, CustomerGroup, ID, idsAreEqual, Order, RequestContext, TransactionalConnection } from '@vendure/core';
 import { In } from 'typeorm';
 
 import { CrmRuleError } from '../common/crm-errors';
@@ -106,9 +106,18 @@ export class GroupAddressService {
         if (!isCompany(company)) {
             throw new CrmRuleError('crm-not-a-company', { groupName: company.name });
         }
-        const order = await this.connection.getEntityOrThrow(ctx, Order, orderId);
+        const order = await this.connection.getEntityOrThrow(ctx, Order, orderId, { relations: { customer: true } });
         if (order.state !== 'Draft') {
             throw new CrmRuleError('crm-order-not-draft');
+        }
+        // O1: the order goes to the customer's own company, so a draft whose customer belongs to
+        // another company cannot be started for this one.
+        const customerCompany = order.customer ? await this.membershipRules.companyOf(ctx, order.customer.id) : undefined;
+        if (customerCompany && !idsAreEqual(customerCompany.id, company.id)) {
+            throw new CrmRuleError('crm-draft-customer-other-company', {
+                customerName: `${order.customer!.firstName} ${order.customer!.lastName}`.trim(),
+                companyName: customerCompany.name,
+            });
         }
         await this.connection.getRepository(ctx, Order).update({ id: order.id }, { customFields: { companyGroup: { id: company.id } } } as any);
         return this.connection.getEntityOrThrow(ctx, Order, orderId, { relations: { customFields: { companyGroup: true } } as any });
