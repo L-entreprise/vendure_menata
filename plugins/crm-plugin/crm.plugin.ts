@@ -1,42 +1,64 @@
 import { OnApplicationBootstrap } from '@nestjs/common';
-import { I18nService, PluginCommonModule, VendurePlugin } from '@vendure/core';
+import { CustomFields, I18nService, PluginCommonModule, RuntimeVendureConfig, VendurePlugin } from '@vendure/core';
 
 import { adminApiExtensions } from './api/api-extensions';
+import { CrmSettingsResolver } from './api/crm-settings.resolver';
+import { CustomerCrmFieldsResolver, CustomerStatusResolver } from './api/customer-crm.resolver';
 import { CustomerGroupCrmFieldsResolver } from './api/customer-group-crm-fields.resolver';
 import { CustomerGroupGuardResolver } from './api/customer-group-guard.resolver';
 import { CustomerNoteGuardResolver } from './api/customer-note-guard.resolver';
 import { crmErrorTranslations } from './common/crm-errors';
+import './common/history-types';
 import { crmCustomFields } from './config/custom-fields';
 import { crmAdminPermission } from './constants';
+import { CrmSettings } from './entities/crm-settings.entity';
+import { CrmSettingsService } from './services/crm-settings.service';
+import { CustomerStatusService } from './services/customer-status.service';
 import { MembershipRulesService } from './services/membership-rules.service';
 import { NoteOwnershipService } from './services/note-ownership.service';
 
-/**
- * In-house CRM on top of Vendure customers and customer groups (spec: "CRM Vendure —
- * fonctionnalités validées avant cahier des charges", v3).
- *
- * POC scope: membership rules (R1-R3) and note ownership (N3) enforced on the native
- * mutations, CRM fields on customer groups, page blocks on the customer, customer group
- * and draft order pages.
- */
-@VendurePlugin({
-    imports: [PluginCommonModule],
-    providers: [MembershipRulesService, NoteOwnershipService],
-    adminApiExtensions: {
-        schema: adminApiExtensions,
-        resolvers: [CustomerGroupGuardResolver, CustomerNoteGuardResolver, CustomerGroupCrmFieldsResolver],
-    },
-    configuration: config => ({
+function mergeCustomFields<T extends CustomFields>(existing: T, added: CustomFields): T {
+    const entityNames = Object.keys(added) as Array<keyof CustomFields>;
+    return entityNames.reduce(
+        (merged, entityName) => ({
+            ...merged,
+            [entityName]: [...(existing[entityName] ?? []), ...(added[entityName] ?? [])],
+        }),
+        existing,
+    );
+}
+
+function configure(config: RuntimeVendureConfig): RuntimeVendureConfig {
+    return {
         ...config,
         authOptions: {
             ...config.authOptions,
             customPermissions: [...config.authOptions.customPermissions, crmAdminPermission],
         },
-        customFields: {
-            ...config.customFields,
-            CustomerGroup: [...(config.customFields.CustomerGroup ?? []), ...(crmCustomFields.CustomerGroup ?? [])],
-        },
-    }),
+        customFields: mergeCustomFields(config.customFields, crmCustomFields),
+    };
+}
+
+/**
+ * In-house CRM on top of Vendure customers and customer groups (spec: "CRM Vendure -
+ * fonctionnalités validées avant cahier des charges", v3). See README.md.
+ */
+@VendurePlugin({
+    imports: [PluginCommonModule],
+    entities: [CrmSettings],
+    providers: [CrmSettingsService, CustomerStatusService, MembershipRulesService, NoteOwnershipService],
+    adminApiExtensions: {
+        schema: adminApiExtensions,
+        resolvers: [
+            CrmSettingsResolver,
+            CustomerCrmFieldsResolver,
+            CustomerStatusResolver,
+            CustomerGroupCrmFieldsResolver,
+            CustomerGroupGuardResolver,
+            CustomerNoteGuardResolver,
+        ],
+    },
+    configuration: configure,
     compatibility: '^3.0.0',
     dashboard: './dashboard/index.tsx',
 })

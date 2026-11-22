@@ -54,3 +54,78 @@ msgstr "Customers and groups"
 
 msgid "Could not load the CRM rules."
 msgstr "Could not load the CRM rules."
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Status updated"
+msgstr "Status updated"
+
+msgid "Customer status"
+msgstr "Customer status"
+
+msgid "CRM"
+msgstr "CRM"
+
+msgid "No roles defined in the CRM settings."
+msgstr "No roles defined in the CRM settings."
+
+msgid "Not specified"
+msgstr "Not specified"
+
+msgid "Add"
+msgstr "Add"
+
+msgid "Label"
+msgstr "Label"
+
+msgid "Remove"
+msgstr "Remove"
+
+msgid "Any status can follow any other"
+msgstr "Any status can follow any other"
+
+msgid "From → to"
+msgstr "From → to"
+
+msgid "Customer statuses"
+msgstr "Customer statuses"
+
+msgid "Codes of statuses already in use stay unchanged when you rename them."
+msgstr "Codes of statuses already in use stay unchanged when you rename them."
+
+msgid "Status of new customers"
+msgstr "Status of new customers"
+
+msgid "Allowed status changes"
+msgstr "Allowed status changes"
+
+msgid "Dormant companies"
+msgstr "Dormant companies"
+
+msgid "A client company with no counted order for this many days becomes dormant. Leave empty to disable."
+msgstr "A client company with no counted order for this many days becomes dormant. Leave empty to disable."
+
+msgid "Roles in the company"
+msgstr "Roles in the company"
+
+msgid "Lead sources"
+msgstr "Lead sources"
+
+msgid "Save the CRM settings"
+msgstr "Save the CRM settings"
+
+msgid "CRM settings"
+msgstr "CRM settings"
+
+msgid "CRM settings saved"
+msgstr "CRM settings saved"
+
+msgid "Days without an order"
+msgstr "Days without an order"
+
+msgid "Status changed"
+msgstr "Status changed"

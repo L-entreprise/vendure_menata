@@ -9,6 +9,7 @@ const groupRulesDocument = graphql(`
     query CrmGroupRules($id: ID!) {
         customerGroup(id: $id) {
             id
+            crmCode
             crmGroupType
             crmMemberScope
         }
@@ -45,6 +46,10 @@ export function GroupRulesBlock({ context }: Readonly<{ context: PageContextValu
 
     return (
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">
+                <Trans>Code</Trans>
+            </dt>
+            <dd className="font-mono tabular-nums">{group?.crmCode}</dd>
             <dt className="text-muted-foreground">
                 <Trans>Type</Trans>
             </dt>

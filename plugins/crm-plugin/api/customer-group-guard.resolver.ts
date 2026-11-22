@@ -2,16 +2,20 @@ import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import {
     MutationAddCustomersToGroupArgs,
     MutationCreateCustomerGroupArgs,
+    MutationUpdateCustomerGroupArgs,
     Permission,
 } from '@vendure/common/lib/generated-types';
 import { Allow, Ctx, CustomerGroupService, RequestContext, Transaction } from '@vendure/core';
 
-import { MembershipRulesService, resolveMemberScope } from '../services/membership-rules.service';
+import { MembershipRulesService, nextStructure } from '../services/membership-rules.service';
+
+type CustomFieldsInput = Record<string, unknown>;
 
 /**
- * Replaces the native `createCustomerGroup` and `addCustomersToGroup` mutations (same
- * names, same permissions, same service calls) to enforce R1, R2 and R3 before writing.
- * Vendure merges plugin resolvers after its own, so these win; the e2e specs prove it.
+ * Replaces the native `createCustomerGroup`, `updateCustomerGroup` and `addCustomersToGroup`
+ * mutations (same names, same permissions, same service calls) to enforce R1-R5 and the
+ * super-admin-only structure fields before writing. Vendure merges plugin resolvers after
+ * its own, so these win; the e2e specs prove it.
  */
 @Resolver()
 export class CustomerGroupGuardResolver {
@@ -24,18 +28,32 @@ export class CustomerGroupGuardResolver {
     @Mutation()
     @Allow(Permission.CreateCustomerGroup)
     async createCustomerGroup(@Ctx() ctx: RequestContext, @Args() args: MutationCreateCustomerGroupArgs) {
-        const customFields = (args.input.customFields ?? {}) as Record<string, string | null | undefined>;
-        const memberScope = customFields.groupType ? resolveMemberScope(customFields) : customFields.memberScope;
-        const input = {
-            ...args.input,
-            customFields: { ...customFields, ...(memberScope ? { memberScope } : {}) },
-        };
+        const customFields = (args.input.customFields ?? {}) as CustomFieldsInput;
+        const empty = { groupType: null, memberScope: null };
+        const structure = nextStructure(empty, customFields);
+        this.membershipRules.assertCanChangeStructure(ctx, empty, structure);
+        const input = { ...args.input, customFields: { ...customFields, ...structure } };
         await this.membershipRules.assertCustomersCanJoin(
             ctx,
-            { name: input.name, groupType: customFields.groupType, memberScope },
+            { name: input.name, ...structure },
             input.customerIds ?? [],
         );
         return this.customerGroupService.create(ctx, input);
+    }
+
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.UpdateCustomerGroup)
+    async updateCustomerGroup(@Ctx() ctx: RequestContext, @Args() args: MutationUpdateCustomerGroupArgs) {
+        const current = await this.membershipRules.loadProfile(ctx, args.input.id);
+        const customFields = (args.input.customFields ?? {}) as CustomFieldsInput;
+        const structure = nextStructure(current, customFields);
+        this.membershipRules.assertCanChangeStructure(ctx, current, structure);
+        await this.membershipRules.assertStructureChangeAllowed(ctx, current, structure);
+        return this.customerGroupService.update(ctx, {
+            ...args.input,
+            customFields: { ...customFields, ...structure },
+        });
     }
 
     @Transaction()
