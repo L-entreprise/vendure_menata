@@ -22,6 +22,7 @@ import {
 import { CustomerGroupEdge } from '../entities/customer-group-edge.entity';
 
 import { JournalService } from './journal.service';
+import { LifecycleService } from './lifecycle.service';
 import { MembershipRulesService, resolveMemberScope } from './membership-rules.service';
 
 export interface TreeEntry {
@@ -37,6 +38,7 @@ export class HierarchyService implements OnModuleInit {
         private membershipRules: MembershipRulesService,
         private eventBus: EventBus,
         private journal: JournalService,
+        private lifecycle: LifecycleService,
     ) {}
 
     onModuleInit() {
@@ -74,7 +76,8 @@ export class HierarchyService implements OnModuleInit {
         const existing = await repository.findOne({ where: { parentId, childId } });
         if (!existing) {
             await repository.save(new CustomerGroupEdge({ parentId, childId }));
-            await this.journal.record(ctx, childId, 'parent-added', { parentId, parentName: parent.name });
+            await this.journal.record(ctx, childId, 'parent-added', { parentId: String(parentId), parentName: parent.name });
+            await this.lifecycle.recomputeWithAncestors(ctx, parentId);
         }
         return this.connection.getEntityOrThrow(ctx, CustomerGroup, childId);
     }
@@ -83,7 +86,8 @@ export class HierarchyService implements OnModuleInit {
         const result = await this.connection.getRepository(ctx, CustomerGroupEdge).delete({ parentId, childId });
         if (result.affected) {
             const parent = await this.membershipRules.loadProfile(ctx, parentId);
-            await this.journal.record(ctx, childId, 'parent-removed', { parentId, parentName: parent.name });
+            await this.journal.record(ctx, childId, 'parent-removed', { parentId: String(parentId), parentName: parent.name });
+            await this.lifecycle.recomputeWithAncestors(ctx, parentId);
         }
         return this.connection.getEntityOrThrow(ctx, CustomerGroup, childId);
     }

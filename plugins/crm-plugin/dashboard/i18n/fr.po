@@ -363,3 +363,102 @@ msgstr "À venir"
 
 msgid "Done recently"
 msgstr "Faites récemment"
+
+msgid "through a subsidiary"
+msgstr "via une filiale"
+
+msgid "Prospect"
+msgstr "Prospect"
+
+msgid "Client"
+msgstr "Client"
+
+msgid "Dormant"
+msgstr "Dormant"
+
+msgid "Revenue excl. tax"
+msgstr "CA HT"
+
+msgid "Revenue incl. tax"
+msgstr "CA TTC"
+
+msgid "Orders"
+msgstr "Commandes"
+
+msgid "Average order"
+msgstr "Panier moyen"
+
+msgid "Last counted order:"
+msgstr "Dernière commande comptée :"
+
+msgid "Order"
+msgstr "Commande"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Subsidiary"
+msgstr "Filiale"
+
+msgid "Contact"
+msgstr "Contact"
+
+msgid "State"
+msgstr "État"
+
+msgid "Total incl. tax"
+msgstr "Total TTC"
+
+msgid "No order in this period."
+msgstr "Aucune commande sur cette période."
+
+msgid "Show more"
+msgstr "Afficher plus"
+
+msgid "Period"
+msgstr "Période"
+
+msgid "Last 12 months"
+msgstr "12 derniers mois"
+
+msgid "This year"
+msgstr "Cette année"
+
+msgid "All time"
+msgstr "Depuis le début"
+
+msgid "All subsidiaries"
+msgstr "Toutes les filiales"
+
+msgid "All states"
+msgstr "Tous les états"
+
+msgid "All contacts"
+msgstr "Tous les contacts"
+
+msgid "Sales"
+msgstr "Ventes"
+
+msgid "The customer has no company."
+msgstr "Le client n’a pas d’entreprise."
+
+msgid "Pick a customer first."
+msgstr "Choisissez d’abord un client."
+
+msgid "Frozen when the order is placed."
+msgstr "Figée au passage de la commande."
+
+msgid "Sales rep"
+msgstr "Commercial"
+
+msgid "Not recorded"
+msgstr "Non renseigné"
+
+msgid "Change the company"
+msgstr "Changer l’entreprise"
+
+msgid "Change"
+msgstr "Changer"
+
+msgid "See the CRM block"
+msgstr "Voir le bloc CRM"

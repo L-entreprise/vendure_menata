@@ -1,4 +1,4 @@
-import { Administrator, CustomFieldConfig, CustomFields, LanguageCode } from '@vendure/core';
+import { Administrator, CustomerGroup, CustomFieldConfig, CustomFields, LanguageCode } from '@vendure/core';
 
 const label = (en: string, fr: string) => [
     { languageCode: LanguageCode.en, value: en },
@@ -64,6 +64,27 @@ export const crmCustomFields: CustomFields = {
         leadSource,
         accountManager,
     ],
+    Order: [
+        {
+            ...adminOnly,
+            name: 'companyGroup',
+            type: 'relation',
+            entity: CustomerGroup,
+            readonly: true,
+            label: label('Company', 'Entreprise'),
+            ui: { component: 'crm-readonly-value' },
+            description: label('Frozen when the order is placed', 'Figée au passage de la commande'),
+        },
+        {
+            ...adminOnly,
+            name: 'salesRep',
+            type: 'relation',
+            entity: Administrator,
+            readonly: true,
+            label: label('Sales rep', 'Commercial'),
+            ui: { component: 'crm-readonly-value' },
+        },
+    ],
     HistoryEntry: [
         {
             ...adminOnly,
@@ -101,6 +122,39 @@ export const crmCustomFields: CustomFields = {
                 { value: 'groups', label: label('Groups only', 'Groupes seulement') },
                 { value: 'both', label: label('Customers and groups', 'Clients et groupes') },
             ],
+        },
+        {
+            ...adminOnly,
+            name: 'lifecycle',
+            type: 'string',
+            readonly: true,
+            label: label('Prospect / client', 'Prospect / client'),
+            ui: { component: 'crm-readonly-value' },
+            options: [
+                { value: 'prospect', label: label('Prospect', 'Prospect') },
+                { value: 'client', label: label('Client', 'Client') },
+                { value: 'dormant', label: label('Dormant', 'Dormant') },
+            ],
+        },
+        {
+            ...adminOnly,
+            name: 'lifecycleVia',
+            type: 'string',
+            readonly: true,
+            label: label('Client through', 'Client via'),
+            ui: { component: 'crm-readonly-value' },
+            options: [
+                { value: 'direct', label: label('Direct orders', 'Commandes en direct') },
+                { value: 'subsidiary', label: label('A subsidiary', 'Une filiale') },
+            ],
+        },
+        {
+            ...adminOnly,
+            name: 'lastCountedOrderAt',
+            type: 'datetime',
+            readonly: true,
+            label: label('Last counted order', 'Dernière commande comptée'),
+            ui: { component: 'crm-readonly-value' },
         },
         text('siret', 'SIRET', 'SIRET'),
         text('vatNumber', 'VAT number', 'N° de TVA'),

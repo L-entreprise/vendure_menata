@@ -198,6 +198,52 @@ const tasks = gql`
     }
 `;
 
+/** O1-O6 orders and group sales. */
+const sales = gql`
+    input CrmGroupOrdersOptions {
+        from: DateTime
+        to: DateTime
+        states: [String!]
+        "Limit to this subsidiary and the groups below it"
+        subsidiaryId: ID
+        customerId: ID
+        skip: Int
+        take: Int
+    }
+    type CrmGroupOrder {
+        order: Order!
+        "The company frozen on the order (O3)"
+        company: CustomerGroup
+        customer: Customer
+    }
+    type CrmGroupOrderList {
+        items: [CrmGroupOrder!]!
+        totalItems: Int!
+    }
+    type CrmSalesSummary {
+        orderCount: Int!
+        "Tax excluded"
+        total: Money!
+        totalWithTax: Money!
+        averageWithTax: Money!
+        lastOrderAt: DateTime
+        currencyCode: CurrencyCode
+    }
+    extend type Order {
+        "Name of the sales rep recorded on the order (O6)"
+        crmSalesRepName: String
+    }
+    extend type Query {
+        "Placed orders of the group and every group below it, newest first"
+        crmGroupOrders(groupId: ID!, options: CrmGroupOrdersOptions): CrmGroupOrderList!
+        "Totals over the counted orders (payment settled, not cancelled nor fully refunded)"
+        crmGroupSalesSummary(groupId: ID!, from: DateTime, to: DateTime): CrmSalesSummary!
+    }
+    extend type Mutation {
+        setOrderCompany(orderId: ID!, companyId: ID): Order!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
@@ -205,4 +251,5 @@ export const adminApiExtensions = gql`
     ${hierarchy}
     ${notes}
     ${tasks}
+    ${sales}
 `;

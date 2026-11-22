@@ -5,6 +5,7 @@ import { CustomerGroupGuardResolver } from '../api/customer-group-guard.resolver
 import { CustomerNoteGuardResolver } from '../api/customer-note-guard.resolver';
 import { CrmGroupNoteFieldsResolver, CrmJournalEntryFieldsResolver, GroupNoteResolver } from '../api/group-note.resolver';
 import { CustomerGroupHierarchyFieldsResolver, HierarchyResolver } from '../api/hierarchy.resolver';
+import { OrderCompanyResolver, OrderCrmFieldsResolver } from '../api/order-company.resolver';
 import { CrmTaskFieldsResolver, TaskResolver } from '../api/task.resolver';
 import { CrmJournalEntry } from '../entities/crm-journal-entry.entity';
 import { CrmNotification } from '../entities/crm-notification.entity';
@@ -16,12 +17,15 @@ import { CrmSettingsService } from '../services/crm-settings.service';
 import { CustomerMembershipService } from '../services/customer-membership.service';
 import { CustomerStatusService } from '../services/customer-status.service';
 import { GroupNoteService } from '../services/group-note.service';
+import { GroupSalesService } from '../services/group-sales.service';
 import { HierarchyService } from '../services/hierarchy.service';
 import { JournalService } from '../services/journal.service';
+import { LifecycleService } from '../services/lifecycle.service';
 import { MentionService } from '../services/mention.service';
 import { MembershipRulesService } from '../services/membership-rules.service';
 import { NoteOwnershipService } from '../services/note-ownership.service';
 import { NotificationService } from '../services/notification.service';
+import { OrderCompanyService } from '../services/order-company.service';
 import { TaskService } from '../services/task.service';
 
 /** Everything the CRM plugin registers, grouped so crm.plugin.ts stays a short manifest. */
@@ -39,6 +43,9 @@ export const CRM_PROVIDERS = [
     NotificationService,
     MentionService,
     TaskService,
+    LifecycleService,
+    OrderCompanyService,
+    GroupSalesService,
 ];
 
 export const CRM_ADMIN_RESOLVERS = [
@@ -55,4 +62,6 @@ export const CRM_ADMIN_RESOLVERS = [
     CrmJournalEntryFieldsResolver,
     TaskResolver,
     CrmTaskFieldsResolver,
+    OrderCompanyResolver,
+    OrderCrmFieldsResolver,
 ];

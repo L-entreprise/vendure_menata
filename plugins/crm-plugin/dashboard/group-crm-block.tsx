@@ -6,7 +6,7 @@ import { api, Button, PageContextValue, usePermissions } from '@vendure/dashboar
 import { XIcon } from 'lucide-react';
 
 import { CRM_ADMIN_PERMISSION } from './constants';
-import { GROUP_TYPE_LABELS, MEMBER_SCOPE_LABELS } from './group-labels';
+import { GROUP_TYPE_LABELS, LIFECYCLE_LABELS, MEMBER_SCOPE_LABELS } from './group-labels';
 import { EmptyLine, GroupPicker, SectionLabel } from './group-picker';
 import { useCrmAction } from './use-crm-action';
 
@@ -17,6 +17,7 @@ const groupCrmDocument = graphql(`
             crmCode
             crmGroupType
             crmMemberScope
+            customFields { lifecycle lifecycleVia lastCountedOrderAt }
             crmBreadcrumb { id name }
             crmParents { id name }
             crmChildren { id name crmGroupType }
@@ -73,6 +74,7 @@ export function GroupCrmBlock({ context }: Readonly<{ context: PageContextValue 
         .filter(other => other.id !== group.id && !parentIds.has(other.id) && other.crmMemberScope !== 'customers');
     const type = group.crmGroupType && GROUP_TYPE_LABELS[group.crmGroupType];
     const count = children.length;
+    const lifecycle: string | null = group.customFields?.lifecycle ?? null;
 
     return (
         <div className="space-y-4 text-sm">
@@ -83,6 +85,15 @@ export function GroupCrmBlock({ context }: Readonly<{ context: PageContextValue 
                 <dd>{type ? i18n._(type) : <Trans>None</Trans>}</dd>
                 <dt className="text-muted-foreground"><Trans>Members</Trans></dt>
                 <dd>{i18n._(MEMBER_SCOPE_LABELS[group.crmMemberScope] ?? MEMBER_SCOPE_LABELS.both)}</dd>
+                {lifecycle && LIFECYCLE_LABELS[lifecycle] && (
+                    <>
+                        <dt className="text-muted-foreground"><Trans>Status</Trans></dt>
+                        <dd className="font-medium">
+                            {i18n._(LIFECYCLE_LABELS[lifecycle])}
+                            {lifecycle !== 'prospect' && group.customFields.lifecycleVia === 'subsidiary' && <span className="font-normal text-muted-foreground"> · <Trans>through a subsidiary</Trans></span>}
+                        </dd>
+                    </>
+                )}
             </dl>
             {group.crmBreadcrumb.length > 0 && (
                 <p className="text-muted-foreground">

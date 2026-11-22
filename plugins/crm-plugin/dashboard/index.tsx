@@ -7,13 +7,15 @@ import { ContactIcon } from 'lucide-react';
 import { AdminOnlySelect } from './admin-only-select';
 import { CRM_NAV_SECTION } from './constants';
 import { CompanyContactsBlock } from './company-contacts-block';
-import { DraftOrderCompanyBlock } from './customer-company-block';
 import { CustomerCrmBlock } from './customer-crm-block';
 import { CustomerGroupsBlock } from './customer-groups-block';
 import { GroupCrmBlock } from './group-crm-block';
+import { GroupSalesBlock } from './group-sales-block';
 import { JournalBlock } from './journal-block';
 import { CustomerNotesBlock, GroupNotesBlock } from './notes-blocks';
 import { NotificationsToolbarItem } from './notifications-toolbar';
+import { OrderCrmBlock } from './order-crm-block';
+import { ReadonlyValue } from './readonly-value';
 import { LeadSourceSelectInput, RoleSelectInput } from './option-inputs';
 import { crmSettingsRoute } from './settings-page';
 import { StatusHistoryEntry } from './status-history-entry';
@@ -27,6 +29,12 @@ i18n.setMessagesCompiler(compileMessage);
 
 const hasEntity = (context: { entity?: { id?: string } }) => !!context.entity?.id;
 
+/** Blocks that only make sense for some group types (company journal, sales...). */
+const groupTypeIs =
+    (...types: string[]) =>
+    (context: { entity?: { id?: string; customFields?: { groupType?: string | null } } }) =>
+        !!context.entity?.id && types.includes(context.entity.customFields?.groupType ?? '');
+
 defineDashboardExtension({
     navSections: [{ id: CRM_NAV_SECTION, title: 'CRM', icon: ContactIcon, order: 350 }],
     routes: [crmTasksRoute, crmTreeRoute, crmSettingsRoute],
@@ -37,6 +45,7 @@ defineDashboardExtension({
             { id: 'crm-role-select', component: RoleSelectInput },
             { id: 'crm-lead-source-select', component: LeadSourceSelectInput },
             { id: 'crm-admin-only-select', component: AdminOnlySelect },
+            { id: 'crm-readonly-value', component: ReadonlyValue },
         ],
     },
     historyEntries: [{ type: 'CUSTOMER_STATUS_CHANGED', component: StatusHistoryEntry }],
@@ -67,7 +76,7 @@ defineDashboardExtension({
             title: <Trans>Contacts and roles</Trans>,
             location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
             component: CompanyContactsBlock,
-            shouldRender: hasEntity,
+            shouldRender: groupTypeIs('company'),
         },
         {
             id: 'crm-customer-notes',
@@ -84,11 +93,18 @@ defineDashboardExtension({
             shouldRender: hasEntity,
         },
         {
+            id: 'crm-group-sales',
+            title: <Trans>Sales</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
+            component: GroupSalesBlock,
+            shouldRender: groupTypeIs('company', 'companyGroup'),
+        },
+        {
             id: 'crm-group-journal',
             title: <Trans>Company journal</Trans>,
             location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
             component: JournalBlock,
-            shouldRender: hasEntity,
+            shouldRender: groupTypeIs('company'),
         },
         {
             id: 'crm-customer-tasks',
@@ -106,9 +122,16 @@ defineDashboardExtension({
         },
         {
             id: 'crm-draft-order-company',
-            title: <Trans>Company</Trans>,
+            title: <Trans>CRM</Trans>,
             location: { pageId: 'draft-order-detail', column: 'side', position: { blockId: 'customer', order: 'after' } },
-            component: DraftOrderCompanyBlock,
+            component: OrderCrmBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-order-company',
+            title: <Trans>CRM</Trans>,
+            location: { pageId: 'order-detail', column: 'side', position: { blockId: 'customer', order: 'after' } },
+            component: OrderCrmBlock,
             shouldRender: hasEntity,
         },
     ],

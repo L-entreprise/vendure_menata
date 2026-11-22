@@ -7,6 +7,7 @@ import {
 } from '@vendure/common/lib/generated-types';
 import { Allow, Ctx, CustomerGroupService, RequestContext, Transaction } from '@vendure/core';
 
+import { LifecycleService } from '../services/lifecycle.service';
 import { MembershipRulesService, nextStructure } from '../services/membership-rules.service';
 
 type CustomFieldsInput = Record<string, unknown>;
@@ -22,6 +23,7 @@ export class CustomerGroupGuardResolver {
     constructor(
         private customerGroupService: CustomerGroupService,
         private membershipRules: MembershipRulesService,
+        private lifecycle: LifecycleService,
     ) {}
 
     @Transaction()
@@ -38,7 +40,9 @@ export class CustomerGroupGuardResolver {
             { name: input.name, ...structure },
             input.customerIds ?? [],
         );
-        return this.customerGroupService.create(ctx, input);
+        const group = await this.customerGroupService.create(ctx, input);
+        await this.lifecycle.recompute(ctx, group.id);
+        return group;
     }
 
     @Transaction()
@@ -50,10 +54,14 @@ export class CustomerGroupGuardResolver {
         const structure = nextStructure(current, customFields);
         this.membershipRules.assertCanChangeStructure(ctx, current, structure);
         await this.membershipRules.assertStructureChangeAllowed(ctx, current, structure);
-        return this.customerGroupService.update(ctx, {
+        const group = await this.customerGroupService.update(ctx, {
             ...args.input,
             customFields: { ...customFields, ...structure },
         });
+        if (structure.groupType !== current.groupType) {
+            await this.lifecycle.recomputeWithAncestors(ctx, group.id);
+        }
+        return group;
     }
 
     @Transaction()

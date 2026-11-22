@@ -10,6 +10,12 @@ export const GROUP_TYPE_LABELS: Record<string, MessageDescriptor> = {
     other: msg`Other`,
 };
 
+export const LIFECYCLE_LABELS: Record<string, MessageDescriptor> = {
+    prospect: msg`Prospect`,
+    client: msg`Client`,
+    dormant: msg`Dormant`,
+};
+
 export const MEMBER_SCOPE_LABELS: Record<string, MessageDescriptor> = {
     customers: msg`Customers only`,
     groups: msg`Groups only`,

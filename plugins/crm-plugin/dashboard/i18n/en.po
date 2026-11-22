@@ -363,3 +363,102 @@ msgstr "Upcoming"
 
 msgid "Done recently"
 msgstr "Done recently"
+
+msgid "through a subsidiary"
+msgstr "through a subsidiary"
+
+msgid "Prospect"
+msgstr "Prospect"
+
+msgid "Client"
+msgstr "Client"
+
+msgid "Dormant"
+msgstr "Dormant"
+
+msgid "Revenue excl. tax"
+msgstr "Revenue excl. tax"
+
+msgid "Revenue incl. tax"
+msgstr "Revenue incl. tax"
+
+msgid "Orders"
+msgstr "Orders"
+
+msgid "Average order"
+msgstr "Average order"
+
+msgid "Last counted order:"
+msgstr "Last counted order:"
+
+msgid "Order"
+msgstr "Order"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Subsidiary"
+msgstr "Subsidiary"
+
+msgid "Contact"
+msgstr "Contact"
+
+msgid "State"
+msgstr "State"
+
+msgid "Total incl. tax"
+msgstr "Total incl. tax"
+
+msgid "No order in this period."
+msgstr "No order in this period."
+
+msgid "Show more"
+msgstr "Show more"
+
+msgid "Period"
+msgstr "Period"
+
+msgid "Last 12 months"
+msgstr "Last 12 months"
+
+msgid "This year"
+msgstr "This year"
+
+msgid "All time"
+msgstr "All time"
+
+msgid "All subsidiaries"
+msgstr "All subsidiaries"
+
+msgid "All states"
+msgstr "All states"
+
+msgid "All contacts"
+msgstr "All contacts"
+
+msgid "Sales"
+msgstr "Sales"
+
+msgid "The customer has no company."
+msgstr "The customer has no company."
+
+msgid "Pick a customer first."
+msgstr "Pick a customer first."
+
+msgid "Frozen when the order is placed."
+msgstr "Frozen when the order is placed."
+
+msgid "Sales rep"
+msgstr "Sales rep"
+
+msgid "Not recorded"
+msgstr "Not recorded"
+
+msgid "Change the company"
+msgstr "Change the company"
+
+msgid "Change"
+msgstr "Change"
+
+msgid "See the CRM block"
+msgstr "See the CRM block"
