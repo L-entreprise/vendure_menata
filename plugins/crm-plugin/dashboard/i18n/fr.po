@@ -552,3 +552,66 @@ msgstr "Facturation"
 
 msgid "Addresses"
 msgstr "Adresses"
+
+msgid "order(s)"
+msgstr "commande(s)"
+
+msgid "Merge into the selected customer"
+msgstr "Fusionner dans le client sélectionné"
+
+msgid "CRM audit"
+msgstr "Audit CRM"
+
+msgid "Duplicate e-mails"
+msgstr "E-mails en double"
+
+msgid "No duplicate."
+msgstr "Aucun doublon."
+
+msgid "Customers in several companies"
+msgstr "Clients dans plusieurs entreprises"
+
+msgid "None: each customer has one company at most."
+msgstr "Aucun : chaque client a une entreprise au plus."
+
+msgid "Customers merged"
+msgstr "Clients fusionnés"
+
+msgid "No customer or group has this code."
+msgstr "Aucun client ni groupe n’a ce code."
+
+msgid "CRM code"
+msgstr "Code CRM"
+
+msgid "Similar company:"
+msgstr "Entreprise ressemblante :"
+
+msgid "The e-mail is checked against existing customers as you type."
+msgstr "L’e-mail est comparé aux clients existants pendant la saisie."
+
+msgid "This e-mail already belongs to"
+msgstr "Cet e-mail appartient déjà à"
+
+msgid "Duplicate check"
+msgstr "Vérification des doublons"
+
+msgid "No result."
+msgstr "Aucun résultat."
+
+msgid "Customers"
+msgstr "Clients"
+
+msgid "Groups and companies"
+msgstr "Groupes et entreprises"
+
+msgid "Search the CRM…"
+msgstr "Rechercher dans le CRM…"
+
+msgid "Search the CRM"
+msgstr "Rechercher dans le CRM"
+
+msgid "Duplicate merged"
+msgstr "Doublon fusionné"
+
+msgid "Merged from {code} ({email})"
+msgstr "Fusionné depuis {code} ({email})"

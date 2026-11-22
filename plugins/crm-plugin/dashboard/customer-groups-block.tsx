@@ -23,6 +23,10 @@ const membershipDocument = graphql(`
                 }
             }
         }
+        crmCompanySuggestions(customerId: $id) {
+            id
+            name
+        }
         crmEligibleGroups(customerId: $id) {
             id
             name
@@ -114,6 +118,15 @@ export function CustomerGroupsBlock({ context }: Readonly<{ context: PageContext
                 ) : (
                     <EmptyLine><Trans>No company yet.</Trans></EmptyLine>
                 )}
+                {!company && canEdit && (data.crmCompanySuggestions as GroupRow[]).map(suggestion => (
+                    <div key={suggestion.id} className="mt-2 flex flex-wrap items-center gap-2">
+                        <span><Trans>Similar company:</Trans> <span className="font-medium">{suggestion.name}</span> ?</span>
+                        <Button size="sm" variant="outline" disabled={pending}
+                            onClick={() => run(() => api.mutate(moveDocument, { customerId, companyId: suggestion.id }), t`Company updated`)}>
+                            <Trans>Link</Trans>
+                        </Button>
+                    </div>
+                ))}
                 {canEdit && (
                     <div className="mt-2">
                         <GroupPicker

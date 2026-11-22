@@ -300,6 +300,43 @@ const addresses = gql`
     }
 `;
 
+/** S1 / I3 search, C2 suggestions, D2-D3 duplicates and merge. */
+const search = gql`
+    extend enum HistoryEntryType {
+        CUSTOMER_MERGED
+    }
+    type CrmSearchResult {
+        customers: [Customer!]!
+        groups: [CustomerGroup!]!
+    }
+    type CrmCodeTarget {
+        "customer or group"
+        kind: String!
+        id: ID!
+    }
+    type CrmDuplicateEmail {
+        email: String!
+        customers: [Customer!]!
+    }
+    type CrmCompanyConflict {
+        customer: Customer!
+        companies: [CustomerGroup!]!
+    }
+    extend type Query {
+        "Customers by name or e-mail, groups by name, either by CLI- / GRP- code (8 of each at most)"
+        crmSearch(term: String!): CrmSearchResult!
+        crmResolveCode(code: String!): CrmCodeTarget
+        crmCompanySuggestions(customerId: ID!): [CustomerGroup!]!
+        crmCustomerByEmail(email: String!): Customer
+        crmDuplicateEmails: [CrmDuplicateEmail!]!
+        crmCompanyConflicts: [CrmCompanyConflict!]!
+    }
+    extend type Mutation {
+        "Moves orders, addresses, history, follow-ups and groups of source into target, then deletes source"
+        mergeCustomers(sourceId: ID!, targetId: ID!): Customer!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
@@ -309,4 +346,5 @@ export const adminApiExtensions = gql`
     ${tasks}
     ${sales}
     ${addresses}
+    ${search}
 `;

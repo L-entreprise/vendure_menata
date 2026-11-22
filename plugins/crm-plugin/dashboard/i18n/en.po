@@ -552,3 +552,66 @@ msgstr "Billing"
 
 msgid "Addresses"
 msgstr "Addresses"
+
+msgid "order(s)"
+msgstr "order(s)"
+
+msgid "Merge into the selected customer"
+msgstr "Merge into the selected customer"
+
+msgid "CRM audit"
+msgstr "CRM audit"
+
+msgid "Duplicate e-mails"
+msgstr "Duplicate e-mails"
+
+msgid "No duplicate."
+msgstr "No duplicate."
+
+msgid "Customers in several companies"
+msgstr "Customers in several companies"
+
+msgid "None: each customer has one company at most."
+msgstr "None: each customer has one company at most."
+
+msgid "Customers merged"
+msgstr "Customers merged"
+
+msgid "No customer or group has this code."
+msgstr "No customer or group has this code."
+
+msgid "CRM code"
+msgstr "CRM code"
+
+msgid "Similar company:"
+msgstr "Similar company:"
+
+msgid "The e-mail is checked against existing customers as you type."
+msgstr "The e-mail is checked against existing customers as you type."
+
+msgid "This e-mail already belongs to"
+msgstr "This e-mail already belongs to"
+
+msgid "Duplicate check"
+msgstr "Duplicate check"
+
+msgid "No result."
+msgstr "No result."
+
+msgid "Customers"
+msgstr "Customers"
+
+msgid "Groups and companies"
+msgstr "Groups and companies"
+
+msgid "Search the CRM…"
+msgstr "Search the CRM…"
+
+msgid "Search the CRM"
+msgstr "Search the CRM"
+
+msgid "Duplicate merged"
+msgstr "Duplicate merged"
+
+msgid "Merged from {code} ({email})"
+msgstr "Merged from {code} ({email})"

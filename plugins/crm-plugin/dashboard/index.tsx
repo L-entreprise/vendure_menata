@@ -5,11 +5,14 @@ import { defineDashboardExtension } from '@vendure/dashboard';
 import { ContactIcon } from 'lucide-react';
 
 import { AdminOnlySelect } from './admin-only-select';
+import { crmAuditRoute } from './audit-page';
+import { crmCodeRoute } from './code-route';
 import { CRM_NAV_SECTION } from './constants';
 import { CompanyContactsBlock } from './company-contacts-block';
 import { CustomerCrmBlock } from './customer-crm-block';
 import { CustomerGroupsBlock } from './customer-groups-block';
 import { DraftOrderCompanyBlock } from './draft-order-company-block';
+import { DuplicateEmailBlock } from './duplicate-email-block';
 import { GroupAddressesBlock } from './group-addresses-block';
 import { GroupCrmBlock } from './group-crm-block';
 import { GroupSalesBlock } from './group-sales-block';
@@ -19,8 +22,9 @@ import { NotificationsToolbarItem } from './notifications-toolbar';
 import { OrderCrmBlock } from './order-crm-block';
 import { ReadonlyValue } from './readonly-value';
 import { LeadSourceSelectInput, RoleSelectInput } from './option-inputs';
+import { SearchToolbarItem } from './search-toolbar';
 import { crmSettingsRoute } from './settings-page';
-import { StatusHistoryEntry } from './status-history-entry';
+import { MergedHistoryEntry, StatusHistoryEntry } from './status-history-entry';
 import { CustomerTasksBlock, GroupTasksBlock } from './tasks-blocks';
 import { crmTasksRoute, crmTasksWidget } from './tasks-page';
 import { crmTreeRoute } from './tree-page';
@@ -39,9 +43,12 @@ const groupTypeIs =
 
 defineDashboardExtension({
     navSections: [{ id: CRM_NAV_SECTION, title: 'CRM', icon: ContactIcon, order: 350 }],
-    routes: [crmTasksRoute, crmTreeRoute, crmSettingsRoute],
+    routes: [crmTasksRoute, crmTreeRoute, crmAuditRoute, crmSettingsRoute, crmCodeRoute],
     widgets: [crmTasksWidget],
-    toolbarItems: [{ id: 'crm-notifications', component: NotificationsToolbarItem, position: { itemId: 'alerts', order: 'before' } }],
+    toolbarItems: [
+        { id: 'crm-search', component: SearchToolbarItem, position: { itemId: 'alerts', order: 'before' } },
+        { id: 'crm-notifications', component: NotificationsToolbarItem, position: { itemId: 'alerts', order: 'before' } },
+    ],
     customFormComponents: {
         customFields: [
             { id: 'crm-role-select', component: RoleSelectInput },
@@ -50,7 +57,10 @@ defineDashboardExtension({
             { id: 'crm-readonly-value', component: ReadonlyValue },
         ],
     },
-    historyEntries: [{ type: 'CUSTOMER_STATUS_CHANGED', component: StatusHistoryEntry }],
+    historyEntries: [
+        { type: 'CUSTOMER_STATUS_CHANGED', component: StatusHistoryEntry },
+        { type: 'CUSTOMER_MERGED', component: MergedHistoryEntry },
+    ],
     pageBlocks: [
         {
             id: 'crm-customer-summary',
@@ -58,6 +68,13 @@ defineDashboardExtension({
             location: { pageId: 'customer-detail', column: 'side', position: { blockId: 'status', order: 'after' } },
             component: CustomerCrmBlock,
             shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-duplicate-email',
+            title: <Trans>Duplicate check</Trans>,
+            location: { pageId: 'customer-detail', column: 'main', position: { blockId: 'main-form', order: 'after' } },
+            component: DuplicateEmailBlock,
+            shouldRender: context => !context.entity?.id,
         },
         {
             id: 'crm-customer-groups',

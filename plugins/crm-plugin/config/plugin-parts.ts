@@ -7,6 +7,7 @@ import { GroupAddressResolver } from '../api/group-address.resolver';
 import { CrmGroupNoteFieldsResolver, CrmJournalEntryFieldsResolver, GroupNoteResolver } from '../api/group-note.resolver';
 import { CustomerGroupHierarchyFieldsResolver, HierarchyResolver } from '../api/hierarchy.resolver';
 import { OrderCompanyResolver, OrderCrmFieldsResolver } from '../api/order-company.resolver';
+import { SearchMergeResolver } from '../api/search-merge.resolver';
 import { CrmTaskFieldsResolver, TaskResolver } from '../api/task.resolver';
 import { CrmJournalEntry } from '../entities/crm-journal-entry.entity';
 import { CrmNotification } from '../entities/crm-notification.entity';
@@ -16,6 +17,7 @@ import { CustomerGroupAddress } from '../entities/customer-group-address.entity'
 import { CustomerGroupEdge } from '../entities/customer-group-edge.entity';
 import { CustomerGroupNote } from '../entities/customer-group-note.entity';
 import { CrmSettingsService } from '../services/crm-settings.service';
+import { CustomerInsightService } from '../services/customer-insight.service';
 import { CustomerMembershipService } from '../services/customer-membership.service';
 import { CustomerStatusService } from '../services/customer-status.service';
 import { GroupAddressService } from '../services/group-address.service';
@@ -26,9 +28,11 @@ import { JournalService } from '../services/journal.service';
 import { LifecycleService } from '../services/lifecycle.service';
 import { MentionService } from '../services/mention.service';
 import { MembershipRulesService } from '../services/membership-rules.service';
+import { MergeService } from '../services/merge.service';
 import { NoteOwnershipService } from '../services/note-ownership.service';
 import { NotificationService } from '../services/notification.service';
 import { OrderCompanyService } from '../services/order-company.service';
+import { SearchService } from '../services/search.service';
 import { TaskService } from '../services/task.service';
 
 /** Everything the CRM plugin registers, grouped so crm.plugin.ts stays a short manifest. */
@@ -50,6 +54,9 @@ export const CRM_PROVIDERS = [
     OrderCompanyService,
     GroupSalesService,
     GroupAddressService,
+    SearchService,
+    CustomerInsightService,
+    MergeService,
 ];
 
 export const CRM_ADMIN_RESOLVERS = [
@@ -69,4 +76,5 @@ export const CRM_ADMIN_RESOLVERS = [
     OrderCompanyResolver,
     OrderCrmFieldsResolver,
     GroupAddressResolver,
+    SearchMergeResolver,
 ];
