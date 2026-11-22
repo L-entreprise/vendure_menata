@@ -2,6 +2,7 @@ import { Args, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/g
 import { DeletionResult, Permission } from '@vendure/common/lib/generated-types';
 import { Administrator, Allow, Ctx, ID, idsAreEqual, RequestContext, Transaction } from '@vendure/core';
 
+import { assertPermission } from '../common/permissions';
 import { CrmTask } from '../entities/crm-task.entity';
 import { MentionService } from '../services/mention.service';
 import { NoteOwnershipService } from '../services/note-ownership.service';
@@ -21,6 +22,7 @@ export class TaskResolver {
     @Mutation()
     @Allow(Permission.UpdateCustomer, Permission.UpdateCustomerGroup)
     createCrmTask(@Ctx() ctx: RequestContext, @Args() args: { input: CreateTaskInput }) {
+        assertPermission(ctx, args.input.customerId ? Permission.UpdateCustomer : Permission.UpdateCustomerGroup);
         return this.tasks.create(ctx, args.input);
     }
 
@@ -48,6 +50,7 @@ export class TaskResolver {
     @Query()
     @Allow(Permission.ReadCustomer, Permission.ReadCustomerGroup)
     crmTasksFor(@Ctx() ctx: RequestContext, @Args() args: { customerId?: ID; groupId?: ID }) {
+        assertPermission(ctx, args.customerId ? Permission.ReadCustomer : Permission.ReadCustomerGroup);
         return this.tasks.tasksFor(ctx, args);
     }
 

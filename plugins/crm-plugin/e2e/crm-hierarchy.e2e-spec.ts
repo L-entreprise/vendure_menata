@@ -202,6 +202,14 @@ describe('CrmPlugin — hierarchy and membership UI rules (G1-G6, R3 move, R4)',
         await expect(adminClient.query(MOVE, { customerId, companyId: segment })).rejects.toThrow(/not a company/i);
     });
 
+    it('refuses moving a customer into a company reserved for groups (R1)', async () => {
+        const closed = await group('Groups-only company', 'company');
+        await adminClient.query(UPDATE_GROUP, { input: { id: closed, customFields: { memberScope: 'groups' } } });
+        const customerId = await createCustomer(adminClient, 'closed@menata.test');
+
+        await expect(adminClient.query(MOVE, { customerId, companyId: closed })).rejects.toThrow(/only accepts groups/i);
+    });
+
     it('offers only the groups a customer can join (R4)', async () => {
         const current = await group('Eligible current company', 'company');
         const other = await group('Eligible other company', 'company');

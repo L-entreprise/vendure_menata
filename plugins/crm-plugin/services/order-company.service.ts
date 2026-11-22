@@ -7,6 +7,7 @@ import {
     ID,
     Logger,
     Order,
+    OrderPlacedEvent,
     OrderStateTransitionEvent,
     RefundStateTransitionEvent,
     RequestContext,
@@ -44,10 +45,14 @@ export class OrderCompanyService implements OnModuleInit {
     ) {}
 
     onModuleInit() {
-        this.eventBus.ofType(OrderStateTransitionEvent).subscribe(event => this.safely(event.ctx, event.order.id));
+        // The company is frozen once, when the order is placed. Later transitions and refunds
+        // only refresh the lifecycle: they never fill an empty company again, so a company
+        // cleared by the super admin stays cleared and later moves never reach old orders.
+        this.eventBus.ofType(OrderPlacedEvent).subscribe(event => this.safely(event.ctx, event.order.id, true));
+        this.eventBus.ofType(OrderStateTransitionEvent).subscribe(event => this.safely(event.ctx, event.order.id, false));
         this.eventBus.ofType(RefundStateTransitionEvent).subscribe(event => {
             if (event.toState === 'Settled') {
-                this.safely(event.ctx, event.order.id);
+                this.safely(event.ctx, event.order.id, false);
             }
         });
     }
@@ -60,6 +65,7 @@ export class OrderCompanyService implements OnModuleInit {
         }
     }
 
+    /** Called when the order is placed (OrderPlacedEvent): freezes the company and the sales rep. */
     async assignIfMissing(ctx: RequestContext, orderId: ID): Promise<void> {
         const order = await this.load(ctx, orderId);
         const fields = (order.customFields ?? {}) as OrderCrmFields;
@@ -122,8 +128,8 @@ export class OrderCompanyService implements OnModuleInit {
         return this.connection.getEntityOrThrow(ctx, Order, orderId, { relations: ORDER_RELATIONS });
     }
 
-    private safely(ctx: RequestContext, orderId: ID) {
-        this.assignIfMissing(ctx, orderId)
+    private safely(ctx: RequestContext, orderId: ID, placing: boolean) {
+        (placing ? this.assignIfMissing(ctx, orderId) : Promise.resolve())
             .then(() => this.lifecycle.recomputeForOrder(ctx, orderId))
             .catch(error => Logger.error(`Could not update the CRM data of order ${String(orderId)}: ${String(error?.message ?? error)}`, loggerCtx));
     }

@@ -4,12 +4,14 @@ import {
     CustomerGroupEvent,
     EventBus,
     ID,
+    Logger,
     RequestContext,
     TransactionalConnection,
 } from '@vendure/core';
 import { In } from 'typeorm';
 
 import { CrmRuleError } from '../common/crm-errors';
+import { loggerCtx } from '../constants';
 import {
     ancestorsOf,
     breadcrumbOf,
@@ -45,9 +47,13 @@ export class HierarchyService implements OnModuleInit {
         // G6: links of a deleted group disappear, its children become orphans. The FK cascade
         // does it on Postgres; this also covers databases that do not enforce foreign keys.
         this.eventBus.ofType(CustomerGroupEvent).subscribe(event => {
-            if (event.type === 'deleted') {
-                void this.removeEdgesOf(event.ctx, (event.entity as CustomerGroup).id ?? (event.input as ID));
+            if (event.type !== 'deleted') {
+                return;
             }
+            // The former parents are unknown once the links are gone: refresh every lifecycle.
+            this.removeEdgesOf(event.ctx, (event.entity as CustomerGroup).id ?? (event.input as ID))
+                .then(() => this.lifecycle.recomputeAll(event.ctx))
+                .catch(error => Logger.error(`Could not clean up after deleting group: ${String(error?.message ?? error)}`, loggerCtx));
         });
     }
 

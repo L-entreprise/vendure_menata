@@ -20,6 +20,9 @@ export class CustomerMembershipService {
         if (!isCompany(target)) {
             throw new CrmRuleError('crm-not-a-company', { groupName: target.name });
         }
+        if (resolveMemberScope((target.customFields ?? {}) as StructureFields) === 'groups') {
+            throw new CrmRuleError('crm-group-accepts-groups-only', { groupName: target.name });
+        }
         const current = await this.membershipRules.companyOf(ctx, customerId);
         if (current && !idsAreEqual(current.id, target.id)) {
             await this.customerGroupService.removeCustomersFromGroup(ctx, {

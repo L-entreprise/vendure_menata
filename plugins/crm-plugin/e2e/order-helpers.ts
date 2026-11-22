@@ -66,7 +66,7 @@ const PAY = gql`
 `;
 const REFUND = gql`
     mutation Refund($paymentId: ID!, $amount: Money!) {
-        refundOrder(input: { paymentId: $paymentId, amount: $amount, reason: "test" }) {
+        refundOrder(input: { paymentId: $paymentId, amount: $amount, lines: [], shipping: 0, adjustment: 0, reason: "test" }) {
             ... on Refund { id state }
             ... on ErrorResult { message }
         }

@@ -18,7 +18,7 @@ export interface CompanyConflict {
     companies: CustomerGroup[];
 }
 
-/** C2 suggestions, D2 duplicate check at entry, and the migration audits (D3, R3). */
+/** C2 suggestions, D2 duplicate check at entry, and the migration audits (D3, R3), within the active channel. */
 @Injectable()
 export class CustomerInsightService {
     constructor(
@@ -48,6 +48,7 @@ export class CustomerInsightService {
         return this.connection
             .getRepository(ctx, Customer)
             .createQueryBuilder('customer')
+            .innerJoin('customer.channels', 'channel', 'channel.id = :channelId', { channelId: ctx.channelId })
             .where('customer.deletedAt IS NULL')
             .andWhere('LOWER(TRIM(customer.emailAddress)) = :email', { email: normalizeEmailAddress(email) })
             .getOne();
@@ -57,7 +58,7 @@ export class CustomerInsightService {
     async duplicateEmails(ctx: RequestContext): Promise<DuplicateEmail[]> {
         const customers = await this.connection
             .getRepository(ctx, Customer)
-            .find({ where: { deletedAt: IsNull() }, order: { id: 'ASC' } });
+            .find({ where: { deletedAt: IsNull(), channels: { id: ctx.channelId } }, order: { id: 'ASC' } });
         const byEmail = new Map<string, Customer[]>();
         for (const customer of customers) {
             const key = normalizeEmailAddress(customer.emailAddress ?? '');
@@ -70,7 +71,7 @@ export class CustomerInsightService {
     async companyConflicts(ctx: RequestContext): Promise<CompanyConflict[]> {
         const customers = await this.connection
             .getRepository(ctx, Customer)
-            .find({ where: { deletedAt: IsNull() }, relations: { groups: true } });
+            .find({ where: { deletedAt: IsNull(), channels: { id: ctx.channelId } }, relations: { groups: true } });
         return customers
             .map(customer => ({ customer, companies: customer.groups.filter(isCompany) }))
             .filter(conflict => conflict.companies.length > 1);

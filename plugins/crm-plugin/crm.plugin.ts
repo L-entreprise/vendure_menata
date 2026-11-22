@@ -48,7 +48,8 @@ function configure(config: RuntimeVendureConfig): RuntimeVendureConfig {
         resolvers: CRM_ADMIN_RESOLVERS,
     },
     configuration: configure,
-    compatibility: '^3.0.0',
+    // Dashboard toolbar items need 3.5.3 (scheduled tasks 3.3, history entries 3.4.3). Tested on 3.7.4, 3.8.2, 3.9 pre-release.
+    compatibility: '^3.5.3',
     dashboard: './dashboard/index.tsx',
 })
 export class CrmPlugin implements OnApplicationBootstrap {

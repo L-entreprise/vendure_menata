@@ -7,6 +7,7 @@ import {
 } from '@vendure/common/lib/generated-types';
 import { Allow, Ctx, CustomerGroupService, RequestContext, Transaction } from '@vendure/core';
 
+import { JournalService } from '../services/journal.service';
 import { LifecycleService } from '../services/lifecycle.service';
 import { MembershipRulesService, nextStructure } from '../services/membership-rules.service';
 
@@ -31,6 +32,7 @@ export class CustomerGroupGuardResolver {
         private customerGroupService: CustomerGroupService,
         private membershipRules: MembershipRulesService,
         private lifecycle: LifecycleService,
+        private journal: JournalService,
     ) {}
 
     @Transaction()
@@ -65,9 +67,15 @@ export class CustomerGroupGuardResolver {
             ...args.input,
             customFields: { ...customFields, ...structure },
         });
-        if (structure.groupType !== current.groupType) {
+        const typeChanged = structure.groupType !== current.groupType;
+        if (typeChanged) {
             await this.lifecycle.recomputeWithAncestors(ctx, group.id);
         }
+        const fields = [...Object.keys(args.input).filter(key => key !== 'id' && key !== 'customFields'), ...Object.keys(customFields)];
+        await this.journal.record(ctx, group.id, typeChanged ? 'type-changed' : 'updated', {
+            fields: fields.join(', '),
+            ...(typeChanged ? { from: current.groupType ?? null, to: structure.groupType ?? null } : {}),
+        });
         return group;
     }
 

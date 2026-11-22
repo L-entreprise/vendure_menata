@@ -2,6 +2,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Permission } from '@vendure/common/lib/generated-types';
 import { Allow, Ctx, ID, RequestContext, Transaction } from '@vendure/core';
 
+import { canRead } from '../common/permissions';
 import { crmAdminPermission } from '../constants';
 import { CustomerInsightService } from '../services/customer-insight.service';
 import { MergeService } from '../services/merge.service';
@@ -19,13 +20,13 @@ export class SearchMergeResolver {
     @Query()
     @Allow(Permission.ReadCustomer, Permission.ReadCustomerGroup)
     crmSearch(@Ctx() ctx: RequestContext, @Args() args: { term: string }) {
-        return this.search.search(ctx, args.term);
+        return this.search.search(ctx, args.term, canRead(ctx));
     }
 
     @Query()
     @Allow(Permission.ReadCustomer, Permission.ReadCustomerGroup)
     crmResolveCode(@Ctx() ctx: RequestContext, @Args() args: { code: string }) {
-        return this.search.resolveCode(ctx, args.code);
+        return this.search.resolveCode(ctx, args.code, canRead(ctx));
     }
 
     @Query()

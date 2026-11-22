@@ -51,6 +51,9 @@ export class TaskService {
             await this.connection.getEntityOrThrow(ctx, CustomerGroup, input.groupId!);
         }
         const assigneeId = await this.noteOwnership.currentAdministratorId(ctx);
+        if (!assigneeId) {
+            throw new CrmForbiddenError('crm-task-needs-administrator');
+        }
         const saved = await this.connection.getRepository(ctx, CrmTask).save(
             new CrmTask({
                 title,

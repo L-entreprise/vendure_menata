@@ -5,6 +5,8 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { api, PageContextValue } from '@vendure/dashboard';
 
+import { GROUP_TYPE_LABELS, LIFECYCLE_LABELS } from './group-labels';
+
 const journalDocument = graphql(`
     query CrmJournal($groupId: ID!) {
         customerGroup(id: $groupId) { id crmGroupType }
@@ -32,10 +34,12 @@ const TYPE_LABELS: Record<string, MessageDescriptor> = {
     'order-assigned': msg`Order assigned`,
 };
 
-/** The most telling detail of an entry, picked from its data. */
-function detailOf(data: Record<string, any>): string {
-    return data.customerName ?? data.parentName ?? data.label ?? data.orderCode ?? data.title ??
-        (data.from || data.to ? `${data.from ?? '–'} → ${data.to ?? '–'}` : '');
+/** The most telling detail of an entry; lifecycle and type changes show their labels, not codes. */
+function detailOf(type: string, data: Record<string, any>, translate: (code: string | null) => string): string {
+    if (type === 'lifecycle-changed' || type === 'type-changed') {
+        return `${translate(data.from) || '–'} → ${translate(data.to) || '–'}`;
+    }
+    return data.customerName ?? data.parentName ?? data.label ?? data.orderCode ?? data.title ?? '';
 }
 
 /** N5: what happened to this company, newest first. */
@@ -51,6 +55,10 @@ export function JournalBlock({ context }: Readonly<{ context: PageContextValue }
         return null;
     }
     const items: any[] = data.crmJournal.items;
+    const translate = (code: string | null) => {
+        const label = code ? (LIFECYCLE_LABELS[code] ?? GROUP_TYPE_LABELS[code]) : undefined;
+        return label ? i18n._(label) : (code ?? '');
+    };
     if (items.length === 0) {
         return <p className="text-sm text-muted-foreground"><Trans>Nothing recorded yet.</Trans></p>;
     }
@@ -60,7 +68,7 @@ export function JournalBlock({ context }: Readonly<{ context: PageContextValue }
                 <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2">
                     <span>
                         <span className="font-medium">{TYPE_LABELS[item.type] ? i18n._(TYPE_LABELS[item.type]) : item.type}</span>
-                        {detailOf(item.data ?? {}) && <span className="text-muted-foreground"> · {detailOf(item.data ?? {})}</span>}
+                        {detailOf(item.type, item.data ?? {}, translate) && <span className="text-muted-foreground"> · {detailOf(item.type, item.data ?? {}, translate)}</span>}
                     </span>
                     <span className="text-right text-xs text-muted-foreground">
                         {item.authorName ?? ''} · {new Date(item.createdAt).toLocaleString(i18n.locale, { dateStyle: 'short', timeStyle: 'short' })}

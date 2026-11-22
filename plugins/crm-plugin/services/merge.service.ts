@@ -44,7 +44,7 @@ export class MergeService {
         await this.assertCompatibleCompanies(ctx, source, target);
 
         await this.connection.getRepository(ctx, Order).update({ customerId: source.id }, { customerId: target.id });
-        await this.reassign(ctx, Address, source.id, target.id);
+        await this.moveAddresses(ctx, source.id, target.id);
         await this.reassign(ctx, CustomerHistoryEntry, source.id, target.id);
         await this.connection.getRepository(ctx, CrmTask).update({ customerId: source.id }, { customerId: target.id });
         await this.moveGroups(ctx, source, target);
@@ -77,9 +77,25 @@ export class MergeService {
         }
     }
 
+    /** Moved addresses lose their default flags when the kept customer already has a default of that kind. */
+    private async moveAddresses(ctx: RequestContext, fromId: ID, toId: ID) {
+        const repository = this.connection.getRepository(ctx, Address);
+        const kept = await repository.find({ where: { customer: { id: toId } } });
+        const keptHasShipping = kept.some(address => address.defaultShippingAddress);
+        const keptHasBilling = kept.some(address => address.defaultBillingAddress);
+        const moved = await repository.find({ where: { customer: { id: fromId } } });
+        for (const address of moved) {
+            await repository.update({ id: address.id }, {
+                customer: { id: toId },
+                ...(keptHasShipping ? { defaultShippingAddress: false } : {}),
+                ...(keptHasBilling ? { defaultBillingAddress: false } : {}),
+            } as any);
+        }
+    }
+
     /** Entities that only expose the `customer` relation (no customerId column property). */
-    private async reassign(ctx: RequestContext, entity: typeof Address | typeof CustomerHistoryEntry, fromId: ID, toId: ID) {
-        const repository = this.connection.getRepository(ctx, entity as typeof Address);
+    private async reassign(ctx: RequestContext, entity: typeof CustomerHistoryEntry, fromId: ID, toId: ID) {
+        const repository = this.connection.getRepository(ctx, entity);
         const rows = await repository.find({ where: { customer: { id: fromId } } });
         for (const row of rows) {
             await repository.update({ id: row.id }, { customer: { id: toId } } as any);

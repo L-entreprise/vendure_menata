@@ -37,6 +37,7 @@ const membershipDocument = graphql(`
                 id
                 name
                 crmGroupType
+                crmMemberScope
             }
         }
     }
@@ -70,6 +71,7 @@ interface GroupRow {
     id: string;
     name: string;
     crmGroupType?: string | null;
+    crmMemberScope?: string;
     crmAncestors?: Array<{ id: string; name: string }>;
 }
 
@@ -98,7 +100,7 @@ export function CustomerGroupsBlock({ context }: Readonly<{ context: PageContext
     const others = groups.filter(group => group !== company);
     const companies = (data.crmGroupTree as Array<{ group: GroupRow }>)
         .map(entry => entry.group)
-        .filter(group => group.crmGroupType === 'company' && group.id !== company?.id);
+        .filter(group => group.crmGroupType === 'company' && group.crmMemberScope !== 'groups' && group.id !== company?.id);
     const eligible = (data.crmEligibleGroups as GroupRow[]).filter(group => group.crmGroupType !== 'company');
     const typeLabel = (type?: string | null) => (type && GROUP_TYPE_LABELS[type] ? i18n._(GROUP_TYPE_LABELS[type]) : '');
 

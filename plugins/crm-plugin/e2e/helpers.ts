@@ -157,3 +157,13 @@ export const CRM_GROUP_FIELDS = gql`
         }
     }
 `;
+
+/** An administrator with exactly the given permissions (for permission tests). */
+export async function createAdminWithPermissions(superAdmin: AdminClient, code: string, permissions: string[]): Promise<string> {
+    const { createRole } = await superAdmin.query(CREATE_ROLE, { input: { code, description: code, permissions } });
+    const username = `${code}@crm.test`;
+    await superAdmin.query(CREATE_ADMINISTRATOR, {
+        input: { firstName: code, lastName: 'Test', emailAddress: username, password: COMMERCIAL_PASSWORD, roleIds: [createRole.id] },
+    });
+    return username;
+}

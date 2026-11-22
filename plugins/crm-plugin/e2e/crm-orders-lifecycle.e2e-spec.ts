@@ -207,4 +207,22 @@ describe('CrmPlugin — orders, lifecycle, group sales (O1-O6, T1-T4)', () => {
         expect((await waitLifecycle(company, 'prospect')).lifecycle).toBe('prospect');
         expect((await waitLifecycle(other, 'client')).lifecycle).toBe('client');
     });
+
+    it('keeps a cleared company cleared and never stamps a later company on a placed order (O1)', async () => {
+        const company = await group('Clear company', 'company');
+        const later = await group('Later company', 'company');
+        const customerId = await contact('clear@menata.test', company);
+        const { orderId } = await payDraft(adminClient, await createDraft(adminClient, customerId, variantId));
+        await adminClient.query(SET_ORDER_COMPANY, { orderId, companyId: null });
+        const homeless = await createCustomer(adminClient, 'homeless@menata.test');
+        const second = await payDraft(adminClient, await createDraft(adminClient, homeless, variantId));
+
+        await adminClient.query(MOVE, { customerId: homeless, companyId: later });
+        await cancelOrder(adminClient, orderId);
+        await cancelOrder(adminClient, second.orderId);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        expect((await adminClient.query(ORDER_CRM, { id: orderId })).order.crmCompany).toBeNull();
+        expect((await adminClient.query(ORDER_CRM, { id: second.orderId })).order.crmCompany).toBeNull();
+    });
 });

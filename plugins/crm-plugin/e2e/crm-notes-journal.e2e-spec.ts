@@ -152,6 +152,20 @@ describe('CrmPlugin — notes and company journal (N2-N5)', () => {
         expect(deleteCustomerGroupNote.result).toBe('DELETED');
     });
 
+    it('journals a rename as an update, not as a type change (N5)', async () => {
+        const companyId = await company('Rename company');
+        await adminClient.query(
+            gql`mutation Rename($input: UpdateCustomerGroupInput!) { updateCustomerGroup(input: $input) { id } }`,
+            { input: { id: companyId, name: 'Renamed company', customFields: { siret: '123' } } },
+        );
+
+        const { crmJournal } = await adminClient.query(JOURNAL, { groupId: companyId });
+        const types = crmJournal.items.map((item: any) => item.type);
+        expect(types).toContain('updated');
+        expect(types).not.toContain('type-changed');
+        expect(crmJournal.items.find((item: any) => item.type === 'updated').data.fields).toBe('name, siret');
+    });
+
     it('journals what happens to a company, and nothing for other group types (N5)', async () => {
         const companyId = await company('Journal company');
         const segmentId = await company('Journal segment', 'segment');

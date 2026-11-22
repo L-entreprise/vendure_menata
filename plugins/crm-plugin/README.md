@@ -28,6 +28,16 @@ so a direct API call cannot bypass the rules: `createCustomerGroup`, `updateCust
 `deleteOrderNote`, `createDraftOrder`. Rerun the e2e specs on every Vendure upgrade: a
 renamed argument or a new native entry point would bypass a rule silently.
 
+## Compatibility
+
+- Declared `compatibility: '^3.5.3'` (dashboard toolbar items need 3.5.3; scheduled tasks 3.3;
+  history entry components 3.4.3). Vendure checks it with `includePrerelease`, so 3.x pre-releases load.
+- Verified on Vendure 3.7.4 and 3.8.2 (e2e, `tsc`, dashboard build) and on the 3.9 pre-release.
+- No change to any `@vendure/*` package: everything is plugin code, native mutations are only
+  redeclared through the plugin API.
+- SQL is portable across Postgres, MySQL / MariaDB and SQLite (no `||` concatenation, no
+  `ESCAPE` clause, no database-specific functions beyond `LOWER` / `TRIM`).
+
 ## Permissions
 
 `CrmAdmin` (custom permission, held by SuperAdmin): group types and allowed members,

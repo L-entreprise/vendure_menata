@@ -1,11 +1,11 @@
-import { Customer, TransactionalConnection } from '@vendure/core';
+import { Channel, Customer, TransactionalConnection } from '@vendure/core';
 import { gql } from 'graphql-tag';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createPluginTestEnvironment, initialData, TEST_SETUP_TIMEOUT_MS } from '../../../deploy/e2e/test-environment';
 import { CrmPlugin } from '../crm.plugin';
 
-import { ADD_CUSTOMERS_TO_GROUP, ADD_NOTE_TO_CUSTOMER, Commercial, COMMERCIAL_PASSWORD, CREATE_CUSTOMER_GROUP, createCommercialFactory } from './helpers';
+import { ADD_CUSTOMERS_TO_GROUP, ADD_NOTE_TO_CUSTOMER, Commercial, COMMERCIAL_PASSWORD, CREATE_CUSTOMER_GROUP, createAdminWithPermissions, createCommercialFactory } from './helpers';
 import { createDraft, createTestVariant, payDraft } from './order-helpers';
 
 const CREATE_CUSTOMER = gql`
@@ -33,8 +33,14 @@ const CONFLICTS = gql`
 `;
 const MERGE = gql`
     mutation Merge($sourceId: ID!, $targetId: ID!) {
-        mergeCustomers(sourceId: $sourceId, targetId: $targetId) { id groups { name } orders { totalItems } history { items { type data } } }
+        mergeCustomers(sourceId: $sourceId, targetId: $targetId) {
+            id groups { name } orders { totalItems } history { items { type data } }
+            addresses { id defaultShippingAddress defaultBillingAddress }
+        }
     }
+`;
+const CREATE_ADDRESS = gql`
+    mutation CreateAddress($id: ID!, $input: CreateAddressInput!) { createCustomerAddress(customerId: $id, input: $input) { id } }
 `;
 const CUSTOMER = gql`
     query Customer($id: ID!) { customer(id: $id) { id } }
@@ -71,6 +77,8 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
         await adminClient.asUserWithCredentials(commercial.username, COMMERCIAL_PASSWORD);
 
         expect((await adminClient.query(SEARCH, { term: 'marti' })).crmSearch.customers.map((c: any) => c.id)).toContain(claire.id);
+        expect((await adminClient.query(SEARCH, { term: 'claire mart' })).crmSearch.customers.map((c: any) => c.id)).toEqual([claire.id]);
+        expect((await adminClient.query(SEARCH, { term: 'claire dupont' })).crmSearch.customers).toEqual([]);
         expect((await adminClient.query(SEARCH, { term: 'MENATA-COLMAR' })).crmSearch.customers.map((c: any) => c.id)).toContain(claire.id);
         expect((await adminClient.query(SEARCH, { term: 'recherche' })).crmSearch.groups.map((g: any) => g.id)).toEqual([groupId]);
         const byCode = (await adminClient.query(SEARCH, { term: claire.crmCode.toLowerCase() })).crmSearch;
@@ -78,6 +86,21 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
 
         expect((await adminClient.query(RESOLVE, { code: claire.crmCode })).crmResolveCode).toEqual({ kind: 'customer', id: claire.id });
         expect((await adminClient.query(RESOLVE, { code: 'GRP-999999' })).crmResolveCode).toBeNull();
+    });
+
+    it('never returns customers to a role that may only read groups, nor anything for wildcards', async () => {
+        await customer('perm@menata.test', 'Permission', 'Probe');
+        await company('Permission group');
+        await adminClient.asSuperAdmin();
+        const username = await createAdminWithPermissions(adminClient, 'groups-only', ['ReadCustomerGroup']);
+        await adminClient.asUserWithCredentials(username, COMMERCIAL_PASSWORD);
+
+        const { crmSearch } = await adminClient.query(SEARCH, { term: 'permission' });
+        expect(crmSearch.customers).toEqual([]);
+        expect(crmSearch.groups.map((g: any) => g.name)).toEqual(['Permission group']);
+        await adminClient.asSuperAdmin();
+        expect((await adminClient.query(SEARCH, { term: '%%' })).crmSearch).toEqual({ customers: [], groups: [] });
+        expect((await adminClient.query(SEARCH, { term: '__ _' })).crmSearch).toEqual({ customers: [], groups: [] });
     });
 
     it('suggests a company from the stated company or the e-mail domain, only by click (C2)', async () => {
@@ -103,7 +126,8 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
     it('audits duplicate e-mails and customers in several companies, super admin only', async () => {
         const original = await customer('legacy@menata.test', 'Legacy', 'One');
         const repository = server.app.get(TransactionalConnection).rawConnection.getRepository(Customer);
-        await repository.save(new Customer({ emailAddress: 'Legacy@Menata.test ', firstName: 'Legacy', lastName: 'Two' }));
+        const defaultChannel = await server.app.get(TransactionalConnection).rawConnection.getRepository(Channel).findOneOrFail({ where: {} });
+        await repository.save(new Customer({ emailAddress: 'Legacy@Menata.test ', firstName: 'Legacy', lastName: 'Two', channels: [defaultChannel] }));
         const a = await company('Conflict A');
         const b = await company('Conflict B');
         const both = await customer('both@menata.test', 'Both', 'Companies');
@@ -133,6 +157,9 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
         await adminClient.query(ADD_CUSTOMERS_TO_GROUP, { customerGroupId: companyId, customerIds: [dupe.id] });
         await adminClient.query(ADD_CUSTOMERS_TO_GROUP, { customerGroupId: segmentId, customerIds: [dupe.id] });
         await adminClient.query(ADD_NOTE_TO_CUSTOMER, { input: { id: dupe.id, note: 'Note sur le doublon', isPublic: false } });
+        for (const id of [kept.id, dupe.id]) {
+            await adminClient.query(CREATE_ADDRESS, { id, input: { streetLine1: `1 rue ${id}`, countryCode: 'FR', defaultShippingAddress: true, defaultBillingAddress: true } });
+        }
         await payDraft(adminClient, await createDraft(adminClient, dupe.id, variantId));
 
         await adminClient.asUserWithCredentials(commercial.username, COMMERCIAL_PASSWORD);
@@ -142,6 +169,9 @@ describe('CrmPlugin — search, suggestions, duplicates, merge (S1, I3, C2, D2, 
 
         expect(mergeCustomers.groups.map((g: any) => g.name).sort()).toEqual(['Merge company', 'Merge segment']);
         expect(mergeCustomers.orders.totalItems).toBe(1);
+        expect(mergeCustomers.addresses).toHaveLength(2);
+        expect(mergeCustomers.addresses.filter((a: any) => a.defaultShippingAddress)).toHaveLength(1);
+        expect(mergeCustomers.addresses.filter((a: any) => a.defaultBillingAddress)).toHaveLength(1);
         const types = mergeCustomers.history.items.map((i: any) => i.type);
         expect(types).toEqual(expect.arrayContaining(['CUSTOMER_NOTE', 'CUSTOMER_MERGED']));
         expect((await adminClient.query(CUSTOMER, { id: dupe.id })).customer).toBeNull();

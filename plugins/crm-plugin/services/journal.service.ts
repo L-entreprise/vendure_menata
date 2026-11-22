@@ -38,15 +38,12 @@ export class JournalService implements OnModuleInit {
     ) {}
 
     onModuleInit() {
+        // Updates are journaled by CustomerGroupGuardResolver, which knows the previous type:
+        // the event input always carries the structure fields, changed or not.
         this.eventBus.ofType(CustomerGroupEvent).subscribe(event => {
-            if (event.type === 'deleted') {
-                return;
+            if (event.type === 'created') {
+                this.safeRecord(event.ctx, (event.entity as CustomerGroup).id, 'created', {});
             }
-            const group = event.entity as CustomerGroup;
-            const input = (event.input ?? {}) as Record<string, unknown>;
-            const typeChanged = !!(input.customFields as Record<string, unknown> | undefined)?.groupType;
-            const type: JournalEntryType = event.type === 'created' ? 'created' : typeChanged ? 'type-changed' : 'updated';
-            this.safeRecord(event.ctx, group.id, type, { fields: Object.keys(input).filter(key => key !== 'id').join(', ') });
         });
         this.eventBus.ofType(CustomerGroupChangeEvent).subscribe(event => {
             const type: JournalEntryType = event.type === 'assigned' ? 'member-added' : 'member-removed';
