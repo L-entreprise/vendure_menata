@@ -129,3 +129,90 @@ msgstr "Days without an order"
 
 msgid "Status changed"
 msgstr "Status changed"
+
+msgid "Confirm"
+msgstr "Confirm"
+
+msgid "Move to another company"
+msgstr "Move to another company"
+
+msgid "Link to a company"
+msgstr "Link to a company"
+
+msgid "Move"
+msgstr "Move"
+
+msgid "Link"
+msgstr "Link"
+
+msgid "Company updated"
+msgstr "Company updated"
+
+msgid "Other groups"
+msgstr "Other groups"
+
+msgid "No other group."
+msgstr "No other group."
+
+msgid "Remove from the group"
+msgstr "Remove from the group"
+
+msgid "Add to a group"
+msgstr "Add to a group"
+
+msgid "Unlink"
+msgstr "Unlink"
+
+msgid "Parent groups"
+msgstr "Parent groups"
+
+msgid "Top-level group."
+msgstr "Top-level group."
+
+msgid "Add another parent"
+msgstr "Add another parent"
+
+msgid "Choose a parent"
+msgstr "Choose a parent"
+
+msgid "Group linked"
+msgstr "Group linked"
+
+msgid "Sub-groups"
+msgstr "Sub-groups"
+
+msgid "No sub-group."
+msgstr "No sub-group."
+
+msgid "Deleting this group leaves its {count} sub-group(s) without this parent."
+msgstr "Deleting this group leaves its {count} sub-group(s) without this parent."
+
+msgid "Filter by role"
+msgstr "Filter by role"
+
+msgid "All roles"
+msgstr "All roles"
+
+msgid "No contact with this role."
+msgstr "No contact with this role."
+
+msgid "Only the first 200 contacts are listed."
+msgstr "Only the first 200 contacts are listed."
+
+msgid "Group tree"
+msgstr "Group tree"
+
+msgid "No customer group yet."
+msgstr "No customer group yet."
+
+msgid "Company and groups"
+msgstr "Company and groups"
+
+msgid "Contacts and roles"
+msgstr "Contacts and roles"
+
+msgid "Not set"
+msgstr "Not set"
+
+msgid "Choose a company"
+msgstr "Choose a company"

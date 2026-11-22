@@ -72,8 +72,34 @@ const group = gql`
     }
 `;
 
+/** G1-G6 hierarchy, R3 move, R4 eligible groups. */
+const hierarchy = gql`
+    type CrmTreeEntry {
+        group: CustomerGroup!
+        parentIds: [ID!]!
+    }
+    extend type CustomerGroup {
+        crmParents: [CustomerGroup!]!
+        crmChildren: [CustomerGroup!]!
+        "Every group above, nearest first, each once"
+        crmAncestors: [CustomerGroup!]!
+        "One path from a top group down to the parent, following the oldest parent link"
+        crmBreadcrumb: [CustomerGroup!]!
+    }
+    extend type Query {
+        crmGroupTree: [CrmTreeEntry!]!
+        crmEligibleGroups(customerId: ID!): [CustomerGroup!]!
+    }
+    extend type Mutation {
+        addCustomerGroupParent(childId: ID!, parentId: ID!): CustomerGroup!
+        removeCustomerGroupParent(childId: ID!, parentId: ID!): CustomerGroup!
+        moveCustomerToCompany(customerId: ID!, companyId: ID!): Customer!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
     ${group}
+    ${hierarchy}
 `;

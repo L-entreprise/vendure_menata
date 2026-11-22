@@ -79,11 +79,6 @@ function CustomerCompany({ customerId }: Readonly<{ customerId: string }>) {
     );
 }
 
-export function CustomerCompanyBlock({ context }: Readonly<{ context: PageContextValue }>) {
-    const customerId = context.entity?.id;
-    return customerId ? <CustomerCompany customerId={customerId} /> : null;
-}
-
 export function DraftOrderCompanyBlock({ context }: Readonly<{ context: PageContextValue }>) {
     const customerId = context.entity?.customer?.id;
     if (!customerId) {

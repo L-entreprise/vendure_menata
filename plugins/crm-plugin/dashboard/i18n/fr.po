@@ -129,3 +129,90 @@ msgstr "Jours sans commande"
 
 msgid "Status changed"
 msgstr "Statut modifié"
+
+msgid "Confirm"
+msgstr "Confirmer"
+
+msgid "Move to another company"
+msgstr "Déplacer vers une autre entreprise"
+
+msgid "Link to a company"
+msgstr "Rattacher à une entreprise"
+
+msgid "Move"
+msgstr "Déplacer"
+
+msgid "Link"
+msgstr "Rattacher"
+
+msgid "Company updated"
+msgstr "Entreprise mise à jour"
+
+msgid "Other groups"
+msgstr "Autres groupes"
+
+msgid "No other group."
+msgstr "Aucun autre groupe."
+
+msgid "Remove from the group"
+msgstr "Retirer du groupe"
+
+msgid "Add to a group"
+msgstr "Ajouter à un groupe"
+
+msgid "Unlink"
+msgstr "Détacher"
+
+msgid "Parent groups"
+msgstr "Groupes parents"
+
+msgid "Top-level group."
+msgstr "Groupe de premier niveau."
+
+msgid "Add another parent"
+msgstr "Ajouter un autre parent"
+
+msgid "Choose a parent"
+msgstr "Choisir un parent"
+
+msgid "Group linked"
+msgstr "Groupe rattaché"
+
+msgid "Sub-groups"
+msgstr "Sous-groupes"
+
+msgid "No sub-group."
+msgstr "Aucun sous-groupe."
+
+msgid "Deleting this group leaves its {count} sub-group(s) without this parent."
+msgstr "Supprimer ce groupe laissera ses {count} sous-groupe(s) sans ce parent."
+
+msgid "Filter by role"
+msgstr "Filtrer par rôle"
+
+msgid "All roles"
+msgstr "Tous les rôles"
+
+msgid "No contact with this role."
+msgstr "Aucun contact avec ce rôle."
+
+msgid "Only the first 200 contacts are listed."
+msgstr "Seuls les 200 premiers contacts sont affichés."
+
+msgid "Group tree"
+msgstr "Arborescence des groupes"
+
+msgid "No customer group yet."
+msgstr "Aucun groupe de clients pour l’instant."
+
+msgid "Company and groups"
+msgstr "Entreprise et groupes"
+
+msgid "Contacts and roles"
+msgstr "Contacts et rôles"
+
+msgid "Not set"
+msgstr "Non défini"
+
+msgid "Choose a company"
+msgstr "Choisir une entreprise"

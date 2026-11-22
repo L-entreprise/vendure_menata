@@ -70,6 +70,7 @@ export const crmCustomFields: CustomFields = {
             name: 'groupType',
             type: 'string',
             label: label('Group type', 'Type de groupe'),
+            ui: { component: 'crm-admin-only-select' },
             options: [
                 { value: 'company', label: label('Company', 'Entreprise') },
                 { value: 'companyGroup', label: label('Group of companies', "Groupe d'entreprises") },
@@ -83,6 +84,7 @@ export const crmCustomFields: CustomFields = {
             name: 'memberScope',
             type: 'string',
             label: label('Allowed members', 'Membres autorisés'),
+            ui: { component: 'crm-admin-only-select' },
             description: label('Empty: derived from the group type', 'Vide : déduit du type de groupe'),
             options: [
                 { value: 'customers', label: label('Customers only', 'Clients seulement') },

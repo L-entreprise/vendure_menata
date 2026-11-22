@@ -3,6 +3,7 @@ import { Customer, CustomerGroup, ID, idsAreEqual, RequestContext, Transactional
 import { In, IsNull } from 'typeorm';
 
 import { CrmForbiddenError, CrmRuleError } from '../common/crm-errors';
+import { CustomerGroupEdge } from '../entities/customer-group-edge.entity';
 import { COMPANY_GROUP_TYPE, crmAdminPermission, DEFAULT_MEMBER_SCOPE, GROUP_TYPES, GroupType, MemberScope } from '../constants';
 
 /** The CRM fields of a group, whether it exists already or is about to be created. */
@@ -96,6 +97,14 @@ export class MembershipRulesService {
                 groupName: current.name,
                 count: memberIds.length,
             });
+        }
+        if (resolveMemberScope(next) === 'customers') {
+            const childCount = await this.connection
+                .getRepository(ctx, CustomerGroupEdge)
+                .count({ where: { parentId: current.id } });
+            if (childCount > 0) {
+                throw new CrmRuleError('crm-scope-change-has-groups', { groupName: current.name, count: childCount });
+            }
         }
         if (next.groupType === COMPANY_GROUP_TYPE && current.groupType !== COMPANY_GROUP_TYPE) {
             await this.assertNoOtherCompany(ctx, current, memberIds);
