@@ -6,6 +6,7 @@ import { crmErrorTranslations } from './common/crm-errors';
 import './common/history-types';
 import { crmCustomFields } from './config/custom-fields';
 import { CRM_ADMIN_RESOLVERS, CRM_ENTITIES, CRM_PROVIDERS } from './config/plugin-parts';
+import { CRM_SCHEDULED_TASKS } from './config/scheduled-tasks';
 import { crmAdminPermission } from './constants';
 
 function mergeCustomFields<T extends CustomFields>(existing: T, added: CustomFields): T {
@@ -27,6 +28,10 @@ function configure(config: RuntimeVendureConfig): RuntimeVendureConfig {
             customPermissions: [...config.authOptions.customPermissions, crmAdminPermission],
         },
         customFields: mergeCustomFields(config.customFields, crmCustomFields),
+        schedulerOptions: {
+            ...config.schedulerOptions,
+            tasks: [...(config.schedulerOptions.tasks ?? []), ...CRM_SCHEDULED_TASKS],
+        },
     };
 }
 

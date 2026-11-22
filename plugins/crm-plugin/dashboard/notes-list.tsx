@@ -1,7 +1,10 @@
 import { Trans, useLingui } from '@lingui/react/macro';
-import { Button, Textarea } from '@vendure/dashboard';
-import { PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from 'lucide-react';
-import { ReactNode, useState } from 'react';
+import { Button } from '@vendure/dashboard';
+import { BellPlusIcon, PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from 'lucide-react';
+import { useState } from 'react';
+
+import { MentionTextarea } from './mention-textarea';
+import { TaskForm, TaskTarget } from './tasks-list';
 
 export interface CrmNote {
     id: string;
@@ -26,8 +29,8 @@ interface NotesListProps {
     /** Super admin: may delete anyone's note (never edit it). */
     canDeleteAny: boolean;
     pending: boolean;
-    /** Extra controls per note (e.g. "add a follow-up"). */
-    renderExtra?: (note: CrmNote) => ReactNode;
+    /** K1: where a follow-up created from a note points to. */
+    followUpTarget?: (note: CrmNote) => TaskTarget;
 }
 
 function byPinThenDate(a: CrmNote, b: CrmNote) {
@@ -39,7 +42,7 @@ function NoteEditor({ initial, onSave, onCancel, pending }: Readonly<{ initial: 
     const [text, setText] = useState(initial);
     return (
         <div className="space-y-2">
-            <Textarea value={text} onChange={event => setText(event.target.value)} placeholder={t`Write a note…`} rows={3} />
+            <MentionTextarea value={text} onChange={setText} placeholder={t`Write a note… (@ to mention a colleague)`} />
             <div className="flex gap-2">
                 <Button size="sm" disabled={pending || !text.trim()} onClick={() => onSave(text)}>
                     {initial ? <Trans>Save</Trans> : <Trans>Add the note</Trans>}
@@ -54,9 +57,10 @@ function NoteEditor({ initial, onSave, onCancel, pending }: Readonly<{ initial: 
  * N2 / N3 / N4: hand-written notes, pinned ones first, apart from the timeline. Only the
  * author edits or deletes a note; the super admin may delete any note.
  */
-export function NotesList({ notes, actions, canWrite, canDeleteAny, pending, renderExtra }: Readonly<NotesListProps>) {
+export function NotesList({ notes, actions, canWrite, canDeleteAny, pending, followUpTarget }: Readonly<NotesListProps>) {
     const { t, i18n } = useLingui();
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [followUpId, setFollowUpId] = useState<string | null>(null);
     const [draftKey, setDraftKey] = useState(0);
     const formatDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.locale, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -76,7 +80,11 @@ export function NotesList({ notes, actions, canWrite, canDeleteAny, pending, ren
                                 {note.authorName ?? t`Unknown author`} · {formatDate(note.createdAt)}
                             </span>
                             <span className="flex items-center gap-1">
-                                {renderExtra?.(note)}
+                                {followUpTarget && canWrite && (
+                                    <Button variant="ghost" size="icon" aria-label={t`Add a follow-up`} onClick={() => setFollowUpId(followUpId === note.id ? null : note.id)}>
+                                        <BellPlusIcon />
+                                    </Button>
+                                )}
                                 {canWrite && (
                                     <Button variant="ghost" size="icon" disabled={pending} aria-label={note.pinned ? t`Unpin` : t`Pin`}
                                         onClick={() => actions.pin(note.id, !note.pinned)}>
@@ -102,6 +110,11 @@ export function NotesList({ notes, actions, canWrite, canDeleteAny, pending, ren
                             </div>
                         ) : (
                             <p className="mt-1 whitespace-pre-wrap">{note.text}</p>
+                        )}
+                        {followUpTarget && followUpId === note.id && (
+                            <div className="mt-2">
+                                <TaskForm target={followUpTarget(note)} initialTitle={note.text.slice(0, 120)} onDone={() => setFollowUpId(null)} />
+                            </div>
                         )}
                     </li>
                 ))}

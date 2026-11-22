@@ -105,7 +105,8 @@ export function CustomerNotesBlock({ context }: Readonly<{ context: PageContextV
     };
     return (
         <NotesList notes={notes} actions={actions} pending={pending}
-            canWrite={hasPermissions(['UpdateCustomer'])} canDeleteAny={hasPermissions([CRM_ADMIN_PERMISSION])} />
+            canWrite={hasPermissions(['UpdateCustomer'])} canDeleteAny={hasPermissions([CRM_ADMIN_PERMISSION])}
+            followUpTarget={note => ({ customerId, sourceNoteId: note.id, sourceNoteKind: 'customer' })} />
     );
 }
 
@@ -131,6 +132,7 @@ export function GroupNotesBlock({ context }: Readonly<{ context: PageContextValu
     };
     return (
         <NotesList notes={notes} actions={actions} pending={pending}
-            canWrite={hasPermissions(['UpdateCustomerGroup'])} canDeleteAny={hasPermissions([CRM_ADMIN_PERMISSION])} />
+            canWrite={hasPermissions(['UpdateCustomerGroup'])} canDeleteAny={hasPermissions([CRM_ADMIN_PERMISSION])}
+            followUpTarget={note => ({ groupId, sourceNoteId: note.id, sourceNoteKind: 'group' })} />
     );
 }

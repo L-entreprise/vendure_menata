@@ -36,6 +36,9 @@ const en = {
     'crm-hierarchy-too-deep': 'This link would make the hierarchy deeper than { max } levels',
     'crm-not-a-company': 'The group "{ groupName }" is not a company',
     'crm-only-own-task': 'Only the person a follow-up is assigned to can change it',
+    'crm-task-title-invalid': 'A follow-up needs a title of at most { max } characters',
+    'crm-task-invalid-date': 'The due date must be a calendar date (YYYY-MM-DD)',
+    'crm-task-needs-target': 'A follow-up must concern a customer or a group, not both',
     'crm-merge-same-customer': 'A customer cannot be merged into itself',
     'crm-merge-company-conflict':
         'The two customers belong to different companies ("{ sourceCompany }" and "{ targetCompany }"): move one first',
@@ -62,6 +65,9 @@ const fr: Record<CrmErrorKey, string> = {
     'crm-hierarchy-too-deep': 'Ce lien rendrait la hiérarchie plus profonde que { max } niveaux',
     'crm-not-a-company': 'Le groupe « { groupName } » n’est pas une entreprise',
     'crm-only-own-task': 'Seule la personne à qui la relance est assignée peut la modifier',
+    'crm-task-title-invalid': 'Une relance doit avoir un titre de { max } caractères au plus',
+    'crm-task-invalid-date': 'La date d’échéance doit être une date du calendrier (AAAA-MM-JJ)',
+    'crm-task-needs-target': 'Une relance concerne un client ou un groupe, pas les deux',
     'crm-merge-same-customer': 'Un client ne peut pas être fusionné avec lui-même',
     'crm-merge-company-conflict':
         'Les deux clients appartiennent à des entreprises différentes (« { sourceCompany } » et « { targetCompany } ») : déplacez-en un d’abord',

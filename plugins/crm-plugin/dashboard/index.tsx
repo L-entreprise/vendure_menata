@@ -13,9 +13,12 @@ import { CustomerGroupsBlock } from './customer-groups-block';
 import { GroupCrmBlock } from './group-crm-block';
 import { JournalBlock } from './journal-block';
 import { CustomerNotesBlock, GroupNotesBlock } from './notes-blocks';
+import { NotificationsToolbarItem } from './notifications-toolbar';
 import { LeadSourceSelectInput, RoleSelectInput } from './option-inputs';
 import { crmSettingsRoute } from './settings-page';
 import { StatusHistoryEntry } from './status-history-entry';
+import { CustomerTasksBlock, GroupTasksBlock } from './tasks-blocks';
+import { crmTasksRoute, crmTasksWidget } from './tasks-page';
 import { crmTreeRoute } from './tree-page';
 
 // Plugin .po catalogs reach the production dashboard as raw (uncompiled) ICU strings;
@@ -26,7 +29,9 @@ const hasEntity = (context: { entity?: { id?: string } }) => !!context.entity?.i
 
 defineDashboardExtension({
     navSections: [{ id: CRM_NAV_SECTION, title: 'CRM', icon: ContactIcon, order: 350 }],
-    routes: [crmTreeRoute, crmSettingsRoute],
+    routes: [crmTasksRoute, crmTreeRoute, crmSettingsRoute],
+    widgets: [crmTasksWidget],
+    toolbarItems: [{ id: 'crm-notifications', component: NotificationsToolbarItem, position: { itemId: 'alerts', order: 'before' } }],
     customFormComponents: {
         customFields: [
             { id: 'crm-role-select', component: RoleSelectInput },
@@ -83,6 +88,20 @@ defineDashboardExtension({
             title: <Trans>Company journal</Trans>,
             location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
             component: JournalBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-customer-tasks',
+            title: <Trans>Follow-ups</Trans>,
+            location: { pageId: 'customer-detail', column: 'side', position: { blockId: 'groups', order: 'after' } },
+            component: CustomerTasksBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-tasks',
+            title: <Trans>Follow-ups</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'side', position: { blockId: 'main-form', order: 'after' } },
+            component: GroupTasksBlock,
             shouldRender: hasEntity,
         },
         {

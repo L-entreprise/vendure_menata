@@ -300,3 +300,66 @@ msgstr "Notes"
 
 msgid "Company journal"
 msgstr "Company journal"
+
+msgid "Follow-ups"
+msgstr "Follow-ups"
+
+msgid "Colleagues"
+msgstr "Colleagues"
+
+msgid "Write a note… (@ to mention a colleague)"
+msgstr "Write a note… (@ to mention a colleague)"
+
+msgid "Add a follow-up"
+msgstr "Add a follow-up"
+
+msgid "{author} mentioned you"
+msgstr "{author} mentioned you"
+
+msgid "Follow-up due today: {title}"
+msgstr "Follow-up due today: {title}"
+
+msgid "CRM notifications"
+msgstr "CRM notifications"
+
+msgid "Mark all as read"
+msgstr "Mark all as read"
+
+msgid "No notification."
+msgstr "No notification."
+
+msgid "Add the follow-up"
+msgstr "Add the follow-up"
+
+msgid "No follow-up."
+msgstr "No follow-up."
+
+msgid "What to do"
+msgstr "What to do"
+
+msgid "Follow-up"
+msgstr "Follow-up"
+
+msgid "Due date"
+msgstr "Due date"
+
+msgid "Done"
+msgstr "Done"
+
+msgid "My follow-ups"
+msgstr "My follow-ups"
+
+msgid "See all my follow-ups"
+msgstr "See all my follow-ups"
+
+msgid "Overdue"
+msgstr "Overdue"
+
+msgid "Today"
+msgstr "Today"
+
+msgid "Upcoming"
+msgstr "Upcoming"
+
+msgid "Done recently"
+msgstr "Done recently"

@@ -135,10 +135,74 @@ const notes = gql`
     }
 `;
 
+/** K1-K4 follow-ups, mentions, notifications. */
+const tasks = gql`
+    enum CrmTaskBucket {
+        OVERDUE
+        TODAY
+        UPCOMING
+        DONE
+    }
+    type CrmTask {
+        id: ID!
+        createdAt: DateTime!
+        title: String!
+        "Calendar day YYYY-MM-DD"
+        dueDate: String!
+        done: Boolean!
+        doneAt: DateTime
+        assigneeName: String
+        isMine: Boolean!
+        customer: Customer
+        group: CustomerGroup
+        sourceNoteId: ID
+        sourceNoteKind: String
+    }
+    input CreateCrmTaskInput {
+        title: String!
+        dueDate: String!
+        customerId: ID
+        groupId: ID
+        sourceNoteId: ID
+        sourceNoteKind: String
+    }
+    type CrmPerson {
+        id: ID!
+        firstName: String!
+        lastName: String!
+    }
+    type CrmNotification {
+        id: ID!
+        createdAt: DateTime!
+        type: String!
+        read: Boolean!
+        data: JSON!
+    }
+    type CrmNotificationList {
+        items: [CrmNotification!]!
+        unreadCount: Int!
+    }
+    extend type Query {
+        myCrmTasks(bucket: CrmTaskBucket!): [CrmTask!]!
+        crmTasksFor(customerId: ID, groupId: ID): [CrmTask!]!
+        crmMentionableAdministrators: [CrmPerson!]!
+        myCrmNotifications(unreadOnly: Boolean): CrmNotificationList!
+    }
+    extend type Mutation {
+        "Always assigned to the current administrator"
+        createCrmTask(input: CreateCrmTaskInput!): CrmTask!
+        setCrmTaskDone(id: ID!, done: Boolean!): CrmTask!
+        deleteCrmTask(id: ID!): DeletionResponse!
+        "Marks the given notifications, or all of them when ids is empty, as read; returns how many changed"
+        markCrmNotificationsRead(ids: [ID!]): Int!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
     ${group}
     ${hierarchy}
     ${notes}
+    ${tasks}
 `;

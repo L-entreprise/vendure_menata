@@ -300,3 +300,66 @@ msgstr "Notes"
 
 msgid "Company journal"
 msgstr "Journal de l’entreprise"
+
+msgid "Follow-ups"
+msgstr "Relances"
+
+msgid "Colleagues"
+msgstr "Collègues"
+
+msgid "Write a note… (@ to mention a colleague)"
+msgstr "Écrire une note… (@ pour mentionner un collègue)"
+
+msgid "Add a follow-up"
+msgstr "Ajouter une relance"
+
+msgid "{author} mentioned you"
+msgstr "{author} vous a mentionné"
+
+msgid "Follow-up due today: {title}"
+msgstr "Relance du jour : {title}"
+
+msgid "CRM notifications"
+msgstr "Notifications CRM"
+
+msgid "Mark all as read"
+msgstr "Tout marquer comme lu"
+
+msgid "No notification."
+msgstr "Aucune notification."
+
+msgid "Add the follow-up"
+msgstr "Ajouter la relance"
+
+msgid "No follow-up."
+msgstr "Aucune relance."
+
+msgid "What to do"
+msgstr "À faire"
+
+msgid "Follow-up"
+msgstr "Relance"
+
+msgid "Due date"
+msgstr "Échéance"
+
+msgid "Done"
+msgstr "Fait"
+
+msgid "My follow-ups"
+msgstr "Mes relances"
+
+msgid "See all my follow-ups"
+msgstr "Voir toutes mes relances"
+
+msgid "Overdue"
+msgstr "En retard"
+
+msgid "Today"
+msgstr "Aujourd’hui"
+
+msgid "Upcoming"
+msgstr "À venir"
+
+msgid "Done recently"
+msgstr "Faites récemment"

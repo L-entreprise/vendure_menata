@@ -4,6 +4,7 @@ import { CustomerGroup, ID, RequestContext, TransactionalConnection } from '@ven
 import { CustomerGroupNote } from '../entities/customer-group-note.entity';
 
 import { JournalService } from './journal.service';
+import { MentionService } from './mention.service';
 import { NoteOwnershipService } from './note-ownership.service';
 
 /** N4: notes on a group, with the same author rules as customer notes (N3). */
@@ -13,6 +14,7 @@ export class GroupNoteService {
         private connection: TransactionalConnection,
         private noteOwnership: NoteOwnershipService,
         private journal: JournalService,
+        private mentions: MentionService,
     ) {}
 
     list(ctx: RequestContext, groupId: ID): Promise<CustomerGroupNote[]> {
@@ -29,7 +31,8 @@ export class GroupNoteService {
         const saved = await this.connection
             .getRepository(ctx, CustomerGroupNote)
             .save(new CustomerGroupNote({ groupId, note: note.trim(), administratorId, pinned: false }));
-        await this.journal.record(ctx, groupId, 'note-added', { noteId: saved.id });
+        await this.journal.record(ctx, groupId, 'note-added', { noteId: String(saved.id) });
+        await this.mentions.notifyMentions(ctx, saved.note, { groupId });
         return this.findOne(ctx, saved.id);
     }
 
