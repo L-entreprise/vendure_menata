@@ -36,7 +36,11 @@ renamed argument or a new native entry point would bypass a rule silently.
 - No change to any `@vendure/*` package: everything is plugin code, native mutations are only
   redeclared through the plugin API.
 - SQL is portable across Postgres, MySQL / MariaDB and SQLite (no `||` concatenation, no
-  `ESCAPE` clause, no database-specific functions beyond `LOWER` / `TRIM`).
+  `ESCAPE` clause, no database-specific functions beyond `LOWER` / `TRIM`). The CRM specs pass
+  on SQLite (CI), PostgreSQL 16 and MariaDB 11 (run by hand on throwaway containers).
+- The company and sales rep of an order are frozen inside the transaction that places it
+  (blocking `OrderPlacedEvent` handler, Vendure 2.2+); an application error there is logged
+  and does not block the sale. Lifecycle refreshes run after commit.
 
 ## Permissions
 

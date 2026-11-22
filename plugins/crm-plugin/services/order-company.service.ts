@@ -45,14 +45,20 @@ export class OrderCompanyService implements OnModuleInit {
     ) {}
 
     onModuleInit() {
-        // The company is frozen once, when the order is placed. Later transitions and refunds
-        // only refresh the lifecycle: they never fill an empty company again, so a company
-        // cleared by the super admin stays cleared and later moves never reach old orders.
-        this.eventBus.ofType(OrderPlacedEvent).subscribe(event => this.safely(event.ctx, event.order.id, true));
-        this.eventBus.ofType(OrderStateTransitionEvent).subscribe(event => this.safely(event.ctx, event.order.id, false));
+        // The company is frozen once, inside the transaction that places the order: a move or a
+        // super admin edit right after placement can never race the stamp. Later transitions and
+        // refunds only refresh the lifecycle (after commit): they never fill an empty company
+        // again, so a company cleared by the super admin stays cleared.
+        this.eventBus.registerBlockingEventHandler({
+            event: OrderPlacedEvent,
+            id: 'crm-freeze-order-company',
+            handler: event => this.freezeSafely(event.ctx, event.order),
+        });
+        this.eventBus.ofType(OrderPlacedEvent).subscribe(event => this.refreshLifecycle(event.ctx, event.order.id));
+        this.eventBus.ofType(OrderStateTransitionEvent).subscribe(event => this.refreshLifecycle(event.ctx, event.order.id));
         this.eventBus.ofType(RefundStateTransitionEvent).subscribe(event => {
             if (event.toState === 'Settled') {
-                this.safely(event.ctx, event.order.id, false);
+                this.refreshLifecycle(event.ctx, event.order.id);
             }
         });
     }
@@ -65,9 +71,13 @@ export class OrderCompanyService implements OnModuleInit {
         }
     }
 
-    /** Called when the order is placed (OrderPlacedEvent): freezes the company and the sales rep. */
-    async assignIfMissing(ctx: RequestContext, orderId: ID): Promise<void> {
-        const order = await this.load(ctx, orderId);
+    /**
+     * Runs inside the placing transaction (OrderPlacedEvent blocking handler): freezes the
+     * company and the sales rep. `placing` is the order Vendure saves after the handlers, so
+     * the fields are set on it too, otherwise that save could write the stale values back.
+     */
+    async assignIfMissing(ctx: RequestContext, placing: Order): Promise<void> {
+        const order = await this.load(ctx, placing.id);
         const fields = (order.customFields ?? {}) as OrderCrmFields;
         if (!order.customer) {
             return;
@@ -75,12 +85,14 @@ export class OrderCompanyService implements OnModuleInit {
         const company = fields.companyGroup ?? (await this.membershipRules.companyOf(ctx, order.customer.id));
         if (!fields.companyGroup && company) {
             await this.writeFields(ctx, order.id, { companyGroup: { id: company.id } });
+            this.setOnPlacingOrder(placing, { companyGroup: company });
             await this.journal.record(ctx, company.id, 'order-assigned', { orderCode: order.code });
         }
-        if (!fields.salesRep && order.orderPlacedAt) {
+        if (!fields.salesRep) {
             const manager = (company ? await this.groupManager(ctx, company.id) : null) ?? (await this.customerManager(ctx, order));
             if (manager) {
                 await this.writeFields(ctx, order.id, { salesRep: { id: manager.id } });
+                this.setOnPlacingOrder(placing, { salesRep: manager });
             }
         }
     }
@@ -128,9 +140,27 @@ export class OrderCompanyService implements OnModuleInit {
         return this.connection.getEntityOrThrow(ctx, Order, orderId, { relations: ORDER_RELATIONS });
     }
 
-    private safely(ctx: RequestContext, orderId: ID, placing: boolean) {
-        (placing ? this.assignIfMissing(ctx, orderId) : Promise.resolve())
-            .then(() => this.lifecycle.recomputeForOrder(ctx, orderId))
+    /** Vendure saves this entity after the blocking handlers: keep it in step with the DB write. */
+    private setOnPlacingOrder(placing: Order, fields: OrderCrmFields) {
+        placing.customFields = { ...(placing.customFields ?? {}), ...fields } as Order['customFields'];
+    }
+
+    /**
+     * A CRM rule error must not block a sale: log it and let the order be placed. (A failed SQL
+     * statement still aborts the whole transaction on Postgres; the queries here are plain reads
+     * and updates by primary key.)
+     */
+    private async freezeSafely(ctx: RequestContext, order: Order): Promise<void> {
+        try {
+            await this.assignIfMissing(ctx, order);
+        } catch (error: any) {
+            Logger.error(`Could not freeze the company of order ${String(order.id)}: ${String(error?.message ?? error)}`, loggerCtx);
+        }
+    }
+
+    private refreshLifecycle(ctx: RequestContext, orderId: ID) {
+        this.lifecycle
+            .recomputeForOrder(ctx, orderId)
             .catch(error => Logger.error(`Could not update the CRM data of order ${String(orderId)}: ${String(error?.message ?? error)}`, loggerCtx));
     }
 }
