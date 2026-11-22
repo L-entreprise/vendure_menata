@@ -131,7 +131,8 @@ export const crmCustomFields: CustomFields = {
             ...adminOnly,
             name: 'lifecycle',
             type: 'string',
-            readonly: true,
+            // Not readonly so the native list shows and filters it (T4); writes are stripped in
+            // CustomerGroupGuardResolver, only LifecycleService sets it.
             label: label('Prospect / client', 'Prospect / client'),
             ui: { component: 'crm-readonly-value' },
             options: [
@@ -144,7 +145,6 @@ export const crmCustomFields: CustomFields = {
             ...adminOnly,
             name: 'lifecycleVia',
             type: 'string',
-            readonly: true,
             label: label('Client through', 'Client via'),
             ui: { component: 'crm-readonly-value' },
             options: [
@@ -156,7 +156,6 @@ export const crmCustomFields: CustomFields = {
             ...adminOnly,
             name: 'lastCountedOrderAt',
             type: 'datetime',
-            readonly: true,
             label: label('Last counted order', 'Dernière commande comptée'),
             ui: { component: 'crm-readonly-value' },
         },

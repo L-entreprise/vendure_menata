@@ -12,6 +12,13 @@ import { MembershipRulesService, nextStructure } from '../services/membership-ru
 
 type CustomFieldsInput = Record<string, unknown>;
 
+/** Computed by LifecycleService (T1); never taken from API input. */
+const COMPUTED_FIELDS = ['lifecycle', 'lifecycleVia', 'lastCountedOrderAt'];
+
+function withoutComputed(customFields: CustomFieldsInput): CustomFieldsInput {
+    return Object.fromEntries(Object.entries(customFields).filter(([key]) => !COMPUTED_FIELDS.includes(key)));
+}
+
 /**
  * Replaces the native `createCustomerGroup`, `updateCustomerGroup` and `addCustomersToGroup`
  * mutations (same names, same permissions, same service calls) to enforce R1-R5 and the
@@ -30,7 +37,7 @@ export class CustomerGroupGuardResolver {
     @Mutation()
     @Allow(Permission.CreateCustomerGroup)
     async createCustomerGroup(@Ctx() ctx: RequestContext, @Args() args: MutationCreateCustomerGroupArgs) {
-        const customFields = (args.input.customFields ?? {}) as CustomFieldsInput;
+        const customFields = withoutComputed((args.input.customFields ?? {}) as CustomFieldsInput);
         const empty = { groupType: null, memberScope: null };
         const structure = nextStructure(empty, customFields);
         this.membershipRules.assertCanChangeStructure(ctx, empty, structure);
@@ -50,7 +57,7 @@ export class CustomerGroupGuardResolver {
     @Allow(Permission.UpdateCustomerGroup)
     async updateCustomerGroup(@Ctx() ctx: RequestContext, @Args() args: MutationUpdateCustomerGroupArgs) {
         const current = await this.membershipRules.loadProfile(ctx, args.input.id);
-        const customFields = (args.input.customFields ?? {}) as CustomFieldsInput;
+        const customFields = withoutComputed((args.input.customFields ?? {}) as CustomFieldsInput);
         const structure = nextStructure(current, customFields);
         this.membershipRules.assertCanChangeStructure(ctx, current, structure);
         await this.membershipRules.assertStructureChangeAllowed(ctx, current, structure);

@@ -111,6 +111,11 @@ describe('CrmPlugin — orders, lifecycle, group sales (O1-O6, T1-T4)', () => {
         expect(await waitLifecycle(holding, 'client')).toEqual({ lifecycle: 'client', lifecycleVia: 'subsidiary' });
         expect(await lifecycle(strasbourg)).toEqual({ lifecycle: 'prospect', lifecycleVia: null });
         expect((await lifecycle(portfolio)).lifecycle).toBeNull();
+
+        await adminClient.query(gql`mutation U($i: UpdateCustomerGroupInput!) { updateCustomerGroup(input: $i) { id } }`, {
+            i: { id: strasbourg, customFields: { lifecycle: 'client', lifecycleVia: 'direct' } },
+        });
+        expect(await lifecycle(strasbourg)).toEqual({ lifecycle: 'prospect', lifecycleVia: null });
     });
 
     it('keeps a partly refunded order, drops a fully refunded one (T1)', async () => {

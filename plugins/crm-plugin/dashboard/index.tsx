@@ -15,6 +15,7 @@ import { DraftOrderCompanyBlock } from './draft-order-company-block';
 import { DuplicateEmailBlock } from './duplicate-email-block';
 import { GroupAddressesBlock } from './group-addresses-block';
 import { GroupCrmBlock } from './group-crm-block';
+import { GroupTypeCell, LifecycleCell } from './group-list-cells';
 import { GroupSalesBlock } from './group-sales-block';
 import { JournalBlock } from './journal-block';
 import { CustomerNotesBlock, GroupNotesBlock } from './notes-blocks';
@@ -45,6 +46,19 @@ defineDashboardExtension({
     navSections: [{ id: CRM_NAV_SECTION, title: 'CRM', icon: ContactIcon, order: 350 }],
     routes: [crmTasksRoute, crmTreeRoute, crmAuditRoute, crmSettingsRoute, crmCodeRoute],
     widgets: [crmTasksWidget],
+    dataTables: [
+        {
+            // G7 / T4: type and prospect / client / dormant visible and filterable in the group list.
+            pageId: 'customer-group-list',
+            viewOptionDefaults: {
+                columnVisibility: { id: false, createdAt: false, updatedAt: false, name: true, groupType: true, lifecycle: true, customers: true },
+            },
+            displayComponents: [
+                { column: 'groupType', component: GroupTypeCell },
+                { column: 'lifecycle', component: LifecycleCell },
+            ],
+        },
+    ],
     toolbarItems: [
         { id: 'crm-search', component: SearchToolbarItem, position: { itemId: 'alerts', order: 'before' } },
         { id: 'crm-notifications', component: NotificationsToolbarItem, position: { itemId: 'alerts', order: 'before' } },

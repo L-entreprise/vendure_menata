@@ -1,42 +1,58 @@
-# CRM plugin (POC)
+# CRM plugin
 
-In-house CRM on top of Vendure customers and customer groups. Spec: "CRM Vendure -
-fonctionnalités validées avant cahier des charges" (v3). RGPD items are tracked
-separately and deferred until after the POC.
+In-house CRM on top of Vendure customers, customer groups and orders. Spec: "CRM Vendure -
+fonctionnalités validées avant cahier des charges" (v3), V1 scope (the V2 sales dashboards
+are not included). RGPD items are tracked separately (`menata-docs/docs/crm-rgpd-a-traiter.md`).
 
-## What the POC covers
+## What it covers (CDC references)
 
-| CDC | What | Where |
-|---|---|---|
-| G7, R1 | `groupType` and `memberScope` custom fields on `CustomerGroup` (super admin only). An empty scope is filled from the type on creation. | `config/custom-fields.ts`, `api/customer-group-guard.resolver.ts` |
-| G7, R1 | `CustomerGroup.crmGroupType` / `crmMemberScope`: read-only fields every group reader sees. Needed because `requiresPermission` on a custom field also hides it from reads, so sales reps could not see the type. | `api/api-extensions.ts`, `api/customer-group-crm-fields.resolver.ts` |
-| R2 | A group reserved for groups refuses customers. | `services/membership-rules.service.ts` |
-| R3 | A customer belongs to one company at most. | idem |
-| N1 | The note author is shown by name, including to a sales rep without `ReadAdministrator` (native in Vendure 3.8). | e2e only |
-| N3 | Only the author edits or deletes a note; `CrmAdmin` (super admin) may delete any note, never edit it. | `services/note-ownership.service.ts`, `api/customer-note-guard.resolver.ts` |
-| C5, A2 | "Company" block on the customer page and the draft order page; "CRM rules" block on the customer group page. | `dashboard/` |
+| Area | Features |
+|---|---|
+| Customers | Company hint (C1), company suggestions by click (C2), configurable status with history entry (C3, C4), company and greyed ancestors (C5), several roles (C6), lead source (C7), `CLI-` code (I1) |
+| Groups | Type (G7), company data (G8), hierarchy with several parents, loop and 5-level checks, orphaned children on delete (G1-G6), `GRP-` code (I2), tree page |
+| Prospect / client | Computed from counted orders (payment settled, not cancelled, not fully refunded) for companies and groups of companies, direct or through a subsidiary, dormant after a configurable threshold, nightly job (T1-T4) |
+| Membership rules | Customers / groups / both (R1, R2), one company per customer with "move" (R3), pickers only offer allowed groups (R4), type or scope changes cannot strand members (R5) |
+| Addresses | Company address book (A1), draft order by company with proposed addresses (A2, A3), frozen copies on orders (A4), nothing on the shop (A5) |
+| Notes | Named authors (N1), notes block with pinning (N2), author-only edit and delete on customer, order and group notes, super admin may delete (N3), group notes (N4), company journal (N5) |
+| Follow-ups | Follow-ups from a note or directly, assigned to their author (K1), "Mes relances" page and home widget (K2), @mentions with autocomplete (K3), toolbar notifications and daily "due today" job (K4) |
+| Search | Toolbar search by name, e-mail or code, `/crm/code/<code>` (S1, I3) |
+| Duplicates | Live e-mail check on the new customer page (D2), duplicate and multi-company audits with merge (D3) |
+| Sales | Company frozen on each order and sales rep (O1, O6), group orders with subsidiary and contact, totals and filters (O2-O5) |
+| Settings | Super admin page: statuses and transitions, dormant threshold, role and lead source lists |
 
-## Native mutations are replaced, not wrapped
+## Rules that hold on direct API calls
 
-`createCustomerGroup`, `addCustomersToGroup`, `updateCustomerNote` and `deleteCustomerNote`
-are redeclared by the plugin resolvers with the same names, permissions and service calls.
-Vendure merges plugin resolvers after its own, so the plugin versions run and a direct API
-call cannot bypass the rules. The e2e specs prove it; rerun them on every Vendure upgrade,
-since a renamed argument or a new native entry point (e.g. a bulk mutation) would bypass the
-rules silently.
-
-Not guarded yet: `updateCustomerGroup` changing the type or scope of a populated group (R5),
-order notes (`updateOrderNote` / `deleteOrderNote`).
+These native mutations are redeclared with the same names, permissions and service calls,
+so a direct API call cannot bypass the rules: `createCustomerGroup`, `updateCustomerGroup`,
+`addCustomersToGroup`, `updateCustomerNote`, `deleteCustomerNote`, `updateOrderNote`,
+`deleteOrderNote`, `createDraftOrder`. Rerun the e2e specs on every Vendure upgrade: a
+renamed argument or a new native entry point would bypass a rule silently.
 
 ## Permissions
 
-`CrmAdmin` is a custom permission. The SuperAdmin role holds it automatically; never give it
-to the sales rep role.
+`CrmAdmin` (custom permission, held by SuperAdmin): group types and allowed members,
+hierarchy, settings, audits and merges, changing the company of an order, deleting anyone's
+note. Sales reps need the native customer, customer group and order permissions only.
+
+`requiresPermission` on a custom field hides it from reads too, so structure fields stay
+readable and their writes are guarded in the resolvers.
+
+## Scheduled tasks
+
+`crm-due-tasks` (07:00, follow-ups due today) and `crm-lifecycle` (02:30, dormancy). They need
+`DefaultSchedulerPlugin`. Dates are calendar days in the server time zone: set `TZ=Europe/Paris`.
 
 ## Database
 
-New custom fields on `CustomerGroup`. With `DB_SYNCHRONIZE=false` (production), generate a
-migration from `deploy/` (`npm run migration:generate`) before deploying.
+New tables and custom fields. With `DB_SYNCHRONIZE=false` (production), generate a migration
+from `deploy/` (`npm run migration:generate`) before deploying.
+
+## Not in V1
+
+- V2 dashboards (consolidated revenue, conversion by sales rep, quotes).
+- Enriching customers created from CMS form submissions (lead source, company hint,
+  address): the CMS already creates the customer; wire this when the CMS gets typed fields.
+- External notifications (e-mail) for mentions and follow-ups (V2 / V3).
 
 ## Tests
 
