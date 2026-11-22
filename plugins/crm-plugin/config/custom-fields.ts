@@ -64,6 +64,16 @@ export const crmCustomFields: CustomFields = {
         leadSource,
         accountManager,
     ],
+    HistoryEntry: [
+        {
+            ...adminOnly,
+            name: 'pinned',
+            type: 'boolean',
+            readonly: true,
+            defaultValue: false,
+            label: label('Pinned', 'Épinglée'),
+        },
+    ],
     CustomerGroup: [
         {
             ...adminOnly,

@@ -21,6 +21,7 @@ import {
 } from '../common/group-graph';
 import { CustomerGroupEdge } from '../entities/customer-group-edge.entity';
 
+import { JournalService } from './journal.service';
 import { MembershipRulesService, resolveMemberScope } from './membership-rules.service';
 
 export interface TreeEntry {
@@ -35,6 +36,7 @@ export class HierarchyService implements OnModuleInit {
         private connection: TransactionalConnection,
         private membershipRules: MembershipRulesService,
         private eventBus: EventBus,
+        private journal: JournalService,
     ) {}
 
     onModuleInit() {
@@ -72,12 +74,17 @@ export class HierarchyService implements OnModuleInit {
         const existing = await repository.findOne({ where: { parentId, childId } });
         if (!existing) {
             await repository.save(new CustomerGroupEdge({ parentId, childId }));
+            await this.journal.record(ctx, childId, 'parent-added', { parentId, parentName: parent.name });
         }
         return this.connection.getEntityOrThrow(ctx, CustomerGroup, childId);
     }
 
     async removeParent(ctx: RequestContext, childId: ID, parentId: ID): Promise<CustomerGroup> {
-        await this.connection.getRepository(ctx, CustomerGroupEdge).delete({ parentId, childId });
+        const result = await this.connection.getRepository(ctx, CustomerGroupEdge).delete({ parentId, childId });
+        if (result.affected) {
+            const parent = await this.membershipRules.loadProfile(ctx, parentId);
+            await this.journal.record(ctx, childId, 'parent-removed', { parentId, parentName: parent.name });
+        }
         return this.connection.getEntityOrThrow(ctx, CustomerGroup, childId);
     }
 

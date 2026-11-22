@@ -4,6 +4,7 @@ import {
     CustomerHistoryEntry,
     ID,
     idsAreEqual,
+    OrderHistoryEntry,
     RequestContext,
     TransactionalConnection,
 } from '@vendure/core';
@@ -11,9 +12,13 @@ import {
 import { CrmForbiddenError } from '../common/crm-errors';
 import { crmAdminPermission } from '../constants';
 
+export type HistoryNoteKind = 'customer' | 'order';
+
+const ENTITY = { customer: CustomerHistoryEntry, order: OrderHistoryEntry } as const;
+
 /**
- * N3: nobody edits or deletes another person's note. The super admin (CrmAdmin) may
- * delete any note but edit only their own.
+ * N3: nobody edits or deletes another person's note (customer, order or group notes).
+ * The super admin (CrmAdmin) may delete any note but edit only their own.
  */
 @Injectable()
 export class NoteOwnershipService {
@@ -22,29 +27,36 @@ export class NoteOwnershipService {
         private administratorService: AdministratorService,
     ) {}
 
-    async assertCanEdit(ctx: RequestContext, noteId: ID): Promise<void> {
-        if (!(await this.isAuthor(ctx, noteId))) {
-            throw new CrmForbiddenError('crm-note-only-author');
+    async currentAdministratorId(ctx: RequestContext): Promise<ID | undefined> {
+        if (!ctx.activeUserId) {
+            return undefined;
         }
+        return (await this.administratorService.findOneByUserId(ctx, ctx.activeUserId))?.id;
     }
 
-    async assertCanDelete(ctx: RequestContext, noteId: ID): Promise<void> {
-        if (ctx.userHasPermissions([crmAdminPermission.Permission])) {
+    async assertCanEdit(ctx: RequestContext, noteId: ID, kind: HistoryNoteKind = 'customer'): Promise<void> {
+        await this.assertAuthor(ctx, await this.historyAuthorId(ctx, noteId, kind), false);
+    }
+
+    async assertCanDelete(ctx: RequestContext, noteId: ID, kind: HistoryNoteKind = 'customer'): Promise<void> {
+        await this.assertAuthor(ctx, await this.historyAuthorId(ctx, noteId, kind), true);
+    }
+
+    /** Throws unless the current admin wrote the note (or may delete any note, when `adminMayOverride`). */
+    async assertAuthor(ctx: RequestContext, authorId: ID | undefined, adminMayOverride: boolean): Promise<void> {
+        if (adminMayOverride && ctx.userHasPermissions([crmAdminPermission.Permission])) {
             return;
         }
-        if (!(await this.isAuthor(ctx, noteId))) {
+        const currentId = await this.currentAdministratorId(ctx);
+        if (!authorId || !currentId || !idsAreEqual(authorId, currentId)) {
             throw new CrmForbiddenError('crm-note-only-author');
         }
     }
 
-    private async isAuthor(ctx: RequestContext, noteId: ID): Promise<boolean> {
-        const note = await this.connection.getEntityOrThrow(ctx, CustomerHistoryEntry, noteId, {
+    private async historyAuthorId(ctx: RequestContext, noteId: ID, kind: HistoryNoteKind): Promise<ID | undefined> {
+        const note = await this.connection.getEntityOrThrow(ctx, ENTITY[kind] as typeof CustomerHistoryEntry, noteId, {
             relations: { administrator: true },
         });
-        if (!note.administrator || !ctx.activeUserId) {
-            return false;
-        }
-        const currentAdmin = await this.administratorService.findOneByUserId(ctx, ctx.activeUserId);
-        return !!currentAdmin && idsAreEqual(currentAdmin.id, note.administrator.id);
+        return note.administrator?.id;
     }
 }

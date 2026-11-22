@@ -97,9 +97,48 @@ const hierarchy = gql`
     }
 `;
 
+/** N2 pinned notes, N4 group notes, N5 company journal. */
+const notes = gql`
+    type CrmGroupNote {
+        id: ID!
+        createdAt: DateTime!
+        updatedAt: DateTime!
+        note: String!
+        pinned: Boolean!
+        authorName: String
+        "True when the current administrator wrote the note (only the author may edit it)"
+        isMine: Boolean!
+    }
+    type CrmJournalEntry {
+        id: ID!
+        createdAt: DateTime!
+        type: String!
+        data: JSON!
+        authorName: String
+    }
+    type CrmJournalList {
+        items: [CrmJournalEntry!]!
+        totalItems: Int!
+    }
+    extend type Query {
+        "Pinned notes first, then oldest first"
+        customerGroupNotes(groupId: ID!): [CrmGroupNote!]!
+        "Newest first, company groups only"
+        crmJournal(groupId: ID!, skip: Int, take: Int): CrmJournalList!
+    }
+    extend type Mutation {
+        setCustomerNotePinned(noteId: ID!, pinned: Boolean!): HistoryEntry!
+        addCustomerGroupNote(groupId: ID!, note: String!): CrmGroupNote!
+        updateCustomerGroupNote(noteId: ID!, note: String!): CrmGroupNote!
+        deleteCustomerGroupNote(noteId: ID!): DeletionResponse!
+        setCustomerGroupNotePinned(noteId: ID!, pinned: Boolean!): CrmGroupNote!
+    }
+`;
+
 export const adminApiExtensions = gql`
     ${settings}
     ${customer}
     ${group}
     ${hierarchy}
+    ${notes}
 `;

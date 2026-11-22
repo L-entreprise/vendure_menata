@@ -11,6 +11,8 @@ import { DraftOrderCompanyBlock } from './customer-company-block';
 import { CustomerCrmBlock } from './customer-crm-block';
 import { CustomerGroupsBlock } from './customer-groups-block';
 import { GroupCrmBlock } from './group-crm-block';
+import { JournalBlock } from './journal-block';
+import { CustomerNotesBlock, GroupNotesBlock } from './notes-blocks';
 import { LeadSourceSelectInput, RoleSelectInput } from './option-inputs';
 import { crmSettingsRoute } from './settings-page';
 import { StatusHistoryEntry } from './status-history-entry';
@@ -60,6 +62,27 @@ defineDashboardExtension({
             title: <Trans>Contacts and roles</Trans>,
             location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
             component: CompanyContactsBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-customer-notes',
+            title: <Trans>Notes</Trans>,
+            location: { pageId: 'customer-detail', column: 'main', position: { blockId: 'history', order: 'before' } },
+            component: CustomerNotesBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-notes',
+            title: <Trans>Notes</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
+            component: GroupNotesBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-journal',
+            title: <Trans>Company journal</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
+            component: JournalBlock,
             shouldRender: hasEntity,
         },
         {

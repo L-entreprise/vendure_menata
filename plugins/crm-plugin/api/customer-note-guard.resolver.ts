@@ -1,30 +1,44 @@
 import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import {
     MutationDeleteCustomerNoteArgs,
+    MutationDeleteOrderNoteArgs,
     MutationUpdateCustomerNoteArgs,
+    MutationUpdateOrderNoteArgs,
     Permission,
 } from '@vendure/common/lib/generated-types';
-import { Allow, Ctx, CustomerService, RequestContext, Transaction } from '@vendure/core';
+import {
+    Allow,
+    Ctx,
+    CustomerHistoryEntry,
+    CustomerService,
+    ID,
+    OrderService,
+    RequestContext,
+    Transaction,
+    TransactionalConnection,
+} from '@vendure/core';
 
 import { NoteOwnershipService } from '../services/note-ownership.service';
 
 /**
- * Replaces the native `updateCustomerNote` and `deleteCustomerNote` mutations (same
- * names, same permissions, same service calls) to enforce N3: Vendure itself only checks
- * `UpdateCustomer`, so any sales rep could rewrite a colleague's note.
+ * Replaces the native note mutations (same names, permissions and service calls) to enforce
+ * N3 on customer and order notes: Vendure itself only checks UpdateCustomer / UpdateOrder,
+ * so any sales rep could rewrite a colleague's note.
  */
 @Resolver()
 export class CustomerNoteGuardResolver {
     constructor(
         private customerService: CustomerService,
+        private orderService: OrderService,
         private noteOwnership: NoteOwnershipService,
+        private connection: TransactionalConnection,
     ) {}
 
     @Transaction()
     @Mutation()
     @Allow(Permission.UpdateCustomer)
     async updateCustomerNote(@Ctx() ctx: RequestContext, @Args() args: MutationUpdateCustomerNoteArgs) {
-        await this.noteOwnership.assertCanEdit(ctx, args.input.noteId);
+        await this.noteOwnership.assertCanEdit(ctx, args.input.noteId, 'customer');
         return this.customerService.updateCustomerNote(ctx, args.input);
     }
 
@@ -32,7 +46,35 @@ export class CustomerNoteGuardResolver {
     @Mutation()
     @Allow(Permission.UpdateCustomer)
     async deleteCustomerNote(@Ctx() ctx: RequestContext, @Args() args: MutationDeleteCustomerNoteArgs) {
-        await this.noteOwnership.assertCanDelete(ctx, args.id);
+        await this.noteOwnership.assertCanDelete(ctx, args.id, 'customer');
         return this.customerService.deleteCustomerNote(ctx, args.id);
+    }
+
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.UpdateOrder)
+    async updateOrderNote(@Ctx() ctx: RequestContext, @Args() args: MutationUpdateOrderNoteArgs) {
+        await this.noteOwnership.assertCanEdit(ctx, args.input.noteId, 'order');
+        return this.orderService.updateOrderNote(ctx, args.input);
+    }
+
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.UpdateOrder)
+    async deleteOrderNote(@Ctx() ctx: RequestContext, @Args() args: MutationDeleteOrderNoteArgs) {
+        await this.noteOwnership.assertCanDelete(ctx, args.id, 'order');
+        return this.orderService.deleteOrderNote(ctx, args.id);
+    }
+
+    /** N2: pinning is shared and does not change the text, so any sales rep may pin. */
+    @Transaction()
+    @Mutation()
+    @Allow(Permission.UpdateCustomer)
+    async setCustomerNotePinned(@Ctx() ctx: RequestContext, @Args() args: { noteId: ID; pinned: boolean }) {
+        const note = await this.connection.getEntityOrThrow(ctx, CustomerHistoryEntry, args.noteId);
+        await this.connection
+            .getRepository(ctx, CustomerHistoryEntry)
+            .update({ id: note.id }, { customFields: { ...note.customFields, pinned: args.pinned } });
+        return this.connection.getEntityOrThrow(ctx, CustomerHistoryEntry, note.id);
     }
 }

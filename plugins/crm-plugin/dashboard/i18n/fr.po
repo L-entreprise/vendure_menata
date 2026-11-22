@@ -216,3 +216,87 @@ msgstr "Non défini"
 
 msgid "Choose a company"
 msgstr "Choisir une entreprise"
+
+msgid "Write a note…"
+msgstr "Écrire une note…"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Add the note"
+msgstr "Ajouter la note"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "No note yet."
+msgstr "Aucune note pour l’instant."
+
+msgid "Pinned"
+msgstr "Épinglée"
+
+msgid "Unknown author"
+msgstr "Auteur inconnu"
+
+msgid "Unpin"
+msgstr "Désépingler"
+
+msgid "Pin"
+msgstr "Épingler"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Company created"
+msgstr "Entreprise créée"
+
+msgid "Details updated"
+msgstr "Informations modifiées"
+
+msgid "Type changed"
+msgstr "Type modifié"
+
+msgid "Linked under a group"
+msgstr "Rattachée à un groupe"
+
+msgid "Unlinked from a group"
+msgstr "Détachée d’un groupe"
+
+msgid "Contact added"
+msgstr "Contact ajouté"
+
+msgid "Contact removed"
+msgstr "Contact retiré"
+
+msgid "Address added"
+msgstr "Adresse ajoutée"
+
+msgid "Address updated"
+msgstr "Adresse modifiée"
+
+msgid "Address removed"
+msgstr "Adresse supprimée"
+
+msgid "Prospect / client status changed"
+msgstr "Passage prospect / client / dormant"
+
+msgid "Note added"
+msgstr "Note ajoutée"
+
+msgid "Follow-up added"
+msgstr "Relance ajoutée"
+
+msgid "Order assigned"
+msgstr "Commande rattachée"
+
+msgid "Nothing recorded yet."
+msgstr "Rien d’enregistré pour l’instant."
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid "Company journal"
+msgstr "Journal de l’entreprise"

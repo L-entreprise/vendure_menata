@@ -216,3 +216,87 @@ msgstr "Not set"
 
 msgid "Choose a company"
 msgstr "Choose a company"
+
+msgid "Write a note…"
+msgstr "Write a note…"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Add the note"
+msgstr "Add the note"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "No note yet."
+msgstr "No note yet."
+
+msgid "Pinned"
+msgstr "Pinned"
+
+msgid "Unknown author"
+msgstr "Unknown author"
+
+msgid "Unpin"
+msgstr "Unpin"
+
+msgid "Pin"
+msgstr "Pin"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Company created"
+msgstr "Company created"
+
+msgid "Details updated"
+msgstr "Details updated"
+
+msgid "Type changed"
+msgstr "Type changed"
+
+msgid "Linked under a group"
+msgstr "Linked under a group"
+
+msgid "Unlinked from a group"
+msgstr "Unlinked from a group"
+
+msgid "Contact added"
+msgstr "Contact added"
+
+msgid "Contact removed"
+msgstr "Contact removed"
+
+msgid "Address added"
+msgstr "Address added"
+
+msgid "Address updated"
+msgstr "Address updated"
+
+msgid "Address removed"
+msgstr "Address removed"
+
+msgid "Prospect / client status changed"
+msgstr "Prospect / client status changed"
+
+msgid "Note added"
+msgstr "Note added"
+
+msgid "Follow-up added"
+msgstr "Follow-up added"
+
+msgid "Order assigned"
+msgstr "Order assigned"
+
+msgid "Nothing recorded yet."
+msgstr "Nothing recorded yet."
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid "Company journal"
+msgstr "Company journal"
