@@ -8,6 +8,7 @@ import {
     dummyPaymentHandler,
     LogLevel,
     RedisCachePlugin,
+    TrustProxyOptions,
     VendureConfig,
 } from '@vendure/core';
 import { DashboardPlugin } from '@vendure/dashboard/plugin';
@@ -35,6 +36,26 @@ const corsOrigins = (process.env.CORS_ORIGIN ?? '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
+
+/**
+ * Express `trust proxy` from TRUST_PROXY: a hop count ("1" behind Coolify's Traefik),
+ * "true" / "false", or comma-separated addresses / subnets. Unset = no proxy trusted.
+ * Without it, every request seems to come from the proxy IP, so the dashboard rate limit
+ * (500 requests per IP in production) is shared by all users.
+ */
+function getTrustProxy(): TrustProxyOptions {
+    const raw = (process.env.TRUST_PROXY ?? '').trim();
+    if (raw === '' || raw === 'false') {
+        return false;
+    }
+    if (raw === 'true') {
+        return true;
+    }
+    if (/^\d+$/.test(raw)) {
+        return Number(raw);
+    }
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+}
 
 /**
  * Resolves the @vendure/email-plugin npm package's bundled templates directory,
@@ -71,6 +92,7 @@ function requireEnv(name: string): string {
 export const config: VendureConfig = {
     apiOptions: {
         port: serverPort,
+        trustProxy: getTrustProxy(),
         adminApiPath: 'admin-api',
         shopApiPath: 'shop-api',
         // Playgrounds/introspection off by default in production; toggle via env.
