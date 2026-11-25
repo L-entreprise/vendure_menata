@@ -1,0 +1,178 @@
+import { i18n } from '@lingui/core';
+import { compileMessage } from '@lingui/message-utils/compileMessage';
+import { Trans } from '@lingui/react/macro';
+import { defineDashboardExtension } from '@vendure/dashboard';
+import { ContactIcon } from 'lucide-react';
+
+import { AdminOnlySelect } from './admin-only-select';
+import { crmAuditRoute } from './audit-page';
+import { crmCodeRoute } from './code-route';
+import { CRM_NAV_SECTION } from './constants';
+import { CompanyContactsBlock } from './company-contacts-block';
+import { CustomerCrmBlock } from './customer-crm-block';
+import { CustomerGroupsBlock } from './customer-groups-block';
+import { DraftOrderCompanyBlock } from './draft-order-company-block';
+import { DuplicateEmailBlock } from './duplicate-email-block';
+import { GroupAddressesBlock } from './group-addresses-block';
+import { GroupCrmBlock } from './group-crm-block';
+import { GroupTypeCell, LifecycleCell } from './group-list-cells';
+import { GroupSalesBlock } from './group-sales-block';
+import { JournalBlock } from './journal-block';
+import { CustomerNotesBlock, GroupNotesBlock } from './notes-blocks';
+import { NotificationsToolbarItem } from './notifications-toolbar';
+import { OrderCrmBlock } from './order-crm-block';
+import { ReadonlyValue } from './readonly-value';
+import { LeadSourceSelectInput, RoleSelectInput } from './option-inputs';
+import { SearchToolbarItem } from './search-toolbar';
+import { crmSettingsRoute } from './settings-page';
+import { MergedHistoryEntry, StatusHistoryEntry } from './status-history-entry';
+import { CustomerTasksBlock, GroupTasksBlock } from './tasks-blocks';
+import { crmTasksRoute, crmTasksWidget } from './tasks-page';
+import { crmTreeRoute } from './tree-page';
+
+// Plugin .po catalogs reach the production dashboard as raw (uncompiled) ICU strings;
+// let Lingui compile them at runtime so placeholders render.
+i18n.setMessagesCompiler(compileMessage);
+
+const hasEntity = (context: { entity?: { id?: string } }) => !!context.entity?.id;
+
+/** Blocks that only make sense for some group types (company journal, sales...). */
+const groupTypeIs =
+    (...types: string[]) =>
+    (context: { entity?: { id?: string; customFields?: { groupType?: string | null } } }) =>
+        !!context.entity?.id && types.includes(context.entity.customFields?.groupType ?? '');
+
+defineDashboardExtension({
+    navSections: [{ id: CRM_NAV_SECTION, title: 'CRM', icon: ContactIcon, order: 350 }],
+    routes: [crmTasksRoute, crmTreeRoute, crmAuditRoute, crmSettingsRoute, crmCodeRoute],
+    widgets: [crmTasksWidget],
+    dataTables: [
+        {
+            // G7 / T4: type and prospect / client / dormant visible and filterable in the group list.
+            pageId: 'customer-group-list',
+            viewOptionDefaults: {
+                columnVisibility: { id: false, createdAt: false, updatedAt: false, name: true, groupType: true, lifecycle: true, customers: true },
+            },
+            displayComponents: [
+                { column: 'groupType', component: GroupTypeCell },
+                { column: 'lifecycle', component: LifecycleCell },
+            ],
+        },
+    ],
+    toolbarItems: [
+        { id: 'crm-search', component: SearchToolbarItem, position: { itemId: 'alerts', order: 'before' } },
+        { id: 'crm-notifications', component: NotificationsToolbarItem, position: { itemId: 'alerts', order: 'before' } },
+    ],
+    customFormComponents: {
+        customFields: [
+            { id: 'crm-role-select', component: RoleSelectInput },
+            { id: 'crm-lead-source-select', component: LeadSourceSelectInput },
+            { id: 'crm-admin-only-select', component: AdminOnlySelect },
+            { id: 'crm-readonly-value', component: ReadonlyValue },
+        ],
+    },
+    historyEntries: [
+        { type: 'CUSTOMER_STATUS_CHANGED', component: StatusHistoryEntry },
+        { type: 'CUSTOMER_MERGED', component: MergedHistoryEntry },
+    ],
+    pageBlocks: [
+        {
+            id: 'crm-customer-summary',
+            title: <Trans>CRM</Trans>,
+            location: { pageId: 'customer-detail', column: 'side', position: { blockId: 'status', order: 'after' } },
+            component: CustomerCrmBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-duplicate-email',
+            title: <Trans>Duplicate check</Trans>,
+            location: { pageId: 'customer-detail', column: 'main', position: { blockId: 'main-form', order: 'after' } },
+            component: DuplicateEmailBlock,
+            shouldRender: context => !context.entity?.id,
+        },
+        {
+            id: 'crm-customer-groups',
+            title: <Trans>Company and groups</Trans>,
+            location: { pageId: 'customer-detail', column: 'side', position: { blockId: 'groups', order: 'replace' } },
+            component: CustomerGroupsBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-summary',
+            title: <Trans>CRM</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'side', position: { blockId: 'main-form', order: 'after' } },
+            component: GroupCrmBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-company-contacts',
+            title: <Trans>Contacts and roles</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
+            component: CompanyContactsBlock,
+            shouldRender: groupTypeIs('company'),
+        },
+        {
+            id: 'crm-group-addresses',
+            title: <Trans>Addresses</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
+            component: GroupAddressesBlock,
+            shouldRender: groupTypeIs('company'),
+        },
+        {
+            id: 'crm-customer-notes',
+            title: <Trans>Notes</Trans>,
+            location: { pageId: 'customer-detail', column: 'main', position: { blockId: 'history', order: 'before' } },
+            component: CustomerNotesBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-notes',
+            title: <Trans>Notes</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'before' } },
+            component: GroupNotesBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-sales',
+            title: <Trans>Sales</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
+            component: GroupSalesBlock,
+            shouldRender: groupTypeIs('company', 'companyGroup'),
+        },
+        {
+            id: 'crm-group-journal',
+            title: <Trans>Company journal</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'main', position: { blockId: 'customers', order: 'after' } },
+            component: JournalBlock,
+            shouldRender: groupTypeIs('company'),
+        },
+        {
+            id: 'crm-customer-tasks',
+            title: <Trans>Follow-ups</Trans>,
+            location: { pageId: 'customer-detail', column: 'side', position: { blockId: 'groups', order: 'after' } },
+            component: CustomerTasksBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-group-tasks',
+            title: <Trans>Follow-ups</Trans>,
+            location: { pageId: 'customer-group-detail', column: 'side', position: { blockId: 'main-form', order: 'after' } },
+            component: GroupTasksBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-draft-order-company',
+            title: <Trans>CRM</Trans>,
+            location: { pageId: 'draft-order-detail', column: 'side', position: { blockId: 'customer', order: 'after' } },
+            component: DraftOrderCompanyBlock,
+            shouldRender: hasEntity,
+        },
+        {
+            id: 'crm-order-company',
+            title: <Trans>CRM</Trans>,
+            location: { pageId: 'order-detail', column: 'side', position: { blockId: 'customer', order: 'after' } },
+            component: OrderCrmBlock,
+            shouldRender: hasEntity,
+        },
+    ],
+});

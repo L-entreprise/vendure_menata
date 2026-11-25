@@ -16,16 +16,16 @@
         "migrate:translations": "node -r ts-node/register/transpile-only -r dotenv/config migrate-translations.ts",
         "test:e2e": "vitest run --config vitest.config.mts"
     },
-    "//": "Version ranges (~3.7.4) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.8.0) when the monorepo fork merges a new upstream minor.",
+    "//": "Version ranges (~3.8.2) auto-track upstream patch releases so pulling official Vendure keeps working without edits. Bump the minor (e.g. ~3.9.0) to follow a new upstream minor.",
     "dependencies": {
         "@vendure-community/sentry-plugin": "^1.0.0",
-        "@vendure/asset-server-plugin": "~3.7.4",
-        "@vendure/common": "~3.7.4",
-        "@vendure/core": "~3.7.4",
-        "@vendure/dashboard": "~3.7.4",
-        "@vendure/email-plugin": "~3.7.4",
-        "@vendure/graphiql-plugin": "~3.7.4",
-        "@vendure/job-queue-plugin": "~3.7.4",
+        "@vendure/asset-server-plugin": "~3.8.2",
+        "@vendure/common": "~3.8.2",
+        "@vendure/core": "~3.8.2",
+        "@vendure/dashboard": "~3.8.2",
+        "@vendure/email-plugin": "~3.8.2",
+        "@vendure/graphiql-plugin": "~3.8.2",
+        "@vendure/job-queue-plugin": "~3.8.2",
         "bullmq": "^5.4.2",
         "dotenv": "^16.6.1",
         "ioredis": "^5.9.1",
@@ -35,7 +35,7 @@
     "devDependencies": {
         "@swc/core": "^1.16.13",
         "@types/sanitize-html": "^2.16.2",
-        "@vendure/testing": "~3.7.4",
+        "@vendure/testing": "~3.8.2",
         "sql.js": "^1.14.2",
         "ts-node": "^10.9.2",
         "typescript": "5.8.2",
@@ -43,7 +43,7 @@
         "vite": "^7.3.1",
         "vitest": "^3.2.7"
     },
-    "//overrides": "Pin the TanStack Router family to the exact versions the upstream v3.7.4 monorepo lockfile (bun.lock) resolves. Newer releases have tightened route-id parsing and changed dev-mode loading, which broke the dashboard before. The committed package-lock.json freezes the rest.",
+    "//overrides": "TanStack Router family pinned to exact versions known to work with the dashboard (unchanged ranges between Vendure 3.7.4 and 3.8.2); newer releases tightened route-id parsing and broke the dashboard before. @sentry/* forced to v11: @vendure-community/sentry-plugin 1.0.0 depends on @sentry/nestjs ^10, which peers NestJS <=11, while Vendure 3.8 runs on NestJS 12 (v11 supports it). Remove once the plugin ships a NestJS 12 release. The committed package-lock.json freezes the rest.",
     "overrides": {
         "@tanstack/react-router": "1.168.1",
         "@tanstack/react-router-devtools": "1.166.10",
@@ -52,6 +52,8 @@
         "@tanstack/router-plugin": "1.167.1",
         "@tanstack/router-utils": "1.161.6",
         "@tanstack/virtual-file-routes": "1.161.7",
-        "@tanstack/history": "1.161.6"
+        "@tanstack/history": "1.161.6",
+        "@sentry/nestjs": "^11.16.0",
+        "@sentry/profiling-node": "^11.16.0"
     }
 }

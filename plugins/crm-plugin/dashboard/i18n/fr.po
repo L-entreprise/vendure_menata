@@ -1,0 +1,617 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-21 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr\n"
+
+msgid "Company"
+msgstr "Entreprise"
+
+msgid "Could not load the company."
+msgstr "Impossible de charger l’entreprise."
+
+msgid "No company yet."
+msgstr "Aucune entreprise pour l’instant."
+
+msgid "Pick a customer to see their company."
+msgstr "Choisissez un client pour voir son entreprise."
+
+msgid "CRM rules"
+msgstr "Règles CRM"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "None"
+msgstr "Aucun"
+
+msgid "Members"
+msgstr "Membres"
+
+msgid "Group of companies"
+msgstr "Groupe d’entreprises"
+
+msgid "Sales portfolio"
+msgstr "Portefeuille commercial"
+
+msgid "Segment"
+msgstr "Segment"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Customers only"
+msgstr "Clients seulement"
+
+msgid "Groups only"
+msgstr "Groupes seulement"
+
+msgid "Customers and groups"
+msgstr "Clients et groupes"
+
+msgid "Could not load the CRM rules."
+msgstr "Impossible de charger les règles CRM."
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Status"
+msgstr "Statut"
+
+msgid "Status updated"
+msgstr "Statut mis à jour"
+
+msgid "Customer status"
+msgstr "Statut du client"
+
+msgid "CRM"
+msgstr "CRM"
+
+msgid "No roles defined in the CRM settings."
+msgstr "Aucun rôle défini dans les réglages CRM."
+
+msgid "Not specified"
+msgstr "Non renseigné"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Label"
+msgstr "Libellé"
+
+msgid "Remove"
+msgstr "Retirer"
+
+msgid "Any status can follow any other"
+msgstr "Tous les changements de statut sont autorisés"
+
+msgid "From → to"
+msgstr "De → vers"
+
+msgid "Customer statuses"
+msgstr "Statuts client"
+
+msgid "Codes of statuses already in use stay unchanged when you rename them."
+msgstr "Le code d’un statut déjà utilisé ne change pas quand vous le renommez."
+
+msgid "Status of new customers"
+msgstr "Statut des nouveaux clients"
+
+msgid "Allowed status changes"
+msgstr "Changements de statut autorisés"
+
+msgid "Dormant companies"
+msgstr "Entreprises dormantes"
+
+msgid "A client company with no counted order for this many days becomes dormant. Leave empty to disable."
+msgstr "Une entreprise cliente sans commande comptée depuis ce nombre de jours devient dormante. Laissez vide pour désactiver."
+
+msgid "Roles in the company"
+msgstr "Rôles dans l’entreprise"
+
+msgid "Lead sources"
+msgstr "Sources de lead"
+
+msgid "Save the CRM settings"
+msgstr "Enregistrer les réglages CRM"
+
+msgid "CRM settings"
+msgstr "Réglages CRM"
+
+msgid "CRM settings saved"
+msgstr "Réglages CRM enregistrés"
+
+msgid "Days without an order"
+msgstr "Jours sans commande"
+
+msgid "Status changed"
+msgstr "Statut modifié"
+
+msgid "Confirm"
+msgstr "Confirmer"
+
+msgid "Move to another company"
+msgstr "Déplacer vers une autre entreprise"
+
+msgid "Link to a company"
+msgstr "Rattacher à une entreprise"
+
+msgid "Move"
+msgstr "Déplacer"
+
+msgid "Link"
+msgstr "Rattacher"
+
+msgid "Company updated"
+msgstr "Entreprise mise à jour"
+
+msgid "Other groups"
+msgstr "Autres groupes"
+
+msgid "No other group."
+msgstr "Aucun autre groupe."
+
+msgid "Remove from the group"
+msgstr "Retirer du groupe"
+
+msgid "Add to a group"
+msgstr "Ajouter à un groupe"
+
+msgid "Unlink"
+msgstr "Détacher"
+
+msgid "Parent groups"
+msgstr "Groupes parents"
+
+msgid "Top-level group."
+msgstr "Groupe de premier niveau."
+
+msgid "Add another parent"
+msgstr "Ajouter un autre parent"
+
+msgid "Choose a parent"
+msgstr "Choisir un parent"
+
+msgid "Group linked"
+msgstr "Groupe rattaché"
+
+msgid "Sub-groups"
+msgstr "Sous-groupes"
+
+msgid "No sub-group."
+msgstr "Aucun sous-groupe."
+
+msgid "Deleting this group leaves its {count} sub-group(s) without this parent."
+msgstr "Supprimer ce groupe laissera ses {count} sous-groupe(s) sans ce parent."
+
+msgid "Filter by role"
+msgstr "Filtrer par rôle"
+
+msgid "All roles"
+msgstr "Tous les rôles"
+
+msgid "No contact with this role."
+msgstr "Aucun contact avec ce rôle."
+
+msgid "Only the first 200 contacts are listed."
+msgstr "Seuls les 200 premiers contacts sont affichés."
+
+msgid "Group tree"
+msgstr "Arborescence des groupes"
+
+msgid "No customer group yet."
+msgstr "Aucun groupe de clients pour l’instant."
+
+msgid "Company and groups"
+msgstr "Entreprise et groupes"
+
+msgid "Contacts and roles"
+msgstr "Contacts et rôles"
+
+msgid "Not set"
+msgstr "Non défini"
+
+msgid "Choose a company"
+msgstr "Choisir une entreprise"
+
+msgid "Write a note…"
+msgstr "Écrire une note…"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Add the note"
+msgstr "Ajouter la note"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "No note yet."
+msgstr "Aucune note pour l’instant."
+
+msgid "Pinned"
+msgstr "Épinglée"
+
+msgid "Unknown author"
+msgstr "Auteur inconnu"
+
+msgid "Unpin"
+msgstr "Désépingler"
+
+msgid "Pin"
+msgstr "Épingler"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Company created"
+msgstr "Entreprise créée"
+
+msgid "Details updated"
+msgstr "Informations modifiées"
+
+msgid "Type changed"
+msgstr "Type modifié"
+
+msgid "Linked under a group"
+msgstr "Rattachée à un groupe"
+
+msgid "Unlinked from a group"
+msgstr "Détachée d’un groupe"
+
+msgid "Contact added"
+msgstr "Contact ajouté"
+
+msgid "Contact removed"
+msgstr "Contact retiré"
+
+msgid "Address added"
+msgstr "Adresse ajoutée"
+
+msgid "Address updated"
+msgstr "Adresse modifiée"
+
+msgid "Address removed"
+msgstr "Adresse supprimée"
+
+msgid "Prospect / client status changed"
+msgstr "Passage prospect / client / dormant"
+
+msgid "Note added"
+msgstr "Note ajoutée"
+
+msgid "Follow-up added"
+msgstr "Relance ajoutée"
+
+msgid "Order assigned"
+msgstr "Commande rattachée"
+
+msgid "Nothing recorded yet."
+msgstr "Rien d’enregistré pour l’instant."
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid "Company journal"
+msgstr "Journal de l’entreprise"
+
+msgid "Follow-ups"
+msgstr "Relances"
+
+msgid "Colleagues"
+msgstr "Collègues"
+
+msgid "Write a note… (@ to mention a colleague)"
+msgstr "Écrire une note… (@ pour mentionner un collègue)"
+
+msgid "Add a follow-up"
+msgstr "Ajouter une relance"
+
+msgid "{author} mentioned you"
+msgstr "{author} vous a mentionné"
+
+msgid "Follow-up due today: {title}"
+msgstr "Relance du jour : {title}"
+
+msgid "CRM notifications"
+msgstr "Notifications CRM"
+
+msgid "Mark all as read"
+msgstr "Tout marquer comme lu"
+
+msgid "No notification."
+msgstr "Aucune notification."
+
+msgid "Add the follow-up"
+msgstr "Ajouter la relance"
+
+msgid "No follow-up."
+msgstr "Aucune relance."
+
+msgid "What to do"
+msgstr "À faire"
+
+msgid "Follow-up"
+msgstr "Relance"
+
+msgid "Due date"
+msgstr "Échéance"
+
+msgid "Done"
+msgstr "Fait"
+
+msgid "My follow-ups"
+msgstr "Mes relances"
+
+msgid "See all my follow-ups"
+msgstr "Voir toutes mes relances"
+
+msgid "Overdue"
+msgstr "En retard"
+
+msgid "Today"
+msgstr "Aujourd’hui"
+
+msgid "Upcoming"
+msgstr "À venir"
+
+msgid "Done recently"
+msgstr "Faites récemment"
+
+msgid "through a subsidiary"
+msgstr "via une filiale"
+
+msgid "Prospect"
+msgstr "Prospect"
+
+msgid "Client"
+msgstr "Client"
+
+msgid "Dormant"
+msgstr "Dormant"
+
+msgid "Revenue excl. tax"
+msgstr "CA HT"
+
+msgid "Revenue incl. tax"
+msgstr "CA TTC"
+
+msgid "Orders"
+msgstr "Commandes"
+
+msgid "Average order"
+msgstr "Panier moyen"
+
+msgid "Last counted order:"
+msgstr "Dernière commande comptée :"
+
+msgid "Order"
+msgstr "Commande"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Subsidiary"
+msgstr "Filiale"
+
+msgid "Contact"
+msgstr "Contact"
+
+msgid "State"
+msgstr "État"
+
+msgid "Total incl. tax"
+msgstr "Total TTC"
+
+msgid "No order in this period."
+msgstr "Aucune commande sur cette période."
+
+msgid "Show more"
+msgstr "Afficher plus"
+
+msgid "Period"
+msgstr "Période"
+
+msgid "Last 12 months"
+msgstr "12 derniers mois"
+
+msgid "This year"
+msgstr "Cette année"
+
+msgid "All time"
+msgstr "Depuis le début"
+
+msgid "All subsidiaries"
+msgstr "Toutes les filiales"
+
+msgid "All states"
+msgstr "Tous les états"
+
+msgid "All contacts"
+msgstr "Tous les contacts"
+
+msgid "Sales"
+msgstr "Ventes"
+
+msgid "The customer has no company."
+msgstr "Le client n’a pas d’entreprise."
+
+msgid "Pick a customer first."
+msgstr "Choisissez d’abord un client."
+
+msgid "Frozen when the order is placed."
+msgstr "Figée au passage de la commande."
+
+msgid "Sales rep"
+msgstr "Commercial"
+
+msgid "Not recorded"
+msgstr "Non renseigné"
+
+msgid "Change the company"
+msgstr "Changer l’entreprise"
+
+msgid "Change"
+msgstr "Changer"
+
+msgid "See the CRM block"
+msgstr "Voir le bloc CRM"
+
+msgid "Order for a company"
+msgstr "Commande pour une entreprise"
+
+msgid "This company has no contact yet."
+msgstr "Cette entreprise n’a pas encore de contact."
+
+msgid "Company addresses"
+msgstr "Adresses de l’entreprise"
+
+msgid "For delivery"
+msgstr "Pour la livraison"
+
+msgid "For billing"
+msgstr "Pour la facturation"
+
+msgid "Choose"
+msgstr "Choisir"
+
+msgid "Choose the contact"
+msgstr "Choisir le contact"
+
+msgid "Delivery address set"
+msgstr "Adresse de livraison appliquée"
+
+msgid "Billing address set"
+msgstr "Adresse de facturation appliquée"
+
+msgid "Default delivery address"
+msgstr "Adresse de livraison par défaut"
+
+msgid "Default billing address"
+msgstr "Adresse de facturation par défaut"
+
+msgid "No address yet."
+msgstr "Aucune adresse pour l’instant."
+
+msgid "default delivery"
+msgstr "livraison par défaut"
+
+msgid "default billing"
+msgstr "facturation par défaut"
+
+msgid "Add an address"
+msgstr "Ajouter une adresse"
+
+msgid "Use"
+msgstr "Usage"
+
+msgid "Name of the address (e.g. Main warehouse)"
+msgstr "Nom de l’adresse (ex. Entrepôt principal)"
+
+msgid "Recipient"
+msgstr "Destinataire"
+
+msgid "Company name"
+msgstr "Raison sociale"
+
+msgid "Street"
+msgstr "Rue"
+
+msgid "Street (line 2)"
+msgstr "Complément d’adresse"
+
+msgid "Postal code"
+msgstr "Code postal"
+
+msgid "City"
+msgstr "Ville"
+
+msgid "Country code (FR)"
+msgstr "Code pays (FR)"
+
+msgid "Phone"
+msgstr "Téléphone"
+
+msgid "Address saved"
+msgstr "Adresse enregistrée"
+
+msgid "Head office"
+msgstr "Siège"
+
+msgid "Delivery"
+msgstr "Livraison"
+
+msgid "Billing"
+msgstr "Facturation"
+
+msgid "Addresses"
+msgstr "Adresses"
+
+msgid "order(s)"
+msgstr "commande(s)"
+
+msgid "Merge into the selected customer"
+msgstr "Fusionner dans le client sélectionné"
+
+msgid "CRM audit"
+msgstr "Audit CRM"
+
+msgid "Duplicate e-mails"
+msgstr "E-mails en double"
+
+msgid "No duplicate."
+msgstr "Aucun doublon."
+
+msgid "Customers in several companies"
+msgstr "Clients dans plusieurs entreprises"
+
+msgid "None: each customer has one company at most."
+msgstr "Aucun : chaque client a une entreprise au plus."
+
+msgid "Customers merged"
+msgstr "Clients fusionnés"
+
+msgid "No customer or group has this code."
+msgstr "Aucun client ni groupe n’a ce code."
+
+msgid "CRM code"
+msgstr "Code CRM"
+
+msgid "Similar company:"
+msgstr "Entreprise ressemblante :"
+
+msgid "The e-mail is checked against existing customers as you type."
+msgstr "L’e-mail est comparé aux clients existants pendant la saisie."
+
+msgid "This e-mail already belongs to"
+msgstr "Cet e-mail appartient déjà à"
+
+msgid "Duplicate check"
+msgstr "Vérification des doublons"
+
+msgid "No result."
+msgstr "Aucun résultat."
+
+msgid "Customers"
+msgstr "Clients"
+
+msgid "Groups and companies"
+msgstr "Groupes et entreprises"
+
+msgid "Search the CRM…"
+msgstr "Rechercher dans le CRM…"
+
+msgid "Search the CRM"
+msgstr "Rechercher dans le CRM"
+
+msgid "Duplicate merged"
+msgstr "Doublon fusionné"
+
+msgid "Merged from {code} ({email})"
+msgstr "Fusionné depuis {code} ({email})"

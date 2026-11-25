@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditLogPlugin } from '../../plugins/audit-log-plugin/audit-log.plugin';
 import { CmsPlugin } from '../../plugins/cms-plugin/cms.plugin';
 import { ContentI18nPlugin } from '../../plugins/content-i18n/content-i18n.plugin';
+import { CrmPlugin } from '../../plugins/crm-plugin/crm.plugin';
 import { DiagnosticsPlugin } from '../../plugins/diagnostics-plugin/diagnostics.plugin';
 import { MenataBrandingPlugin } from '../../plugins/menata-branding/menata-branding.plugin';
 
@@ -19,6 +20,7 @@ describe('All Menata plugins together', () => {
             AuditLogPlugin.init({ retentionDays: 90 }),
             CmsPlugin,
             ContentI18nPlugin,
+            CrmPlugin,
             DiagnosticsPlugin.init({ apiBaseUrl: 'http://127.0.0.1:9', apiKey: 'k', clientId: 'c' }),
             MenataBrandingPlugin,
         ],

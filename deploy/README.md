@@ -13,7 +13,7 @@ source of truth, no duplication).
 
 | File | Purpose |
 |------|---------|
-| `package.json` | Only the `@vendure/*` packages actually used, pinned to `~3.7.3` (auto-tracks upstream patches). Sentry comes from `@vendure-community/sentry-plugin` (removed from core in 3.7). |
+| `package.json` | Only the `@vendure/*` packages actually used, pinned to `~3.8.2` (auto-tracks upstream patches). Sentry comes from `@vendure-community/sentry-plugin` (removed from core in 3.7), with `@sentry/*` forced to v11 via `overrides` (see below). |
 | `vendure-config.ts` | Production config, fully env-driven. Exports `config: VendureConfig`. |
 | `index.ts` / `index-worker.ts` | API server / worker bootstraps (run via `ts-node`). |
 | `vite.config.mts` | Builds the dashboard SPA (with the 5 plugin extensions) into `./dist`. |
@@ -100,8 +100,13 @@ build installs the exact versions tested locally (no surprise transitive drift).
 To pull in upstream updates:
 
 1. Pull upstream into the monorepo as usual.
-2. If the major/minor changed (e.g. 3.7 → 3.8), bump the `~3.7.3` ranges in
-   `deploy/package.json` to `~3.8.0`.
+2. If the major/minor changed (e.g. 3.7 → 3.8), bump the `~3.8.2` ranges in
+   `deploy/package.json` (e.g. to `~3.9.0`). After the install, check that only one
+   NestJS copy exists (`find node_modules -path "*node_modules/@nestjs/core/package.json"`):
+   npm can keep the previous minor's `@nestjs/*` hoisted at the root, so plugins in
+   `../plugins` resolve a different Nest than `@vendure/core`. If so, delete the
+   `node_modules/@nestjs/*` entries from `package-lock.json` and `node_modules/@nestjs`,
+   then reinstall. Also delete `e2e/__data__` (cached seed DB from the old schema).
 3. Refresh the lockfile **inside the builder image**, then commit the updated
    `package-lock.json` (the deliberate "take the update" step). A lock written by npm
    on Windows can fail the container's `npm ci` ("lock file ... does not satisfy"):
@@ -126,7 +131,11 @@ To pull in upstream updates:
 > family to the exact versions upstream Vendure 3.7.3 locks in its `bun.lock`
 > (react-router 1.168.1). 1.170.x also breaks the dashboard **dev** server (blank page
 > after login: a replaced router is never loaded). When bumping Vendure, copy the
-> versions from the monorepo `bun.lock`.
+> versions from the monorepo `bun.lock` (ranges unchanged between 3.7.4 and 3.8.2).
+>
+> `@sentry/nestjs` and `@sentry/profiling-node` are forced to v11: sentry-plugin 1.0.0
+> depends on `@sentry/nestjs` ^10, which peers NestJS <=11, while Vendure 3.8 runs on
+> NestJS 12. Drop these two overrides once the plugin ships a NestJS 12 release.
 
 ## Notes
 - DB stays MariaDB/MySQL per request. Vendure recommends PostgreSQL; switch any
