@@ -15,7 +15,8 @@ copy of its `plugins/` and `deploy/` folders, kept in sync with the command belo
 | `plugins/audit-log-plugin` | `AuditLogPlugin.init({ retentionDays })` |
 | `plugins/content-i18n` | `ContentI18nPlugin`, translations on Vendure's native system (language switcher, progress, legacy migration). Keep it next to `cms-plugin`, which imports from it |
 | `plugins/diagnostics-plugin` | `DiagnosticsPlugin.init({ ... })`, Menata web diagnostic |
-| `deploy/` | Minimal Vendure app wiring all 5 plugins: config, Dockerfile, dashboard build, e2e test harness |
+| `plugins/crm-plugin` | `CrmPlugin`, CRM on customers, groups and orders (companies, notes, follow-ups, duplicates). Needs Vendure 3.7.4+ |
+| `deploy/` | Minimal Vendure app wiring all 6 plugins: config, Dockerfile, dashboard build, e2e test harness |
 
 Each plugin folder has its own README with its options.
 
@@ -26,7 +27,7 @@ Each plugin folder has its own README with its options.
    Everything else they import comes with `@vendure/core` and `@vendure/dashboard`.
 3. Register them in `vendure-config.ts` (see `deploy/vendure-config.ts` for a working example).
 4. Rebuild the dashboard (`vite build`) since every plugin ships a dashboard extension.
-5. Generate and run a DB migration: `cms` and `audit-log` add entities. Coming from `translation-plugin`: run `npm run migrate:translations` (see `plugins/content-i18n/README.md`).
+5. Generate and run a DB migration: `cms`, `audit-log` and `crm` add entities and custom fields. Coming from `translation-plugin`: run `npm run migrate:translations` (see `plugins/content-i18n/README.md`).
 
 Or pull the whole folder into another git repo:
 
