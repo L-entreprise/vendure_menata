@@ -3,6 +3,7 @@ import {
     Address,
     Customer,
     CustomerGroupService,
+    CustomerHistoryEntry,
     CustomerService,
     HistoryService,
     ID,
@@ -14,7 +15,6 @@ import {
 
 import { crmCode } from '../common/crm-codes';
 import { CrmRuleError } from '../common/crm-errors';
-import { CustomerHistoryEntry, customerHistoryEntity } from '../common/history-entities';
 import { CUSTOMER_MERGED } from '../common/history-types';
 import { CrmTask } from '../entities/crm-task.entity';
 
@@ -53,7 +53,7 @@ export class MergeService {
             .getRepository(ctx, Order)
             .update({ customerId: source.id, active: false }, { customerId: target.id });
         await this.moveAddresses(ctx, source.id, target.id);
-        await this.reassign(ctx, customerHistoryEntity(this.connection), source.id, target.id);
+        await this.reassign(ctx, CustomerHistoryEntry, source.id, target.id);
         await this.connection.getRepository(ctx, CrmTask).update({ customerId: source.id }, { customerId: target.id });
         await this.moveGroups(ctx, source, target);
 
@@ -102,7 +102,7 @@ export class MergeService {
     }
 
     /** Entities that only expose the `customer` relation (no customerId column property). */
-    private async reassign(ctx: RequestContext, entity: new () => CustomerHistoryEntry, fromId: ID, toId: ID) {
+    private async reassign(ctx: RequestContext, entity: typeof CustomerHistoryEntry, fromId: ID, toId: ID) {
         const repository = this.connection.getRepository(ctx, entity);
         const rows = await repository.find({ where: { customer: { id: fromId } } });
         for (const row of rows) {

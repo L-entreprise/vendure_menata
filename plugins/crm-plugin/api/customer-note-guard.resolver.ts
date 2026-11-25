@@ -10,6 +10,7 @@ import {
 import {
     Allow,
     Ctx,
+    CustomerHistoryEntry,
     CustomerService,
     ID,
     OrderService,
@@ -19,7 +20,6 @@ import {
 } from '@vendure/core';
 
 import { CrmRuleError } from '../common/crm-errors';
-import { customerHistoryEntity } from '../common/history-entities';
 import { NoteOwnershipService } from '../services/note-ownership.service';
 
 /**
@@ -73,13 +73,12 @@ export class CustomerNoteGuardResolver {
     @Mutation()
     @Allow(Permission.UpdateCustomer)
     async setCustomerNotePinned(@Ctx() ctx: RequestContext, @Args() args: { noteId: ID; pinned: boolean }) {
-        const entity = customerHistoryEntity(this.connection);
-        const note = await this.connection.getEntityOrThrow(ctx, entity, args.noteId);
+        const note = await this.connection.getEntityOrThrow(ctx, CustomerHistoryEntry, args.noteId);
         if (note.type !== HistoryEntryType.CUSTOMER_NOTE) {
             throw new CrmRuleError('crm-pin-not-a-note');
         }
         // Only the pinned column is written: other custom fields keep their current value.
-        await this.connection.getRepository(ctx, entity).update({ id: note.id }, { customFields: { pinned: args.pinned } } as any);
-        return this.connection.getEntityOrThrow(ctx, entity, note.id);
+        await this.connection.getRepository(ctx, CustomerHistoryEntry).update({ id: note.id }, { customFields: { pinned: args.pinned } } as any);
+        return this.connection.getEntityOrThrow(ctx, CustomerHistoryEntry, note.id);
     }
 }

@@ -31,23 +31,16 @@ renamed argument or a new native entry point would bypass a rule silently.
 
 ## Compatibility
 
-- Declared `compatibility: '^3.6.0'`: the dashboard extension needs 3.6.0 (toolbar items and
-  `NativeSelect` first ship there). The server part also passes its e2e specs on 3.5.3; history
-  entry classes are resolved from TypeORM metadata because Vendure only exports them by name
-  since 3.7.4. Vendure checks the range with `includePrerelease`, so 3.x pre-releases load.
-- Verified on Vendure 3.6.0, 3.7.4, 3.8.2 and the 3.9 pre-release (e2e, `tsc`, dashboard build),
-  plus a dashboard smoke run on 3.6.0. On 3.6 the CRM screens show their English texts (the
-  French catalogue of the extension is not applied there); field labels stay translated.
-- 3.6.0 installed today pulls `@tanstack/router-plugin` 1.169, which cannot read Vendure 3.6's own
-  route files (dashboard dev server broken, unrelated to this plugin). Keep a lockfile from the
-  release period or upgrade Vendure.
+- Declared `compatibility: '^3.7.4'` (Vendure exports `CustomerHistoryEntry` / `OrderHistoryEntry`
+  by name since 3.7.4). Vendure checks the range with `includePrerelease`, so 3.x pre-releases load.
+- Verified on Vendure 3.7.4, 3.8.2 and the 3.9 pre-release (e2e, `tsc`, dashboard build).
 - No change to any `@vendure/*` package: everything is plugin code, native mutations are only
   redeclared through the plugin API.
 - SQL is portable across Postgres, MySQL / MariaDB and SQLite (no `||` concatenation, no
   `ESCAPE` clause, no database-specific functions beyond `LOWER` / `TRIM`). The CRM specs pass
   on SQLite (CI), PostgreSQL 16 and MariaDB 11 (run by hand on throwaway containers).
 - The company and sales rep of an order are frozen inside the transaction that places it
-  (blocking `OrderPlacedEvent` handler, Vendure 2.2+); an application error there is logged
+  (blocking `OrderPlacedEvent` handler); an application error there is logged
   and does not block the sale. Lifecycle refreshes run after commit.
 
 ## Permissions
