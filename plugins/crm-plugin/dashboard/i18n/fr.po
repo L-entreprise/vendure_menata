@@ -615,3 +615,34 @@ msgstr "Doublon fusionné"
 
 msgid "Merged from {code} ({email})"
 msgstr "Fusionné depuis {code} ({email})"
+
+#. Delete confirmations (MENAT-41)
+msgid "Remove from the group?"
+msgstr "Retirer du groupe ?"
+
+msgid "The customer leaves the group \"{0}\". You can add them back later."
+msgstr "Le client quitte le groupe « {0} ». Vous pourrez l'y rajouter plus tard."
+
+msgid "Unlink from this parent group?"
+msgstr "Détacher de ce groupe parent ?"
+
+msgid "\"{0}\" is no longer a child of \"{1}\". You can link it again later."
+msgstr "« {0} » n'est plus rattaché à « {1} ». Vous pourrez le rattacher à nouveau plus tard."
+
+msgid "Delete this address?"
+msgstr "Supprimer cette adresse ?"
+
+msgid "The address is removed from the group for good. This cannot be undone."
+msgstr "L'adresse est définitivement retirée du groupe. Cette action est irréversible."
+
+msgid "Delete this note?"
+msgstr "Supprimer cette note ?"
+
+msgid "The note is removed for good. This cannot be undone."
+msgstr "La note est définitivement supprimée. Cette action est irréversible."
+
+msgid "Delete this follow-up?"
+msgstr "Supprimer cette relance ?"
+
+msgid "The follow-up \"{0}\" is removed for good. This cannot be undone."
+msgstr "La relance « {0} » est définitivement supprimée. Cette action est irréversible."

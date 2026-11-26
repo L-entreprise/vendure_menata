@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { OriginalHint } from '../../content-i18n/dashboard/original-hint';
 import { TranslatingNotice } from '../../content-i18n/dashboard/translating-notice';
 import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
+import { isExclusiveToggle } from '../services/exclusive-fields';
 import { HelpText } from './cms-help-text';
 import { blockLabel, entryDataForLanguage } from './cms-language';
 
@@ -359,12 +360,19 @@ function CollectionEntryPage({ route }: { route: any }) {
                 );
             case 'BOOLEAN':
                 return (
-                    <div key={block.key} className="flex items-center gap-3">
-                        <Switch
-                            checked={!!value}
-                            onCheckedChange={checked => setFormData(prev => ({ ...prev, [block.key]: checked }))}
-                        />
-                        <label className="text-sm font-medium">{fieldLabel}</label>
+                    <div key={block.key}>
+                        <div className="flex items-center gap-3">
+                            <Switch
+                                checked={!!value}
+                                onCheckedChange={checked => setFormData(prev => ({ ...prev, [block.key]: checked }))}
+                            />
+                            <label className="text-sm font-medium">{fieldLabel}</label>
+                        </div>
+                        {isExclusiveToggle(block) && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                <Trans>Only one entry can have this on: saving it on turns it off on the other entries.</Trans>
+                            </p>
+                        )}
                     </div>
                 );
             case 'NUMBER':

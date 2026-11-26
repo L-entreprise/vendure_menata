@@ -371,6 +371,15 @@ These optional `ContentBlock.metadata` keys only affect the dashboard (the Shop 
 | `sectionCollapsed` | boolean | The field's panel starts closed |
 | `help` | string | Line under the field. `[label](/products)` links to a dashboard route, `[label](https://…)` opens outside, other targets stay text |
 
+### Exclusive toggles in collections
+
+A `BOOLEAN` field of a collection schema with `metadata.exclusive: true` (SuperAdmin option "One entry at a time")
+may be on for one entry only, e.g. a "featured" flag. When `createCollectionEntry` / `updateCollectionEntry` saves an
+entry with that field `true`, the server sets it to `false` on every other entry of the collection in the same channel,
+in the same transaction (one `CollectionEntryUpdated` audit line per entry changed, `reason: "exclusive"`). Saving the
+field off changes nothing else. Flagging an existing field does not clean up entries that are already on: the next
+entry saved on wins, and from then on at most one entry has the field `true`.
+
 ---
 
 ## Existing Test Data

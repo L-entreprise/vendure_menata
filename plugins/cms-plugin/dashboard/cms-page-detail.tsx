@@ -46,7 +46,7 @@ import { toast } from 'sonner';
 import { TranslatingNotice } from '../../content-i18n/dashboard/translating-notice';
 import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
 import { BlockValueEditor } from './cms-block-editors';
-import { BlockLayoutFields } from './cms-block-layout-fields';
+import { BlockLayoutFields, ExclusiveToggleField } from './cms-block-layout-fields';
 import { BlockSections } from './cms-block-sections';
 import { getDefaultMetadata, resolveBlockEnabled } from './cms-block-utils';
 import { ChildPageTab } from './cms-child-page-tab';
@@ -496,6 +496,9 @@ function CmsPageDetailPage({ route }: { route: any }) {
                                                             )}
                                                         </div>
                                                         <BlockLayoutFields block={block} index={index} onMetadataChange={updateBlockMetadata} helpOnly />
+                                                        {isCollectionPage && isSuperAdmin && block.type === 'BOOLEAN' && (
+                                                            <ExclusiveToggleField block={block} index={index} onMetadataChange={updateBlockMetadata} />
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

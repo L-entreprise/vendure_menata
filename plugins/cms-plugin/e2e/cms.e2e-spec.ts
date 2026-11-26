@@ -47,6 +47,7 @@ const FORM_SUBMISSIONS = gql`
         formSubmissions(pageId: $pageId) {
             totalItems
             items {
+                id
                 data
             }
         }
@@ -56,6 +57,15 @@ const FORM_SUBMISSIONS = gql`
 const CREATE_ENTRY = gql`
     mutation CreateCollectionEntry($input: CreateCollectionEntryInput!) {
         createCollectionEntry(input: $input) {
+            id
+            data
+        }
+    }
+`;
+
+const UPDATE_ENTRY = gql`
+    mutation UpdateCollectionEntry($input: UpdateCollectionEntryInput!) {
+        updateCollectionEntry(input: $input) {
             id
             data
         }
@@ -257,6 +267,64 @@ describe('CmsPlugin', () => {
                     input: { pageId: blogPageId, data: { unknown: 'x' } },
                 }),
             ).rejects.toThrow('Unknown field: unknown');
+        });
+
+        describe('exclusive toggle', () => {
+            let newsPageId: string;
+
+            const featuredFlags = async () => {
+                const { formSubmissions } = await adminClient.query(FORM_SUBMISSIONS, { pageId: newsPageId });
+                return Object.fromEntries(formSubmissions.items.map((e: any) => [e.data.title, e.data.featured]));
+            };
+
+            beforeAll(async () => {
+                const { createCmsPage } = await adminClient.query(CREATE_PAGE, {
+                    input: pageInput('news', {
+                        isCollection: true,
+                        contentBlocks: [
+                            { key: 'title', type: 'TEXT_SHORT', position: 0 },
+                            { key: 'featured', type: 'BOOLEAN', position: 1, metadata: { exclusive: true } },
+                            { key: 'pinned', type: 'BOOLEAN', position: 2 },
+                        ],
+                    }),
+                });
+                newsPageId = createCmsPage.id;
+            });
+
+            it('turns the field off on the other entries when one entry turns it on', async () => {
+                await adminClient.query(CREATE_ENTRY, {
+                    input: { pageId: newsPageId, data: { title: 'A', featured: true, pinned: true } },
+                });
+                const { createCollectionEntry: b } = await adminClient.query(CREATE_ENTRY, {
+                    input: { pageId: newsPageId, data: { title: 'B', featured: false, pinned: true } },
+                });
+                expect(await featuredFlags()).toEqual({ A: true, B: false });
+
+                await adminClient.query(UPDATE_ENTRY, {
+                    input: { id: b.id, data: { title: 'B', featured: true, pinned: true } },
+                });
+                expect(await featuredFlags()).toEqual({ A: false, B: true });
+
+                await adminClient.query(CREATE_ENTRY, {
+                    input: { pageId: newsPageId, data: { title: 'C', featured: true } },
+                });
+                expect(await featuredFlags()).toEqual({ A: false, B: false, C: true });
+            });
+
+            it('leaves a non-exclusive toggle on for several entries', async () => {
+                const { formSubmissions } = await adminClient.query(FORM_SUBMISSIONS, { pageId: newsPageId });
+                const pinned = formSubmissions.items.filter((e: any) => e.data.pinned === true);
+                expect(pinned).toHaveLength(2);
+            });
+
+            it('keeps the other entries as they are when the field is saved off', async () => {
+                const { formSubmissions } = await adminClient.query(FORM_SUBMISSIONS, { pageId: newsPageId });
+                const entryA = formSubmissions.items.find((e: any) => e.data.title === 'A');
+                await adminClient.query(UPDATE_ENTRY, {
+                    input: { id: entryA.id, data: { ...entryA.data, featured: false } },
+                });
+                expect(await featuredFlags()).toEqual({ A: false, B: false, C: true });
+            });
         });
     });
 });

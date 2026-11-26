@@ -615,3 +615,34 @@ msgstr "Duplicate merged"
 
 msgid "Merged from {code} ({email})"
 msgstr "Merged from {code} ({email})"
+
+#. Delete confirmations (MENAT-41)
+msgid "Remove from the group?"
+msgstr "Remove from the group?"
+
+msgid "The customer leaves the group \"{0}\". You can add them back later."
+msgstr "The customer leaves the group \"{0}\". You can add them back later."
+
+msgid "Unlink from this parent group?"
+msgstr "Unlink from this parent group?"
+
+msgid "\"{0}\" is no longer a child of \"{1}\". You can link it again later."
+msgstr "\"{0}\" is no longer a child of \"{1}\". You can link it again later."
+
+msgid "Delete this address?"
+msgstr "Delete this address?"
+
+msgid "The address is removed from the group for good. This cannot be undone."
+msgstr "The address is removed from the group for good. This cannot be undone."
+
+msgid "Delete this note?"
+msgstr "Delete this note?"
+
+msgid "The note is removed for good. This cannot be undone."
+msgstr "The note is removed for good. This cannot be undone."
+
+msgid "Delete this follow-up?"
+msgstr "Delete this follow-up?"
+
+msgid "The follow-up \"{0}\" is removed for good. This cannot be undone."
+msgstr "The follow-up \"{0}\" is removed for good. This cannot be undone."

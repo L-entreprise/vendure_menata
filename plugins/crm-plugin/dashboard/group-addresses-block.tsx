@@ -3,7 +3,7 @@ import { MessageDescriptor } from '@lingui/core';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { api, Button, Checkbox, Input, NativeSelect, NativeSelectOption, PageContextValue, usePermissions } from '@vendure/dashboard';
+import { api, Button, Checkbox, ConfirmationDialog, Input, NativeSelect, NativeSelectOption, PageContextValue, usePermissions } from '@vendure/dashboard';
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -135,7 +135,14 @@ export function GroupAddressesBlock({ context }: Readonly<{ context: PageContext
                                 {canEdit && (
                                     <span className="flex shrink-0">
                                         <Button variant="ghost" size="icon" aria-label={t`Edit`} onClick={() => setEditing(address.id)}><PencilIcon /></Button>
-                                        <Button variant="ghost" size="icon" aria-label={t`Delete`} disabled={pending} onClick={() => run(() => api.mutate(deleteDocument, { id: address.id }))}><Trash2Icon /></Button>
+                                        <ConfirmationDialog
+                                            title={t`Delete this address?`}
+                                            description={t`The address is removed from the group for good. This cannot be undone.`}
+                                            confirmText={t`Delete`}
+                                            onConfirm={() => run(() => api.mutate(deleteDocument, { id: address.id }))}
+                                        >
+                                            <Button variant="ghost" size="icon" aria-label={t`Delete`} disabled={pending}><Trash2Icon /></Button>
+                                        </ConfirmationDialog>
                                     </span>
                                 )}
                             </div>
