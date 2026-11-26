@@ -10,6 +10,7 @@ import {
     Card,
     CardContent,
     CardHeader,
+    ConfirmationDialog,
     DataTable,
     PageBlockContext,
 } from '@vendure/dashboard';
@@ -105,9 +106,13 @@ export function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pa
     }, [loadSubmissions]);
 
     const handleDelete = async (id: string) => {
-        await api.mutate(deleteFormSubmissionDocument, { id });
-        toast.success(t`Submission deleted`);
-        loadSubmissions();
+        try {
+            await api.mutate(deleteFormSubmissionDocument, { id });
+            toast.success(t`Submission deleted`);
+            loadSubmissions();
+        } catch (e: any) {
+            toast.error(t`Could not delete the submission`, { description: e?.message || t`Unknown error` });
+        }
     };
 
     const handleCreateCustomer = async (submissionId: string) => {
@@ -183,9 +188,16 @@ export function SubmissionsPanel({ pageId, schema, allowCustomerCreation }: { pa
                         <Button variant="ghost" size="sm" render={<Link to={`/cms-pages/${pageId}/submissions/${sub.id}`} />}>
                             <EyeIcon className="h-3.5 w-3.5" />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(sub.id)}>
-                            <TrashIcon className="h-3.5 w-3.5" />
-                        </Button>
+                        <ConfirmationDialog
+                            title={t`Delete this submission?`}
+                            description={t`The submission and the data it holds are removed for good. This cannot be undone.`}
+                            confirmText={t`Delete`}
+                            onConfirm={() => handleDelete(sub.id)}
+                        >
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" aria-label={t`Delete`}>
+                                <TrashIcon className="h-3.5 w-3.5" />
+                            </Button>
+                        </ConfirmationDialog>
                     </div>
                 );
             },

@@ -1,5 +1,5 @@
 import { Trans, useLingui } from '@lingui/react/macro';
-import { Button } from '@vendure/dashboard';
+import { Button, ConfirmationDialog } from '@vendure/dashboard';
 import { BellPlusIcon, PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -97,9 +97,16 @@ export function NotesList({ notes, actions, canWrite, canDeleteAny, pending, fol
                                     </Button>
                                 )}
                                 {(note.isMine || canDeleteAny) && (
-                                    <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Delete`} onClick={() => actions.remove(note.id)}>
-                                        <Trash2Icon />
-                                    </Button>
+                                    <ConfirmationDialog
+                                        title={t`Delete this note?`}
+                                        description={t`The note is removed for good. This cannot be undone.`}
+                                        confirmText={t`Delete`}
+                                        onConfirm={() => actions.remove(note.id)}
+                                    >
+                                        <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Delete`}>
+                                            <Trash2Icon />
+                                        </Button>
+                                    </ConfirmationDialog>
                                 )}
                             </span>
                         </div>

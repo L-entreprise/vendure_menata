@@ -1,6 +1,37 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Input, Switch, Textarea } from '@vendure/dashboard';
 
+import { EXCLUSIVE_METADATA_KEY } from '../services/exclusive-fields';
+
+/**
+ * Super-admin option of a collection's BOOLEAN field: only one entry may have it on
+ * (e.g. "featured"). The server turns it off on the other entries when one turns it on.
+ */
+export function ExclusiveToggleField({
+    block,
+    index,
+    onMetadataChange,
+}: {
+    block: any;
+    index: number;
+    onMetadataChange: (index: number, key: string, value: any) => void;
+}) {
+    return (
+        <label className="flex items-start gap-2 text-sm">
+            <Switch
+                checked={block.metadata?.[EXCLUSIVE_METADATA_KEY] === true}
+                onCheckedChange={checked => onMetadataChange(index, EXCLUSIVE_METADATA_KEY, checked)}
+            />
+            <span>
+                <span className="font-medium"><Trans>One entry at a time</Trans></span>
+                <span className="block text-muted-foreground">
+                    <Trans>Turning it on for an entry turns it off on all the other entries.</Trans>
+                </span>
+            </span>
+        </label>
+    );
+}
+
 /**
  * Expert-mode inputs for how a field is presented to the client, stored in the block's
  * `metadata`: its section (panel), whether that section starts collapsed, and a help

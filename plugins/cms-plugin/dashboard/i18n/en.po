@@ -499,3 +499,35 @@ msgstr "Translations cleared"
 
 msgid "Could not clear the translations"
 msgstr "Could not clear the translations"
+
+#. Delete confirmations (MENAT-41)
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Delete this entry?"
+msgstr "Delete this entry?"
+
+msgid "The entry is removed from the collection for good. This cannot be undone."
+msgstr "The entry is removed from the collection for good. This cannot be undone."
+
+msgid "Could not delete the entry"
+msgstr "Could not delete the entry"
+
+msgid "Delete this submission?"
+msgstr "Delete this submission?"
+
+msgid "The submission and the data it holds are removed for good. This cannot be undone."
+msgstr "The submission and the data it holds are removed for good. This cannot be undone."
+
+msgid "Could not delete the submission"
+msgstr "Could not delete the submission"
+
+#. Exclusive toggle (MENAT-42)
+msgid "One entry at a time"
+msgstr "One entry at a time"
+
+msgid "Turning it on for an entry turns it off on all the other entries."
+msgstr "Turning it on for an entry turns it off on all the other entries."
+
+msgid "Only one entry can have this on: saving it on turns it off on the other entries."
+msgstr "Only one entry can have this on: saving it on turns it off on the other entries."

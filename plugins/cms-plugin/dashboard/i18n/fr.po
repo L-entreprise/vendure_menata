@@ -513,3 +513,35 @@ msgstr "Traductions effacées"
 
 msgid "Could not clear the translations"
 msgstr "Impossible d'effacer les traductions"
+
+#. Delete confirmations (MENAT-41)
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Delete this entry?"
+msgstr "Supprimer cette entrée ?"
+
+msgid "The entry is removed from the collection for good. This cannot be undone."
+msgstr "L'entrée est définitivement retirée de la collection. Cette action est irréversible."
+
+msgid "Could not delete the entry"
+msgstr "Impossible de supprimer l'entrée"
+
+msgid "Delete this submission?"
+msgstr "Supprimer cette soumission ?"
+
+msgid "The submission and the data it holds are removed for good. This cannot be undone."
+msgstr "La soumission et les données qu'elle contient sont définitivement supprimées. Cette action est irréversible."
+
+msgid "Could not delete the submission"
+msgstr "Impossible de supprimer la soumission"
+
+#. Exclusive toggle (MENAT-42)
+msgid "One entry at a time"
+msgstr "Une seule entrée à la fois"
+
+msgid "Turning it on for an entry turns it off on all the other entries."
+msgstr "L'activer sur une entrée le désactive sur toutes les autres."
+
+msgid "Only one entry can have this on: saving it on turns it off on the other entries."
+msgstr "Une seule entrée peut l'avoir activé : l'enregistrer activé le désactive sur les autres entrées."

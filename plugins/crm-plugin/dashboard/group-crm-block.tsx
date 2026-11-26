@@ -2,7 +2,7 @@ import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { api, Button, PageContextValue, usePermissions } from '@vendure/dashboard';
+import { api, Button, ConfirmationDialog, PageContextValue, usePermissions } from '@vendure/dashboard';
 import { XIcon } from 'lucide-react';
 
 import { CRM_ADMIN_PERMISSION } from './constants';
@@ -108,10 +108,16 @@ export function GroupCrmBlock({ context }: Readonly<{ context: PageContextValue 
                         <li key={parent.id} className="flex items-center justify-between gap-2">
                             <GroupLink group={parent} />
                             {isAdmin && (
-                                <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Unlink`}
-                                    onClick={() => run(() => api.mutate(removeParentDocument, { childId: group.id, parentId: parent.id }))}>
-                                    <XIcon />
-                                </Button>
+                                <ConfirmationDialog
+                                    title={t`Unlink from this parent group?`}
+                                    description={t`"${group.name}" is no longer a child of "${parent.name}". You can link it again later.`}
+                                    confirmText={t`Unlink`}
+                                    onConfirm={() => run(() => api.mutate(removeParentDocument, { childId: group.id, parentId: parent.id }))}
+                                >
+                                    <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Unlink`}>
+                                        <XIcon />
+                                    </Button>
+                                </ConfirmationDialog>
                             )}
                         </li>
                     ))}

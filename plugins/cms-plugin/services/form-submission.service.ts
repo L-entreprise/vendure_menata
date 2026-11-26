@@ -17,6 +17,7 @@ import { CmsPage } from '../entities/cms-page.entity';
 import { FormSubmissionTranslation } from '../entities/form-submission-translation.entity';
 import { FormSubmission } from '../entities/form-submission.entity';
 import { channelDefaultLanguage } from './channel-languages';
+import { exclusiveKeysTurnedOn, turnOffKeys } from './exclusive-fields';
 import { mergeEntryData, pickTranslation, pruneEntryTranslation, splitEntryData } from './localize';
 
 const MAX_FIELDS = 50;
@@ -258,6 +259,7 @@ export class FormSubmissionService {
         submission.data = input.data;
         await this.channelService.assignToCurrentChannel(submission, ctx);
         const saved = await this.connection.getRepository(ctx, FormSubmission).save(submission);
+        await this.releaseExclusiveFields(ctx, saved, blocks, page.key);
         this.auditLogService?.log(ctx, {
             action: 'CollectionEntryCreated',
             category: 'cms',
@@ -293,6 +295,7 @@ export class FormSubmissionService {
                   .getRepository(ctx, FormSubmission)
                   .save(Object.assign(new FormSubmission(), submission, { data: input.data }))
             : await this.saveEntryTranslation(ctx, submission, blocks, input.data);
+        await this.releaseExclusiveFields(ctx, saved, blocks, page.key);
         const changes: Record<string, { from: unknown; to: unknown }> = {};
         for (const key of Object.keys(input.data)) {
             if (JSON.stringify(oldData[key]) !== JSON.stringify(input.data[key])) {
@@ -312,6 +315,51 @@ export class FormSubmissionService {
             },
         }).catch(() => {});
         return saved;
+    }
+
+    /**
+     * Turns the exclusive toggles that `saved` has on off on the other entries of its
+     * collection (same channel). Runs in the caller's transaction, so the entry save
+     * and the release succeed or fail together. Collections are small editorial lists,
+     * so the entries are loaded and filtered here rather than with a per-DB JSON query.
+     */
+    private async releaseExclusiveFields(
+        ctx: RequestContext,
+        saved: FormSubmission,
+        blocks: ContentBlock[],
+        pageKey: string,
+    ): Promise<void> {
+        const keys = exclusiveKeysTurnedOn(blocks, saved.data);
+        if (keys.length === 0) return;
+        const repo = this.connection.getRepository(ctx, FormSubmission);
+        const others = await repo
+            .createQueryBuilder('submission')
+            .innerJoin('submission.channels', 'channel', 'channel.id = :channelId', {
+                channelId: ctx.channelId,
+            })
+            .where('submission.pageId = :pageId', { pageId: saved.pageId })
+            .andWhere('submission.id != :id', { id: saved.id })
+            .getMany();
+        for (const other of others) {
+            const data = turnOffKeys(other.data, keys);
+            if (!data) continue;
+            await repo.save(Object.assign(new FormSubmission(), other, { data }));
+            this.auditLogService?.log(ctx, {
+                action: 'CollectionEntryUpdated',
+                category: 'cms',
+                entityType: 'CollectionEntry',
+                entityId: other.id.toString(),
+                detail: {
+                    pageId: saved.pageId.toString(),
+                    pageKey,
+                    reason: 'exclusive',
+                    exclusiveOwner: saved.id.toString(),
+                    changes: Object.fromEntries(
+                        keys.filter(key => other.data?.[key] === true).map(key => [key, { from: true, to: false }]),
+                    ),
+                },
+            }).catch(() => {});
+        }
     }
 
     async createCustomerFromSubmission(

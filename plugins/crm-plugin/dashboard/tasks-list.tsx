@@ -1,7 +1,7 @@
 import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from '@tanstack/react-router';
-import { api, Button, Checkbox, Input } from '@vendure/dashboard';
+import { api, Button, Checkbox, ConfirmationDialog, Input } from '@vendure/dashboard';
 import { Trash2Icon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -101,10 +101,16 @@ export function TasksList({ tasks, showTarget }: Readonly<{ tasks: CrmTaskRow[];
                         </p>
                     </div>
                     {task.isMine && (
-                        <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Delete`}
-                            onClick={() => run(() => api.mutate(deleteTaskDocument, { id: task.id }))}>
-                            <Trash2Icon />
-                        </Button>
+                        <ConfirmationDialog
+                            title={t`Delete this follow-up?`}
+                            description={t`The follow-up "${task.title}" is removed for good. This cannot be undone.`}
+                            confirmText={t`Delete`}
+                            onConfirm={() => run(() => api.mutate(deleteTaskDocument, { id: task.id }))}
+                        >
+                            <Button variant="ghost" size="icon" disabled={pending} aria-label={t`Delete`}>
+                                <Trash2Icon />
+                            </Button>
+                        </ConfirmationDialog>
                     )}
                 </li>
             ))}

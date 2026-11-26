@@ -2,7 +2,7 @@ import { graphql } from '@/graphql/graphql';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { api, Button, PageContextValue, usePermissions } from '@vendure/dashboard';
+import { api, Button, ConfirmationDialog, PageContextValue, usePermissions } from '@vendure/dashboard';
 import { XIcon } from 'lucide-react';
 
 import { GROUP_TYPE_LABELS } from './group-labels';
@@ -152,15 +152,16 @@ export function CustomerGroupsBlock({ context }: Readonly<{ context: PageContext
                                 {typeLabel(group.crmGroupType) && <span className="text-muted-foreground"> · {typeLabel(group.crmGroupType)}</span>}
                             </span>
                             {canEdit && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label={t`Remove from the group`}
-                                    disabled={pending}
-                                    onClick={() => run(() => api.mutate(removeDocument, { groupId: group.id, customerId }))}
+                                <ConfirmationDialog
+                                    title={t`Remove from the group?`}
+                                    description={t`The customer leaves the group "${group.name}". You can add them back later.`}
+                                    confirmText={t`Remove`}
+                                    onConfirm={() => run(() => api.mutate(removeDocument, { groupId: group.id, customerId }))}
                                 >
-                                    <XIcon />
-                                </Button>
+                                    <Button variant="ghost" size="icon" aria-label={t`Remove from the group`} disabled={pending}>
+                                        <XIcon />
+                                    </Button>
+                                </ConfirmationDialog>
                             )}
                         </li>
                     ))}
