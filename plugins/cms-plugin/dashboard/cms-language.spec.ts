@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { blockForMutation, editableBlockForLanguage, entryDataForLanguage } from './cms-language';
+import { blockForMutation, editableBlockForLanguage, entryDataForLanguage, entryDataInLanguage } from './cms-language';
 
 const apiBlock = {
     id: '3',
@@ -102,5 +102,34 @@ describe('entryDataForLanguage', () => {
 
     it('is the stored data in the default language', () => {
         expect(entryDataForLanguage(blocks, base, undefined, 'fr', 'fr')).toEqual(base);
+    });
+});
+
+describe('entryDataInLanguage', () => {
+    const schema = [
+        { key: 'title', type: 'TEXT_SHORT' },
+        { key: 'slug', type: 'TEXT_SHORT' },
+        { key: 'main', type: 'BOOLEAN' },
+    ];
+    const entry = {
+        data: { title: 'Bonjour', slug: 'bonjour', main: true },
+        translations: [
+            { languageCode: 'en', data: { title: 'Hello', slug: '' } },
+            { languageCode: 'de', data: { title: 'Hallo' } },
+        ],
+    };
+
+    it('shows the translated texts, the original for the fields left empty', () => {
+        expect(entryDataInLanguage(schema, entry, 'en', 'fr')).toEqual({ title: 'Hello', slug: 'bonjour', main: true });
+    });
+
+    it('shows the original in the default language and in a language without translation', () => {
+        expect(entryDataInLanguage(schema, entry, 'fr', 'fr')).toEqual(entry.data);
+        expect(entryDataInLanguage(schema, entry, 'it', 'fr')).toEqual(entry.data);
+    });
+
+    it('copes with an entry without translations or data', () => {
+        expect(entryDataInLanguage(schema, { data: { title: 'A' } }, 'en', 'fr')).toEqual({ title: 'A' });
+        expect(entryDataInLanguage(schema, { data: null }, 'en', 'fr')).toEqual({});
     });
 });

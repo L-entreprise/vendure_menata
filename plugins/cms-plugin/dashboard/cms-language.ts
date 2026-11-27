@@ -7,7 +7,7 @@
 // `_source`, for the hints under each field and to restore the block on save.
 
 import { hasText } from '../../content-i18n/shared/translation-progress';
-import { entryTranslatableKeys } from '../services/localize';
+import { entryTranslatableKeys, mergeEntryData } from '../services/localize';
 import { getDefaultMetadata, resolveBlockEnabled } from './cms-block-utils';
 
 type Row = Record<string, any>;
@@ -190,4 +190,22 @@ function translatedMetadata(description: unknown, imageMeta: unknown): Row | nul
 
 function stripUndefined(row: Row): Row {
     return Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
+}
+
+/**
+ * An entry's values as the site shows them in `lang` (read-only views such as the
+ * entries table): that language's texts over the original, field by field, with the
+ * same fallback as the Shop API. The editor uses `entryDataForLanguage` instead, which
+ * leaves untranslated fields empty.
+ */
+export function entryDataInLanguage(
+    blocks: Array<{ key: string; type: string }>,
+    entry: { data?: Row | null; translations?: Array<{ languageCode: string; data: Row }> | null },
+    lang: string,
+    defaultLang: string,
+): Row {
+    const base = entry.data ?? {};
+    if (lang === defaultLang) return base;
+    const translation = (entry.translations ?? []).find(tr => tr.languageCode === lang);
+    return mergeEntryData(blocks, base, translation?.data);
 }
