@@ -14,7 +14,8 @@ import {
     DataTable,
     PageBlockContext,
 } from '@vendure/dashboard';
-import { blockLabel } from './cms-language';
+import { useContentLanguages } from '../../content-i18n/dashboard/use-languages';
+import { blockLabel, entryDataInLanguage } from './cms-language';
 import { toast } from 'sonner';
 
 // Also used by the submissions panel of the page editor.
@@ -25,6 +26,10 @@ export const formSubmissionsDocument = graphql(`
                 id
                 createdAt
                 data
+                translations {
+                    languageCode
+                    data
+                }
             }
             totalItems
         }
@@ -42,6 +47,7 @@ export const deleteFormSubmissionDocument = graphql(`
 
 export function CollectionEntriesPanel({ pageId, schema, title }: { pageId: string; schema: any[]; title?: string }) {
     const { t } = useLingui();
+    const { contentLanguage, defaultLanguage } = useContentLanguages();
     const [entries, setEntries] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
@@ -71,6 +77,13 @@ export function CollectionEntriesPanel({ pageId, schema, title }: { pageId: stri
     };
 
     const schemaFields = schema.filter(b => b.key);
+
+    // The table shows each entry in the content language, as the site does: the
+    // translated texts, and the original where a field is not translated.
+    const rows = entries.map(entry => ({
+        ...entry,
+        data: entryDataInLanguage(schemaFields, entry, contentLanguage, defaultLanguage),
+    }));
 
     const formatCellValue = (type: string, value: any): string => {
         if (value == null || value === '') return '-';
@@ -162,7 +175,7 @@ export function CollectionEntriesPanel({ pageId, schema, title }: { pageId: stri
                         <PageBlockContext.Provider value={{ blockId: 'collection-entries-table', column: 'main' }}>
                             <DataTable
                                 columns={columns as any}
-                                data={entries}
+                                data={rows}
                                 totalItems={totalItems}
                                 page={currentPage}
                                 itemsPerPage={itemsPerPage}
